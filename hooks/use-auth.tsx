@@ -17,6 +17,7 @@ interface AuthContextValue {
   demoMode: boolean;
   signIn: (email: string, password: string) => Promise<{ error?: string }>;
   signUp: (email: string, password: string) => Promise<{ error?: string }>;
+  signInWithGoogle: () => Promise<{ error?: string; redirecting?: boolean }>;
   signOut: () => Promise<void>;
 }
 
@@ -37,6 +38,7 @@ const AuthContext = createContext<AuthContextValue>({
   demoMode: true,
   signIn: async () => ({}),
   signUp: async () => ({}),
+  signInWithGoogle: async () => ({}),
   signOut: async () => {},
 });
 
@@ -111,6 +113,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     [demoMode]
   );
 
+  const signInWithGoogle = useCallback(async () => {
+    if (demoMode) {
+      // Pas de vrai OAuth en démo : on simule une connexion Google.
+      const u = { ...DEMO_USER, email: "google.user@gmail.com", initials: "GU" };
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(u));
+      setUser(u);
+      return {};
+    }
+    const supabase = createClient();
+    if (!supabase) return { error: "Supabase non configuré" };
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo: `${window.location.origin}/auth/callback`,
+        queryParams: { access_type: "offline", prompt: "consent" },
+      },
+    });
+    // En cas de succès, le navigateur est redirigé vers Google.
+    return error ? { error: error.message } : { redirecting: true };
+  }, [demoMode]);
+
   const signOut = useCallback(async () => {
     if (demoMode) {
       window.localStorage.removeItem(STORAGE_KEY);
@@ -124,7 +147,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ user, loading, demoMode, signIn, signUp, signOut }}
+      value={{
+        user,
+        loading,
+        demoMode,
+        signIn,
+        signUp,
+        signInWithGoogle,
+        signOut,
+      }}
     >
       {children}
     </AuthContext.Provider>
