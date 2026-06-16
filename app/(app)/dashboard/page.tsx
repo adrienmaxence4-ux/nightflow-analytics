@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { FileText, RefreshCw } from "lucide-react";
 import { PageTransition } from "@/components/layout/page-transition";
+import { DemoBanner } from "@/components/demo-banner";
 import { RangeToggle } from "@/components/ui/range-toggle";
 import { KpiCard } from "@/features/dashboard/kpi-card";
 import { RevenueChart } from "@/features/dashboard/revenue-chart";
@@ -17,23 +18,58 @@ import { useRange } from "@/hooks/use-range";
 import { getRangeDataSync } from "@/services/analytics.service";
 import { getProducts } from "@/services/products.service";
 import { parseMetric } from "@/utils/format";
-import type { Kpi, Product } from "@/types";
+import type { Kpi, Product, Range } from "@/types";
 
 export default function DashboardPage() {
   const toast = useToast();
   const { range, setRange } = useRange("day");
   const [data, setData] = useState(getRangeDataSync("day"));
+  const [source, setSource] = useState<"db" | "mock" | null>(null);
+  const [products, setProducts] = useState<Product[]>(getProducts());
   const [activeKpi, setActiveKpi] = useState<Kpi | null>(null);
   const [activeProduct, setActiveProduct] = useState<Product | null>(null);
-  const products = getProducts();
+
+  const loadRange = useCallback(async (r: Range) => {
+    try {
+      const res = await fetch(`/api/dashboard?range=${r}`);
+      if (res.ok) {
+        const j = await res.json();
+        setData(j.data);
+        setSource(j.source);
+        return;
+      }
+    } catch {
+      /* fall back */
+    }
+    setData(getRangeDataSync(r));
+    setSource("mock");
+  }, []);
+
+  const loadProducts = useCallback(async () => {
+    try {
+      const res = await fetch("/api/products");
+      if (res.ok) {
+        const j = await res.json();
+        setProducts(j.products);
+        return;
+      }
+    } catch {
+      /* fall back */
+    }
+    setProducts(getProducts());
+  }, []);
 
   useEffect(() => {
-    setData(getRangeDataSync(range));
-  }, [range]);
+    loadRange(range);
+  }, [range, loadRange]);
 
-  // Simulated live visitor counter (day view only)
   useEffect(() => {
-    if (range !== "day") return;
+    loadProducts();
+  }, [loadProducts]);
+
+  // Simulated live visitor counter — only on mock demo data, day view.
+  useEffect(() => {
+    if (range !== "day" || source !== "mock") return;
     const id = setInterval(() => {
       setData((prev) => ({
         ...prev,
@@ -51,22 +87,23 @@ export default function DashboardPage() {
       }));
     }, 4000);
     return () => clearInterval(id);
-  }, [range]);
+  }, [range, source]);
 
   const refresh = () => {
-    setData((prev) => ({
-      ...prev,
-      series: prev.series.map((p) => ({
-        ...p,
-        revenue: Math.max(1, Math.round(p.revenue * (0.92 + Math.random() * 0.18))),
-        orders: Math.max(1, Math.round(p.orders * (0.92 + Math.random() * 0.18))),
-      })),
-    }));
-    toast("Données actualisées en temps réel");
+    loadRange(range);
+    loadProducts();
+    toast("Données actualisées");
   };
 
   return (
     <PageTransition>
+      <DemoBanner
+        source={source}
+        onSeeded={() => {
+          loadRange(range);
+          loadProducts();
+        }}
+      />
       <div className="flex flex-wrap items-center gap-3.5">
         <div>
           <h2 className="text-base font-extrabold">Vue d&apos;ensemble</h2>

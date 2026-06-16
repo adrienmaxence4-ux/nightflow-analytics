@@ -53,6 +53,9 @@ export type ProductRow = {
   trend: TrendDir;
   delta: string | null;
   note: string | null;
+  sales: number;
+  revenue_cents: number;
+  revenue_share: number;
   created_at: string;
   updated_at: string;
 }
@@ -86,6 +89,8 @@ export type CampaignRow = {
   spend_cents: number;
   revenue_cents: number;
   roas: number;
+  trend: TrendDir;
+  delta: string | null;
   created_at: string;
   updated_at: string;
 }

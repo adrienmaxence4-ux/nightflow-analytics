@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { PageTransition } from "@/components/layout/page-transition";
 import { PageHeader } from "@/components/layout/page-header";
+import { DemoBanner } from "@/components/demo-banner";
 import { RangeToggle } from "@/components/ui/range-toggle";
 import { Card } from "@/components/ui/card";
 import { RevenueChart } from "@/features/dashboard/revenue-chart";
@@ -10,6 +11,7 @@ import { ProductBars } from "@/features/dashboard/product-bars";
 import { Funnel } from "@/features/dashboard/funnel";
 import { useRange } from "@/hooks/use-range";
 import { getRangeDataSync } from "@/services/analytics.service";
+import type { Range } from "@/types";
 
 const CHANNELS = [
   { channel: "Direct", share: 32, color: "#3df2ff" },
@@ -27,10 +29,32 @@ const DEVICES = [
 
 export default function AnalyticsPage() {
   const { range, setRange } = useRange("week");
-  const data = getRangeDataSync(range);
+  const [data, setData] = useState(getRangeDataSync("week"));
+  const [source, setSource] = useState<"db" | "mock" | null>(null);
+
+  const load = useCallback(async (r: Range) => {
+    try {
+      const res = await fetch(`/api/dashboard?range=${r}`);
+      if (res.ok) {
+        const j = await res.json();
+        setData(j.data);
+        setSource(j.source);
+        return;
+      }
+    } catch {
+      /* fall back */
+    }
+    setData(getRangeDataSync(r));
+    setSource("mock");
+  }, []);
+
+  useEffect(() => {
+    load(range);
+  }, [range, load]);
 
   return (
     <PageTransition>
+      <DemoBanner source={source} onSeeded={() => load(range)} />
       <PageHeader
         title="Analytics"
         subtitle={data.sub}

@@ -1,20 +1,50 @@
 "use client";
 
+import { useCallback, useEffect, useState } from "react";
 import { PageTransition } from "@/components/layout/page-transition";
 import { PageHeader } from "@/components/layout/page-header";
+import { DemoBanner } from "@/components/demo-banner";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { CAMPAIGNS } from "@/services/mock/data";
+import { parseMetric } from "@/utils/format";
+import type { Campaign } from "@/types";
 
 export default function MarketingPage() {
   const toast = useToast();
-  const totalSpend = "€11,920";
-  const totalRev = "€48,090";
-  const blendedRoas = "4.0";
+  const [campaigns, setCampaigns] = useState<Campaign[]>(CAMPAIGNS);
+  const [source, setSource] = useState<"db" | "mock" | null>(null);
+
+  const load = useCallback(async () => {
+    try {
+      const res = await fetch("/api/marketing");
+      if (res.ok) {
+        const j = await res.json();
+        setCampaigns(j.campaigns);
+        setSource(j.source);
+        return;
+      }
+    } catch {
+      /* fall back */
+    }
+    setCampaigns(CAMPAIGNS);
+    setSource("mock");
+  }, []);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  const spendCents = campaigns.reduce((t, c) => t + parseMetric(c.spend), 0);
+  const revCents = campaigns.reduce((t, c) => t + parseMetric(c.revenue), 0);
+  const totalSpend = `€${spendCents.toLocaleString("fr-FR")}`;
+  const totalRev = `€${revCents.toLocaleString("fr-FR")}`;
+  const blendedRoas = spendCents > 0 ? (revCents / spendCents).toFixed(1) : "—";
 
   return (
     <PageTransition>
+      <DemoBanner source={source} onSeeded={load} />
       <PageHeader
         title="Marketing"
         subtitle="Résumé de vos campagnes publicitaires — tous canaux"
@@ -62,7 +92,7 @@ export default function MarketingPage() {
               </tr>
             </thead>
             <tbody>
-              {CAMPAIGNS.map((c) => (
+              {campaigns.map((c) => (
                 <tr
                   key={c.id}
                   className="border-b border-[rgba(120,140,255,0.06)] text-[13px] transition hover:bg-glass-2"

@@ -1,24 +1,45 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Search } from "lucide-react";
 import { PageTransition } from "@/components/layout/page-transition";
 import { PageHeader } from "@/components/layout/page-header";
+import { DemoBanner } from "@/components/demo-banner";
 import { Card } from "@/components/ui/card";
 import { ProductTable } from "@/features/products/product-table";
 import { ProductDrawer } from "@/features/products/product-drawer";
 import { ProductBars } from "@/features/dashboard/product-bars";
 import { getProducts } from "@/services/products.service";
-import { getRangeDataSync } from "@/services/analytics.service";
 import type { Product } from "@/types";
 
 const FILTERS = ["Tous", "Meilleures ventes", "En baisse"];
 
 export default function ProductsPage() {
-  const allProducts = getProducts();
+  const [allProducts, setAllProducts] = useState<Product[]>(getProducts());
+  const [source, setSource] = useState<"db" | "mock" | null>(null);
   const [active, setActive] = useState<Product | null>(null);
   const [filter, setFilter] = useState("Tous");
   const [query, setQuery] = useState("");
+
+  const load = useCallback(async () => {
+    try {
+      const res = await fetch("/api/products");
+      if (res.ok) {
+        const j = await res.json();
+        setAllProducts(j.products);
+        setSource(j.source);
+        return;
+      }
+    } catch {
+      /* fall back */
+    }
+    setAllProducts(getProducts());
+    setSource("mock");
+  }, []);
+
+  useEffect(() => {
+    load();
+  }, [load]);
 
   const filtered = allProducts.filter((p) => {
     if (query && !p.name.toLowerCase().includes(query.toLowerCase())) return false;
@@ -27,15 +48,23 @@ export default function ProductsPage() {
     return true;
   });
 
+  const bestSeller = [...allProducts].sort((a, b) => b.sales - a.sales)[0];
+  const atRisk = allProducts.filter((p) => p.trend === "down").length;
   const stats = [
-    { l: "Total SKUs", v: "128", d: "+6 cette semaine" },
-    { l: "Marge moyenne", v: "42%", d: "+1.2 pt" },
-    { l: "Best-seller", v: "Aurora Hoodie", d: "72% du CA" },
-    { l: "À surveiller", v: "3", d: "conversion faible" },
+    { l: "Total SKUs", v: String(allProducts.length), d: "produits actifs" },
+    { l: "Best-seller", v: bestSeller?.name ?? "—", d: `${bestSeller?.revenueShare ?? 0}% du CA` },
+    { l: "À surveiller", v: String(atRisk), d: "en baisse" },
+    { l: "Stock total", v: String(allProducts.reduce((t, p) => t + p.stock, 0)), d: "unités" },
   ];
+
+  const bars = [...allProducts]
+    .sort((a, b) => b.sales - a.sales)
+    .slice(0, 5)
+    .map((p) => ({ name: p.name, value: p.sales }));
 
   return (
     <PageTransition>
+      <DemoBanner source={source} onSeeded={load} />
       <PageHeader
         title="Produits"
         subtitle={`${allProducts.length} produits · ${filtered.length} affichés`}
@@ -88,7 +117,7 @@ export default function ProductsPage() {
           onSelect={setActive}
           title="Tous les produits"
         />
-        <ProductBars data={getRangeDataSync("week").bars} />
+        <ProductBars data={bars} />
       </div>
 
       <ProductDrawer product={active} onClose={() => setActive(null)} />
