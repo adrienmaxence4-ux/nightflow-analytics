@@ -168,12 +168,72 @@ Chaque Pull Request obtient en plus une **URL de prévisualisation** unique.
 
 ---
 
-## 🗄️ Activer Supabase (Phase 2)
+## 🗄️ Base de données & migrations Supabase
+
+Le schéma est **versionné** dans [`supabase/migrations/`](supabase/migrations) (source de
+vérité unique). Chaque fichier est une migration idempotente et non destructive.
+
+| Migration | Contenu |
+| --------- | ------- |
+| `…_init_core.sql` | `profiles`, fonctions `set_updated_at` / `handle_new_user`, RLS |
+| `…_commerce.sql` | `stores`, `products`, `orders`, `order_items`, `campaigns`, `metrics_daily`, helper `owns_store()` |
+| `…_intelligence.sql` | `insights`, `recommendations`, `notifications`, `integrations`, enums |
+
+Toutes les tables ont **RLS activé** : un utilisateur n'accède qu'à ses propres
+boutiques et données.
+
+### Activer la base (Phase 2)
 
 1. Créez un projet sur [supabase.com](https://supabase.com).
-2. Copiez l'`URL` et l'`anon key` dans `.env.local` (et dans Vercel).
-3. Exécutez [`supabase/schema.sql`](supabase/schema.sql) dans le SQL editor.
-4. Redéployez — l'auth réelle et la persistance s'activent automatiquement.
+2. Copiez `URL` + `anon key` dans `.env.local` (et dans Vercel).
+3. Installez la CLI puis liez le projet :
+   ```bash
+   npm i -g supabase
+   supabase link --project-ref <project-id>
+   ```
+4. Appliquez les migrations :
+   ```bash
+   npm run db:push        # pousse supabase/migrations vers le projet lié
+   ```
+5. (Optionnel) régénérez les types TypeScript depuis la base :
+   ```bash
+   npm run gen:types      # écrit types/database.ts
+   ```
+
+### Workflow de migration
+
+- **Créer** une migration : `supabase migration new <nom>` (ou `npm run db:diff -- <nom>`
+  pour la générer à partir d'un changement local), puis éditez le SQL.
+- **Tester en local** : `npm run db:reset` (rejoue toutes les migrations + `seed.sql`
+  MoonStore).
+- **Déployer** : commitez le fichier dans `supabase/migrations/` et `git push`.
+  Le workflow [`supabase-migrations.yml`](.github/workflows/supabase-migrations.yml)
+  exécute automatiquement `supabase db push` (voir secrets ci-dessous).
+
+> ⚠️ Ne modifiez jamais une migration déjà déployée — créez-en une nouvelle.
+
+---
+
+## ⚙️ CI/CD — GitHub Actions
+
+[`.github/workflows/ci.yml`](.github/workflows/ci.yml) s'exécute **à chaque push et PR** :
+
+1. `npm ci` → 2. **TypeScript** (`typecheck`) → 3. **ESLint** (`lint`) →
+4. **Tests** (`vitest`) → 5. **Build** (`next build`).
+
+[`.github/workflows/supabase-migrations.yml`](.github/workflows/supabase-migrations.yml)
+pousse les migrations vers Supabase à chaque push sur `main` modifiant
+`supabase/migrations/`.
+
+### Secrets GitHub requis pour les migrations auto
+
+| Secret | Où le trouver |
+| ------ | ------------- |
+| `SUPABASE_ACCESS_TOKEN` | account.supabase.com → Access Tokens |
+| `SUPABASE_PROJECT_ID` | Project Settings → General → Reference ID |
+| `SUPABASE_DB_PASSWORD` | Project Settings → Database |
+
+Sans ces secrets, le job de migration **s'ignore proprement** (le pipeline reste vert).
 
 ---
 

@@ -1,6 +1,7 @@
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { env, isSupabaseConfigured } from "@/lib/env";
+import type { Database } from "@/types/database";
 
 /**
  * Server-side Supabase client (RSC / route handlers).
@@ -11,7 +12,7 @@ export function createClient() {
 
   const cookieStore = cookies();
 
-  return createServerClient(env.supabaseUrl, env.supabaseAnonKey, {
+  return createServerClient<Database>(env.supabaseUrl, env.supabaseAnonKey, {
     cookies: {
       getAll() {
         return cookieStore.getAll();

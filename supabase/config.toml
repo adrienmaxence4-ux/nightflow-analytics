@@ -1,0 +1,16 @@
+# Supabase CLI configuration for Nightflow Analytics.
+# Link a project with:  supabase link --project-ref <project-id>
+# Push migrations with:  supabase db push
+# Reset local DB + seed: supabase db reset
+
+project_id = "nightflow-analytics"
+
+[db]
+major_version = 15
+
+[db.migrations]
+# Migrations live in supabase/migrations and run in filename order.
+
+[db.seed]
+enabled = true
+sql_paths = ["./seed.sql"]
