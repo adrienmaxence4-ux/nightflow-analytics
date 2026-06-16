@@ -8,6 +8,7 @@ import {
   Bell,
   Settings,
   CreditCard,
+  Plug,
 } from "lucide-react";
 
 export interface NavItem {
@@ -27,6 +28,7 @@ export const NAV_MAIN: NavItem[] = [
 
 export const NAV_SECONDARY: NavItem[] = [
   { label: "Notifications", href: "/notifications", icon: Bell, badge: 4 },
+  { label: "Integrations", href: "/integrations", icon: Plug },
   { label: "Billing", href: "/billing", icon: CreditCard },
   { label: "Settings", href: "/settings", icon: Settings },
 ];

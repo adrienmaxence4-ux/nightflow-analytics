@@ -22,10 +22,10 @@ interface AuthContextValue {
 
 const DEMO_USER: AppUser = {
   id: "demo-user",
-  email: "demo@nightflow.app",
-  name: "Adrien Maxence",
+  email: "demo@moonstore.app",
+  name: "Adrien",
   initials: "AM",
-  store: "Nightflow Studio",
+  store: "MoonStore",
   plan: "Pro",
 };
 

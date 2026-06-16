@@ -12,7 +12,7 @@ export function CopilotPanel() {
   const toast = useToast();
   const [q, setQ] = useState("");
   const [busy, setBusy] = useState(false);
-  const insights = getInsights();
+  const insights = getInsights().slice(0, 3);
   const recos = getRecommendations();
 
   const ask = async () => {

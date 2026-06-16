@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { RefreshCw } from "lucide-react";
+import { FileText, RefreshCw } from "lucide-react";
 import { PageTransition } from "@/components/layout/page-transition";
 import { RangeToggle } from "@/components/ui/range-toggle";
 import { KpiCard } from "@/features/dashboard/kpi-card";
@@ -79,6 +79,13 @@ export default function DashboardPage() {
         >
           <RefreshCw className="h-3.5 w-3.5" />
           Actualiser
+        </button>
+        <button
+          onClick={() => toast("Rapport MoonStore généré et envoyé par email")}
+          className="flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-neon-cyan to-neon-cyansoft px-3.5 py-2 text-xs font-bold text-night-950 shadow-glow transition hover:brightness-110"
+        >
+          <FileText className="h-3.5 w-3.5" />
+          Générer un rapport
         </button>
       </div>
 

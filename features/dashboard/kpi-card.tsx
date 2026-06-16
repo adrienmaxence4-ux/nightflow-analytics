@@ -78,6 +78,9 @@ export function KpiCard({
           {kpi.delta}
           <span className="font-medium text-ink-mut">{kpi.sub}</span>
         </div>
+        <p className="relative z-10 mt-2.5 line-clamp-2 text-[11px] leading-snug text-ink-dim">
+          {kpi.insight}
+        </p>
         <svg
           className="pointer-events-none absolute inset-x-0 bottom-0 h-12 w-full opacity-80"
           viewBox="0 0 120 46"

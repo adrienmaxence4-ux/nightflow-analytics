@@ -17,6 +17,8 @@ export interface Kpi {
   sub: string;
   icon: string;
   tone: "cyan" | "pink" | "violet" | "lime";
+  /** One-line plain-language explanation: what's happening & why. */
+  insight: string;
 }
 
 export interface SeriesPoint {
@@ -54,6 +56,30 @@ export interface Product {
   trend: Trend;
   delta: string;
   note: string;
+  /** Units left in stock. */
+  stock: number;
+  /** Share of total store revenue (%) — used to flag dependency. */
+  revenueShare: number;
+}
+
+/**
+ * A Copilot "analysis" — a themed deep-dive the user can open from the
+ * AI Copilot page. Answers What / Why / What-to-do for a whole area.
+ */
+export interface AnalysisCard {
+  id: string;
+  category: "sales" | "products" | "marketing" | "forecast";
+  icon: string;
+  title: string;
+  metric: string;
+  trend: Trend;
+  delta: string;
+  accent: "cyan" | "pink" | "violet" | "lime";
+  what: string;
+  why: string;
+  action: string;
+  /** Deterministic mini-trend for the inline sparkline. */
+  spark: number[];
 }
 
 /**

@@ -39,6 +39,12 @@ export function ProductDrawer({
               value={`${product.trend === "up" ? "▲" : "▼"} ${product.delta}`}
               tone={product.trend === "up" ? "good" : "bad"}
             />
+            <Stat
+              label="Stock restant"
+              value={`${product.stock} u.`}
+              tone={product.stock <= 20 ? "bad" : undefined}
+            />
+            <Stat label="Part du CA" value={`${product.revenueShare}%`} />
           </div>
 
           <div className="mt-5 rounded-2xl border border-glass-hi p-4 text-[13px] leading-relaxed [background:linear-gradient(110deg,rgba(154,107,255,0.16),rgba(61,242,255,0.08))]">
@@ -48,15 +54,22 @@ export function ProductDrawer({
             <p>{product.note}</p>
           </div>
 
-          <Button
-            className="mt-5 w-full"
-            onClick={() => {
-              toast(`Optimisation lancée pour ${product.name}`);
-              onClose();
-            }}
-          >
-            Optimiser ce produit
-          </Button>
+          <div className="mt-5 grid grid-cols-2 gap-2.5">
+            <Button
+              onClick={() => {
+                toast(`Optimisation lancée pour ${product.name}`);
+                onClose();
+              }}
+            >
+              Optimiser
+            </Button>
+            <Button
+              variant="ghost"
+              onClick={() => toast(`Analyse détaillée de ${product.name} générée`)}
+            >
+              Analyser
+            </Button>
+          </div>
         </>
       )}
     </Sheet>

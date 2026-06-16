@@ -2,18 +2,8 @@
 
 import { Area, AreaChart, ResponsiveContainer } from "recharts";
 import { Sheet } from "@/components/ui/sheet";
-import type { Kpi, KpiKey, RangeData } from "@/types";
-
-const NOTES: Record<KpiKey, string> = {
-  revenue:
-    "Vous êtes <b>18% au-dessus</b> de votre objectif. Le créneau 21h-23h porte votre croissance — programmez vos drops sur ce créneau.",
-  orders:
-    "Panier moyen en hausse. Un seuil de <b>livraison gratuite à €60</b> pourrait augmenter le panier de ~12%.",
-  conversion:
-    "Le <b>mobile sous-performe (1.9%)</b>. Activez Apple Pay et le checkout 1-clic : gain estimé +0.8 pt.",
-  visitors:
-    "Trafic <b>+126 vs la moyenne</b>. Une campagne TikTok convertit probablement — surveillez le ROAS.",
-};
+import { useToast } from "@/hooks/use-toast";
+import type { Kpi, RangeData } from "@/types";
 
 export function KpiDrawer({
   kpi,
@@ -24,6 +14,7 @@ export function KpiDrawer({
   range: RangeData;
   onClose: () => void;
 }) {
+  const toast = useToast();
   const chartData = kpi
     ? range.series.map((s) => ({
         label: s.label,
@@ -85,7 +76,22 @@ export function KpiDrawer({
             <span className="mb-2 inline-flex items-center gap-1.5 text-[10px] font-extrabold tracking-wider text-neon-cyansoft">
               ✦ INSIGHT COPILOT
             </span>
-            <p dangerouslySetInnerHTML={{ __html: NOTES[kpi.key] }} />
+            <p>{kpi.insight}</p>
+          </div>
+
+          <div className="mt-4 grid grid-cols-2 gap-2.5">
+            <button
+              onClick={() => toast(`Analyse approfondie de « ${kpi.label} » lancée`)}
+              className="rounded-xl bg-gradient-to-r from-neon-cyan to-neon-cyansoft py-2.5 text-[13px] font-bold text-night-950 shadow-glow transition hover:brightness-110"
+            >
+              Analyser
+            </button>
+            <button
+              onClick={() => toast("Rapport généré et envoyé par email")}
+              className="rounded-xl border border-glass-border bg-glass py-2.5 text-[13px] font-semibold text-ink-dim transition hover:border-glass-hi hover:text-white"
+            >
+              Générer un rapport
+            </button>
           </div>
         </>
       )}
