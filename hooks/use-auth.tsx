@@ -71,12 +71,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
     supabase.auth.getUser().then(({ data }) => {
       if (data.user) {
-        setUser(mapUser(data.user.email ?? "user@store.com"));
+        setUser(mapUser(data.user.id, data.user.email ?? "user@store.com"));
       }
       setLoading(false);
     });
     const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => {
-      setUser(session?.user ? mapUser(session.user.email ?? "user@store.com") : null);
+      setUser(
+        session?.user
+          ? mapUser(session.user.id, session.user.email ?? "user@store.com")
+          : null
+      );
     });
     return () => sub.subscription.unsubscribe();
   }, [demoMode]);
@@ -162,7 +166,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   );
 }
 
-function mapUser(email: string): AppUser {
+function mapUser(id: string, email: string): AppUser {
   const initials = email.slice(0, 2).toUpperCase();
-  return { ...DEMO_USER, email, initials };
+  return { ...DEMO_USER, id, email, initials };
 }
