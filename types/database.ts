@@ -12,6 +12,7 @@ export type SeverityLevel = "critical" | "warning" | "positive" | "info";
 export type ImpactLevel = "high" | "medium" | "low";
 export type NotificationType = "stock" | "sales" | "ads" | "system" | "ai";
 export type PlanTier = "Starter" | "Pro" | "Scale";
+export type AiPriority = "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
 
 // ── Row shapes (source of truth, no self-reference) ──
 
@@ -152,6 +153,45 @@ export type IntegrationRow = {
   updated_at: string;
 }
 
+export type AiConversationRow = {
+  id: string;
+  user_id: string;
+  store_id: string | null;
+  title: string;
+  created_at: string;
+  updated_at: string;
+};
+
+export type AiMessageRow = {
+  id: string;
+  conversation_id: string;
+  role: "user" | "assistant" | "system";
+  content: string;
+  created_at: string;
+};
+
+export type AiAnalysisRow = {
+  id: string;
+  store_id: string;
+  kind: "insights" | "anomalies" | "recommendations" | "summary";
+  payload: unknown;
+  model: string | null;
+  created_at: string;
+};
+
+export type AiRecommendationRow = {
+  id: string;
+  store_id: string;
+  title: string;
+  detail: string | null;
+  impact: string | null;
+  priority: AiPriority;
+  impact_score: number;
+  confidence_score: number;
+  status: "open" | "applied" | "dismissed";
+  created_at: string;
+};
+
 // ── Helper: build a Supabase-compatible table definition ──
 type Table<Row, Required extends keyof Row> = {
   Row: Row;
@@ -174,6 +214,10 @@ export interface Database {
       recommendations: Table<RecommendationRow, "store_id" | "title">;
       notifications: Table<NotificationRow, "user_id" | "title">;
       integrations: Table<IntegrationRow, "store_id" | "provider">;
+      ai_conversations: Table<AiConversationRow, "user_id">;
+      ai_messages: Table<AiMessageRow, "conversation_id" | "role" | "content">;
+      ai_analysis_history: Table<AiAnalysisRow, "store_id" | "kind">;
+      ai_recommendations: Table<AiRecommendationRow, "store_id" | "title">;
     };
     Views: Record<string, never>;
     Functions: {
@@ -188,6 +232,7 @@ export interface Database {
       severity_level: SeverityLevel;
       impact_level: ImpactLevel;
       notification_type: NotificationType;
+      ai_priority: AiPriority;
     };
     CompositeTypes: Record<string, never>;
   };

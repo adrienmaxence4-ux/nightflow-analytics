@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { AlertTriangle, FileText, Sparkles, Target, ShieldAlert, TrendingUp } from "lucide-react";
 import { PageTransition } from "@/components/layout/page-transition";
@@ -17,15 +17,46 @@ import {
   getGroupedInsights,
   getInsightSummary,
 } from "@/services/copilot.service";
-import type { AnalysisCard as AnalysisCardType } from "@/types";
+import type { AnalysisCard as AnalysisCardType, Insight } from "@/types";
+
+function group(insights: Insight[]) {
+  return {
+    risks: insights.filter((i) => i.severity === "critical"),
+    alerts: insights.filter((i) => i.severity === "warning"),
+    opportunities: insights.filter(
+      (i) => i.severity === "positive" || i.severity === "info"
+    ),
+  };
+}
 
 export default function CopilotPage() {
   const toast = useToast();
   const { user } = useAuth();
   const analyses = getAnalysisCards();
-  const groups = getGroupedInsights();
-  const summary = getInsightSummary();
+  const [groups, setGroups] = useState(getGroupedInsights());
   const [openAnalysis, setOpenAnalysis] = useState<AnalysisCardType | null>(null);
+
+  // Upgrade to real AI insights when available; mock stays as the initial view.
+  useEffect(() => {
+    let alive = true;
+    fetch("/api/insights")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data: { insights?: Insight[] } | null) => {
+        if (alive && data?.insights && data.insights.length > 0) {
+          setGroups(group(data.insights));
+        }
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  const summary = {
+    risks: groups.risks.length,
+    alerts: groups.alerts.length,
+    opportunities: groups.opportunities.length,
+  };
 
   return (
     <PageTransition>

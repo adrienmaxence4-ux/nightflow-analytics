@@ -6,6 +6,9 @@ export type Range = "day" | "week" | "month";
 
 export type Trend = "up" | "down";
 
+/** Priority bucket assigned by the AI prioritisation engine. */
+export type Priority = "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
+
 export type KpiKey = "revenue" | "orders" | "conversion" | "visitors";
 
 export interface Kpi {
@@ -95,6 +98,12 @@ export interface Insight {
   action: string; // Que dois-je faire ?
   impact: string; // Estimated business impact
   source: string;
+  /** AI prioritisation (optional — present on AI-generated insights). */
+  priority?: Priority;
+  /** 0-100 estimated business impact score. */
+  impactScore?: number;
+  /** 0-100 model confidence in this insight. */
+  confidenceScore?: number;
 }
 
 export interface Recommendation {
@@ -105,6 +114,10 @@ export interface Recommendation {
   impactLevel: "high" | "medium";
   cta: string;
   effort: "Faible" | "Moyen" | "Élevé";
+  /** AI prioritisation (optional — present on AI-generated recommendations). */
+  priority?: Priority;
+  impactScore?: number;
+  confidenceScore?: number;
 }
 
 export interface Notification {
