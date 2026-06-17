@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { RefreshCw, Store } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import { Check, RefreshCw, Store } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
@@ -9,25 +9,48 @@ import { useToast } from "@/hooks/use-toast";
 /**
  * In-app Shopify connection: each logged-in user enters THEIR own store domain
  * and authorizes it via OAuth — the data synced is theirs, isolated by RLS.
+ * Shows the real connection status (connected shop, sync, disconnect).
  */
 export function ShopifyConnect() {
   const toast = useToast();
   const [domain, setDomain] = useState("");
-  const [syncing, setSyncing] = useState(false);
+  const [status, setStatus] = useState<{ connected: boolean; shop: string | null }>(
+    { connected: false, shop: null }
+  );
+  const [busy, setBusy] = useState(false);
+
+  const loadStatus = useCallback(async () => {
+    try {
+      const res = await fetch("/api/integrations/status");
+      if (res.ok) {
+        const j = await res.json();
+        if (j.shopify) setStatus(j.shopify);
+      }
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
+  useEffect(() => {
+    loadStatus();
+  }, [loadStatus]);
 
   const connect = () => {
-    let shop = domain.trim().toLowerCase().replace(/^https?:\/\//, "").replace(/\/.*$/, "");
+    let shop = domain
+      .trim()
+      .toLowerCase()
+      .replace(/^https?:\/\//, "")
+      .replace(/\/.*$/, "");
     if (shop && !shop.includes(".")) shop = `${shop}.myshopify.com`;
     if (!/^[a-z0-9][a-z0-9-]*\.myshopify\.com$/.test(shop)) {
       toast("Entrez un domaine valide, ex. ma-boutique.myshopify.com", "info");
       return;
     }
-    // Top-level navigation to start the OAuth grant.
     window.location.href = `/api/integrations/shopify?shop=${encodeURIComponent(shop)}`;
   };
 
   const sync = async () => {
-    setSyncing(true);
+    setBusy(true);
     try {
       const res = await fetch("/api/integrations/shopify/sync", { method: "POST" });
       const data = await res.json().catch(() => ({}));
@@ -36,12 +59,25 @@ export function ShopifyConnect() {
           `Synchronisé : ${data.products ?? 0} produits, ${data.orders ?? 0} commandes ✓`
         );
       } else {
-        toast(data.error ?? "Connectez d'abord votre boutique", "info");
+        toast(data.error ?? "Synchronisation impossible", "info");
       }
     } catch {
       toast("Synchronisation impossible", "info");
     } finally {
-      setSyncing(false);
+      setBusy(false);
+    }
+  };
+
+  const disconnect = async () => {
+    setBusy(true);
+    try {
+      await fetch("/api/integrations/shopify/disconnect", { method: "POST" });
+      toast("Boutique Shopify déconnectée");
+      setStatus({ connected: false, shop: null });
+    } catch {
+      toast("Impossible de déconnecter", "info");
+    } finally {
+      setBusy(false);
     }
   };
 
@@ -54,40 +90,59 @@ export function ShopifyConnect() {
         <div className="min-w-[180px] flex-1">
           <div className="flex items-center gap-2">
             <h3 className="text-[16px] font-extrabold">Shopify</h3>
-            <Badge variant="lime">Disponible</Badge>
+            {status.connected ? (
+              <Badge variant="lime">
+                <Check className="h-3 w-3" strokeWidth={3} /> Connecté
+              </Badge>
+            ) : (
+              <Badge variant="cyan">Disponible</Badge>
+            )}
           </div>
           <p className="text-[12px] text-ink-mut">
-            Connectez <b>votre</b> boutique pour importer produits, commandes &
-            ventes.
+            {status.connected && status.shop
+              ? `Connecté à ${status.shop}`
+              : "Connectez votre boutique pour importer produits, commandes & ventes."}
           </p>
         </div>
 
-        <div className="flex flex-1 flex-wrap items-center gap-2">
-          <div className="relative min-w-[220px] flex-1">
-            <Store className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-mut" />
-            <input
-              value={domain}
-              onChange={(e) => setDomain(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && connect()}
-              placeholder="ma-boutique.myshopify.com"
-              className="glass-input w-full rounded-xl py-2.5 pl-9 pr-3 text-[13px]"
-            />
+        {status.connected ? (
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              onClick={sync}
+              disabled={busy}
+              className="flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-neon-cyan to-neon-cyansoft px-4 py-2.5 text-[13px] font-bold text-night-950 shadow-glow transition hover:brightness-110 disabled:opacity-60"
+            >
+              <RefreshCw className="h-3.5 w-3.5" />
+              {busy ? "Synchro…" : "Synchroniser"}
+            </button>
+            <button
+              onClick={disconnect}
+              disabled={busy}
+              className="rounded-xl border border-glass-border bg-glass px-3.5 py-2.5 text-[13px] font-semibold text-ink-dim transition hover:border-neon-pink hover:text-white disabled:opacity-60"
+            >
+              Déconnecter
+            </button>
           </div>
-          <button
-            onClick={connect}
-            className="rounded-xl bg-gradient-to-r from-neon-cyan to-neon-cyansoft px-4 py-2.5 text-[13px] font-bold text-night-950 shadow-glow transition hover:brightness-110"
-          >
-            Connecter
-          </button>
-          <button
-            onClick={sync}
-            disabled={syncing}
-            className="flex items-center gap-1.5 rounded-xl border border-glass-border bg-glass px-3.5 py-2.5 text-[13px] font-semibold text-ink-dim transition hover:border-glass-hi hover:text-white disabled:opacity-60"
-          >
-            <RefreshCw className="h-3.5 w-3.5" />
-            {syncing ? "…" : "Synchroniser"}
-          </button>
-        </div>
+        ) : (
+          <div className="flex flex-1 flex-wrap items-center gap-2">
+            <div className="relative min-w-[220px] flex-1">
+              <Store className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-mut" />
+              <input
+                value={domain}
+                onChange={(e) => setDomain(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && connect()}
+                placeholder="ma-boutique.myshopify.com"
+                className="glass-input w-full rounded-xl py-2.5 pl-9 pr-3 text-[13px]"
+              />
+            </div>
+            <button
+              onClick={connect}
+              className="rounded-xl bg-gradient-to-r from-neon-cyan to-neon-cyansoft px-4 py-2.5 text-[13px] font-bold text-night-950 shadow-glow transition hover:brightness-110"
+            >
+              Connecter
+            </button>
+          </div>
+        )}
       </div>
     </Card>
   );
