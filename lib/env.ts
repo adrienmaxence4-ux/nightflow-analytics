@@ -26,6 +26,15 @@ export const env = {
   githubEndpoint:
     process.env.GITHUB_MODELS_ENDPOINT ?? "https://models.github.ai/inference",
   githubModel: process.env.GITHUB_MODEL ?? "openai/gpt-4o-mini",
+
+  // Shopify OAuth (Dev Dashboard app: Client ID + Client secret)
+  shopifyClientId:
+    process.env.SHOPIFY_CLIENT_ID ?? process.env.SHOPIFY_API_KEY ?? "",
+  shopifyClientSecret:
+    process.env.SHOPIFY_CLIENT_SECRET ?? process.env.SHOPIFY_API_SECRET ?? "",
+  shopifyScopes:
+    process.env.SHOPIFY_SCOPES ??
+    "read_products,read_orders,read_customers,read_inventory",
 };
 
 /** True when real Supabase credentials are configured. */
@@ -40,3 +49,7 @@ export const isGithubConfigured = env.githubToken.length > 0;
 
 /** True when ANY AI provider is usable. */
 export const isAiEnabled = isAiConfigured || isGithubConfigured;
+
+/** True when Shopify OAuth credentials are configured. */
+export const isShopifyConfigured =
+  env.shopifyClientId.length > 0 && env.shopifyClientSecret.length > 0;
