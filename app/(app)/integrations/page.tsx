@@ -7,6 +7,7 @@ import { PageHeader } from "@/components/layout/page-header";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
+import { ShopifyConnect } from "@/features/integrations/shopify-connect";
 
 interface Integration {
   id: string;
@@ -19,15 +20,6 @@ interface Integration {
 }
 
 const INTEGRATIONS: Integration[] = [
-  {
-    id: "shopify",
-    name: "Shopify",
-    category: "E-commerce",
-    description: "Synchronisez produits, commandes, clients et stocks en temps réel.",
-    logo: "🛍",
-    accent: "from-emerald-400 to-emerald-600",
-    willSync: ["Commandes", "Produits", "Stocks", "Clients"],
-  },
   {
     id: "ga4",
     name: "Google Analytics",
@@ -76,6 +68,9 @@ export default function IntegrationsPage() {
         subtitle="Connectez vos outils — Nightflow centralise toutes vos données en un seul cerveau."
       />
 
+      {/* Shopify — connexion réelle de la boutique de l'utilisateur connecté */}
+      <ShopifyConnect />
+
       <Card className="p-5 [background:linear-gradient(110deg,rgba(154,107,255,0.14),rgba(61,242,255,0.06))]">
         <div className="flex items-start gap-3">
           <span className="grid h-10 w-10 flex-none place-items-center rounded-xl border border-glass-hi bg-glass-2 text-lg">
@@ -83,13 +78,12 @@ export default function IntegrationsPage() {
           </span>
           <div>
             <h3 className="text-[14px] font-bold">
-              Bientôt : la connexion en 1 clic
+              Autres intégrations — bientôt
             </h3>
             <p className="mt-1 text-[13px] leading-relaxed text-ink-dim">
-              Les intégrations arrivent très prochainement. Une fois connectées,
-              le Copilot analysera vos données réelles et générera des insights
-              personnalisés pour votre boutique. Activez les notifications pour
-              être prévenu au lancement.
+              Google Analytics, Meta Ads, TikTok Ads et Stripe arrivent
+              prochainement. Une fois connectées, le Copilot analysera ces
+              données aussi. Activez les notifications pour être prévenu.
             </p>
           </div>
         </div>
