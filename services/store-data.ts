@@ -57,8 +57,8 @@ export async function getProductsForStore(): Promise<Product[] | null> {
     .select("*")
     .eq("store_id", ctx.store.id)
     .order("revenue_cents", { ascending: false });
+  // Store exists → return real products (even an empty list), never mock.
   const rows = (data as ProductRow[] | null) ?? [];
-  if (rows.length === 0) return null;
   return rows.map(mapProduct);
 }
 
@@ -86,8 +86,8 @@ export async function getCampaignsForStore(): Promise<Campaign[] | null> {
     .select("*")
     .eq("store_id", ctx.store.id)
     .order("revenue_cents", { ascending: false });
+  // Store exists → return real campaigns (even empty), never mock.
   const rows = (data as CampaignRow[] | null) ?? [];
-  if (rows.length === 0) return null;
   return rows.map(
     (c): Campaign => ({
       id: c.id,
@@ -127,7 +127,8 @@ export async function getRangeDataForStore(
 
   const metrics = (metricsData as MetricDailyRow[] | null) ?? [];
   const products = (productsData as ProductRow[] | null) ?? [];
-  if (metrics.length === 0 || products.length === 0) return null;
+  // Store exists → always return real data (even all-zero when there are no
+  // sales yet). Never fall back to mock for a real, connected store.
 
   const win = range === "day" ? 1 : range === "week" ? 7 : 30;
   const cur = metrics.slice(0, win);
@@ -174,7 +175,9 @@ export async function getRangeDataForStore(
       sub: vsLabel,
       icon: "💰",
       tone: "cyan",
-      insight: `Porté par ${top.name} (${Number(top.revenue_share)}% du CA).`,
+      insight: top
+        ? `Porté par ${top.name} (${Number(top.revenue_share)}% du CA).`
+        : "Pas encore de ventes — synchronisez vos commandes.",
     },
     {
       key: "orders",

@@ -2,18 +2,35 @@
 
 import { motion } from "framer-motion";
 import { Send } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { askCopilot, getInsights, getRecommendations } from "@/services/copilot.service";
+import type { Insight, Recommendation } from "@/types";
 
 /** Compact Copilot side panel: quick insights + actionable recos + chat. */
 export function CopilotPanel() {
   const toast = useToast();
   const [q, setQ] = useState("");
   const [busy, setBusy] = useState(false);
-  const insights = getInsights().slice(0, 3);
-  const recos = getRecommendations();
+  const [insights, setInsights] = useState<Insight[]>(getInsights().slice(0, 3));
+  const [recos, setRecos] = useState<Recommendation[]>(getRecommendations());
+
+  // Upgrade to real AI insights/recommendations when available.
+  useEffect(() => {
+    let alive = true;
+    fetch("/api/insights")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data: { insights?: Insight[]; recommendations?: Recommendation[] } | null) => {
+        if (!alive || !data) return;
+        if (data.insights?.length) setInsights(data.insights.slice(0, 3));
+        if (data.recommendations?.length) setRecos(data.recommendations);
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   const ask = async () => {
     if (!q.trim() || busy) return;
