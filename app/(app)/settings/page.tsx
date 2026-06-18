@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { ShopifyConnect } from "@/features/integrations/shopify-connect";
+import { ApiKeyConnect } from "@/features/integrations/api-key-connect";
 
 interface Integration {
   id: string;
@@ -19,13 +20,11 @@ interface Integration {
   accent: string;
 }
 
-// Shopify is live (see ShopifyConnect); the rest are not coded yet → "Bientôt".
+// OAuth-only sources — need platform app review before they go live → "Bientôt".
 const INTEGRATIONS: Integration[] = [
-  { id: "stripe", name: "Stripe", description: "Paiements, churn & MRR.", logo: "💳", accent: "from-indigo-400 to-violet-500" },
   { id: "ga4", name: "Google Analytics 4", description: "Trafic, attribution & funnel.", logo: "📈", accent: "from-amber-300 to-orange-500" },
   { id: "meta", name: "Meta Ads", description: "Performance Facebook & Instagram.", logo: "📘", accent: "from-blue-400 to-blue-600" },
   { id: "tiktok", name: "TikTok Ads", description: "ROAS & créatives par campagne.", logo: "🎵", accent: "from-neon-pink to-neon-violet" },
-  { id: "klaviyo", name: "Klaviyo", description: "Email & SMS + automatisations.", logo: "✉️", accent: "from-fuchsia-400 to-pink-500" },
 ];
 
 const SECTIONS = [
@@ -80,13 +79,38 @@ export default function SettingsPage() {
                 <ShopifyConnect />
               </div>
 
+              <div className="flex flex-col gap-3">
+                <ApiKeyConnect
+                  provider="stripe"
+                  name="Stripe"
+                  logo="💳"
+                  accent="from-indigo-400 to-violet-500"
+                  description="Collez une clé restreinte pour importer paiements & revenus."
+                  connectedHint="Revenus & commandes importés depuis Stripe."
+                  placeholder="rk_live_… ou sk_live_…"
+                  helpHref="https://dashboard.stripe.com/apikeys"
+                  helpLabel="Créer une clé restreinte (lecture seule)"
+                />
+                <ApiKeyConnect
+                  provider="klaviyo"
+                  name="Klaviyo"
+                  logo="✉️"
+                  accent="from-fuchsia-400 to-pink-500"
+                  description="Collez votre clé privée pour suivre le CA email & SMS attribué."
+                  connectedHint="Revenu attribué Klaviyo affiché dans Marketing."
+                  placeholder="pk_…"
+                  helpHref="https://www.klaviyo.com/settings/account/api-keys"
+                  helpLabel="Où trouver ma clé privée ?"
+                />
+              </div>
+
               <Card className="p-5">
                 <h3 className="mb-1 text-[15px] font-bold">
-                  Autres sources — bientôt
+                  Régies publicitaires — bientôt
                 </h3>
                 <p className="mb-4 text-xs text-ink-mut">
-                  Ces connecteurs arrivent prochainement, sur le même modèle que
-                  Shopify (chacun connecte son propre compte).
+                  Google Analytics, Meta Ads et TikTok Ads passent par OAuth et
+                  nécessitent la validation de l&apos;app par chaque plateforme.
                 </p>
                 <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                   {INTEGRATIONS.map((i) => (

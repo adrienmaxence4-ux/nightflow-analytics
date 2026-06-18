@@ -8,6 +8,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { ShopifyConnect } from "@/features/integrations/shopify-connect";
+import { ApiKeyConnect } from "@/features/integrations/api-key-connect";
 
 interface Integration {
   id: string;
@@ -19,7 +20,9 @@ interface Integration {
   willSync: string[];
 }
 
-const INTEGRATIONS: Integration[] = [
+// OAuth-only providers — require app registration + platform review before
+// they can go live, so they stay "Coming soon" for now.
+const COMING_SOON: Integration[] = [
   {
     id: "ga4",
     name: "Google Analytics",
@@ -47,15 +50,6 @@ const INTEGRATIONS: Integration[] = [
     accent: "from-neon-pink to-neon-violet",
     willSync: ["Dépenses", "ROAS", "Vues"],
   },
-  {
-    id: "stripe",
-    name: "Stripe",
-    category: "Paiements",
-    description: "Revenus, remboursements, MRR, churn et données d'abonnement.",
-    logo: "💳",
-    accent: "from-indigo-400 to-violet-500",
-    willSync: ["Paiements", "Remboursements", "MRR"],
-  },
 ];
 
 export default function IntegrationsPage() {
@@ -68,8 +62,32 @@ export default function IntegrationsPage() {
         subtitle="Connectez vos outils — Nightflow centralise toutes vos données en un seul cerveau."
       />
 
-      {/* Shopify — connexion réelle de la boutique de l'utilisateur connecté */}
-      <ShopifyConnect />
+      {/* Connecteurs actifs — chacun connecte SON propre compte (multi-tenant). */}
+      <div className="flex flex-col gap-4">
+        <ShopifyConnect />
+        <ApiKeyConnect
+          provider="stripe"
+          name="Stripe"
+          logo="💳"
+          accent="from-indigo-400 to-violet-500"
+          description="Collez une clé restreinte pour importer paiements & revenus."
+          connectedHint="Revenus & commandes importés depuis Stripe."
+          placeholder="rk_live_… ou sk_live_…"
+          helpHref="https://dashboard.stripe.com/apikeys"
+          helpLabel="Créer une clé restreinte (lecture seule)"
+        />
+        <ApiKeyConnect
+          provider="klaviyo"
+          name="Klaviyo"
+          logo="✉️"
+          accent="from-fuchsia-400 to-pink-500"
+          description="Collez votre clé privée pour suivre le CA email & SMS attribué."
+          connectedHint="Revenu attribué Klaviyo affiché dans Marketing."
+          placeholder="pk_…"
+          helpHref="https://www.klaviyo.com/settings/account/api-keys"
+          helpLabel="Où trouver ma clé privée ?"
+        />
+      </div>
 
       <Card className="p-5 [background:linear-gradient(110deg,rgba(154,107,255,0.14),rgba(61,242,255,0.06))]">
         <div className="flex items-start gap-3">
@@ -78,19 +96,20 @@ export default function IntegrationsPage() {
           </span>
           <div>
             <h3 className="text-[14px] font-bold">
-              Autres intégrations — bientôt
+              Régies publicitaires — bientôt
             </h3>
             <p className="mt-1 text-[13px] leading-relaxed text-ink-dim">
-              Google Analytics, Meta Ads, TikTok Ads et Stripe arrivent
-              prochainement. Une fois connectées, le Copilot analysera ces
-              données aussi. Activez les notifications pour être prévenu.
+              Google Analytics, Meta Ads et TikTok Ads passent par une connexion
+              OAuth qui nécessite la validation de l&apos;app par chaque
+              plateforme. Une fois disponibles, le Copilot analysera aussi ces
+              données. Activez les notifications pour être prévenu.
             </p>
           </div>
         </div>
       </Card>
 
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-        {INTEGRATIONS.map((integration, i) => (
+        {COMING_SOON.map((integration, i) => (
           <motion.div
             key={integration.id}
             initial={{ opacity: 0, y: 14 }}
@@ -147,7 +166,7 @@ export default function IntegrationsPage() {
           <div>
             <h3 className="text-[14px] font-bold">Un outil manquant ?</h3>
             <p className="mt-1 text-[12px] text-ink-mut">
-              Klaviyo, Gorgias, Amazon… dites-nous lequel.
+              Gorgias, Amazon, PayPal… dites-nous lequel.
             </p>
           </div>
           <button
