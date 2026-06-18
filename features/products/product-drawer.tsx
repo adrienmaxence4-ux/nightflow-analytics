@@ -1,8 +1,9 @@
 "use client";
 
+import { useEffect } from "react";
 import { Sheet } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
-import { useToast } from "@/hooks/use-toast";
+import { CopilotAnswer, useCopilotAsk } from "@/features/copilot/copilot-answer";
 import type { Product } from "@/types";
 
 export function ProductDrawer({
@@ -12,7 +13,9 @@ export function ProductDrawer({
   product: Product | null;
   onClose: () => void;
 }) {
-  const toast = useToast();
+  const copilot = useCopilotAsk();
+  const { reset } = copilot;
+  useEffect(() => reset(), [product?.id, reset]);
 
   return (
     <Sheet open={!!product} onClose={onClose}>
@@ -56,20 +59,29 @@ export function ProductDrawer({
 
           <div className="mt-5 grid grid-cols-2 gap-2.5">
             <Button
-              onClick={() => {
-                toast(`Optimisation lancée pour ${product.name}`);
-                onClose();
-              }}
+              disabled={copilot.busy}
+              onClick={() =>
+                copilot.ask(
+                  `Comment optimiser les ventes du produit « ${product.name} » (${product.sales} ventes, ${product.revenue}, conversion ${product.conversion}, stock ${product.stock}) ? Donne-moi 2-3 actions concrètes.`
+                )
+              }
             >
-              Optimiser
+              {copilot.busy ? "Analyse…" : "Optimiser"}
             </Button>
             <Button
               variant="ghost"
-              onClick={() => toast(`Analyse détaillée de ${product.name} générée`)}
+              disabled={copilot.busy}
+              onClick={() =>
+                copilot.ask(
+                  `Analyse en détail la performance du produit « ${product.name} » : que se passe-t-il, pourquoi, et que faire ?`
+                )
+              }
             >
               Analyser
             </Button>
           </div>
+
+          <CopilotAnswer answer={copilot.answer} busy={copilot.busy} />
         </>
       )}
     </Sheet>

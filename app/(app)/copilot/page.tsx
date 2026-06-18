@@ -10,13 +10,14 @@ import { Sheet } from "@/components/ui/sheet";
 import { InsightCard } from "@/features/copilot/insight-card";
 import { AnalysisCard } from "@/features/copilot/analysis-card";
 import { CopilotChat } from "@/features/copilot/copilot-chat";
+import { CopilotAnswer, useCopilotAsk } from "@/features/copilot/copilot-answer";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import {
   getAnalysisCards,
   getGroupedInsights,
-  getInsightSummary,
 } from "@/services/copilot.service";
+import { generateStoreReport } from "@/services/report.service";
 import type { AnalysisCard as AnalysisCardType, Insight } from "@/types";
 
 function group(insights: Insight[]) {
@@ -35,6 +36,11 @@ export default function CopilotPage() {
   const analyses = getAnalysisCards();
   const [groups, setGroups] = useState(getGroupedInsights());
   const [openAnalysis, setOpenAnalysis] = useState<AnalysisCardType | null>(null);
+  const [reporting, setReporting] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const drawerCopilot = useCopilotAsk();
+  const { reset: resetDrawer } = drawerCopilot;
+  useEffect(() => resetDrawer(), [openAnalysis?.id, resetDrawer]);
 
   // Upgrade to real AI insights when available; mock stays as the initial view.
   useEffect(() => {
@@ -56,6 +62,32 @@ export default function CopilotPage() {
     risks: groups.risks.length,
     alerts: groups.alerts.length,
     opportunities: groups.opportunities.length,
+  };
+
+  const downloadReport = async () => {
+    if (reporting) return;
+    setReporting(true);
+    toast("Génération du rapport…", "info");
+    await generateStoreReport();
+    toast("Rapport téléchargé ✓");
+    setReporting(false);
+  };
+
+  const refreshAnalysis = async () => {
+    if (refreshing) return;
+    setRefreshing(true);
+    toast("Analyse en cours…", "info");
+    try {
+      const res = await fetch("/api/insights?refresh=1");
+      const data = (await res.json()) as { insights?: Insight[] };
+      const items = data.insights ?? [];
+      if (items.length) setGroups(group(items));
+      toast(`Analyse actualisée — ${items.length} insights détectés`);
+    } catch {
+      toast("Actualisation impossible", "info");
+    } finally {
+      setRefreshing(false);
+    }
   };
 
   return (
@@ -90,15 +122,16 @@ export default function CopilotPage() {
             </div>
           </div>
           <div className="flex flex-none gap-2.5">
-            <Button onClick={() => toast("Rapport MoonStore généré et envoyé par email")}>
+            <Button onClick={downloadReport} disabled={reporting}>
               <FileText className="h-4 w-4" />
-              Générer un rapport
+              {reporting ? "Génération…" : "Générer un rapport"}
             </Button>
             <Button
               variant="ghost"
-              onClick={() => toast("Analyse actualisée — 6 insights détectés")}
+              onClick={refreshAnalysis}
+              disabled={refreshing}
             >
-              Actualiser
+              {refreshing ? "Analyse…" : "Actualiser"}
             </Button>
           </div>
         </div>
@@ -202,20 +235,25 @@ export default function CopilotPage() {
 
             <div className="mt-5 grid grid-cols-2 gap-2.5">
               <Button
-                onClick={() => {
-                  toast(`Optimisation « ${openAnalysis.title} » lancée`);
-                  setOpenAnalysis(null);
-                }}
+                disabled={drawerCopilot.busy}
+                onClick={() =>
+                  drawerCopilot.ask(
+                    `${openAnalysis.what} ${openAnalysis.why} Donne-moi un plan d'action concret pour « ${openAnalysis.title} ».`
+                  )
+                }
               >
-                Optimiser
+                {drawerCopilot.busy ? "Analyse…" : "Optimiser"}
               </Button>
               <Button
                 variant="ghost"
-                onClick={() => toast("Rapport détaillé généré")}
+                disabled={reporting}
+                onClick={downloadReport}
               >
-                Générer un rapport
+                {reporting ? "Génération…" : "Générer un rapport"}
               </Button>
             </div>
+
+            <CopilotAnswer answer={drawerCopilot.answer} busy={drawerCopilot.busy} />
           </>
         )}
       </Sheet>

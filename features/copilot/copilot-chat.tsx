@@ -5,24 +5,6 @@ import { Send, Sparkles } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { askCopilot } from "@/services/copilot.service";
 
-/** Calls the server Copilot (real Claude); falls back to the local mock. */
-async function ask(question: string): Promise<string> {
-  try {
-    const res = await fetch("/api/copilot", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ question }),
-    });
-    if (res.ok) {
-      const data = (await res.json()) as { answer?: string };
-      if (data.answer) return data.answer;
-    }
-  } catch {
-    /* network error → fall back */
-  }
-  return askCopilot(question);
-}
-
 const SUGGESTIONS = [
   "Pourquoi mes ventes ont baissé ?",
   "Comment améliorer ma conversion mobile ?",
@@ -50,7 +32,7 @@ export function CopilotChat({ className }: { className?: string }) {
     setMessages((m) => [...m, { role: "user", text }]);
     setQ("");
     setBusy(true);
-    const answer = await ask(text);
+    const answer = await askCopilot(text);
     setMessages((m) => [...m, { role: "ai", text: answer }]);
     setBusy(false);
   };

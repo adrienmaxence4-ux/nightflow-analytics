@@ -1,8 +1,11 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { Area, AreaChart, ResponsiveContainer } from "recharts";
 import { Sheet } from "@/components/ui/sheet";
 import { useToast } from "@/hooks/use-toast";
+import { CopilotAnswer, useCopilotAsk } from "@/features/copilot/copilot-answer";
+import { generateStoreReport } from "@/services/report.service";
 import type { Kpi, RangeData } from "@/types";
 
 export function KpiDrawer({
@@ -15,6 +18,11 @@ export function KpiDrawer({
   onClose: () => void;
 }) {
   const toast = useToast();
+  const copilot = useCopilotAsk();
+  const [reporting, setReporting] = useState(false);
+  const { reset } = copilot;
+  // Clear any previous answer when switching KPI or closing the drawer.
+  useEffect(() => reset(), [kpi?.key, reset]);
   const chartData = kpi
     ? range.series.map((s) => ({
         label: s.label,
@@ -81,18 +89,32 @@ export function KpiDrawer({
 
           <div className="mt-4 grid grid-cols-2 gap-2.5">
             <button
-              onClick={() => toast(`Analyse approfondie de « ${kpi.label} » lancée`)}
-              className="rounded-xl bg-gradient-to-r from-neon-cyan to-neon-cyansoft py-2.5 text-[13px] font-bold text-night-950 shadow-glow transition hover:brightness-110"
+              disabled={copilot.busy}
+              onClick={() =>
+                copilot.ask(
+                  `Analyse l'indicateur « ${kpi.label} » qui vaut ${kpi.value} (${kpi.delta} ${kpi.sub}). Que se passe-t-il, pourquoi, et que dois-je faire concrètement ?`
+                )
+              }
+              className="rounded-xl bg-gradient-to-r from-neon-cyan to-neon-cyansoft py-2.5 text-[13px] font-bold text-night-950 shadow-glow transition hover:brightness-110 disabled:opacity-60"
             >
-              Analyser
+              {copilot.busy ? "Analyse…" : "Analyser"}
             </button>
             <button
-              onClick={() => toast("Rapport généré et envoyé par email")}
-              className="rounded-xl border border-glass-border bg-glass py-2.5 text-[13px] font-semibold text-ink-dim transition hover:border-glass-hi hover:text-white"
+              disabled={reporting}
+              onClick={async () => {
+                setReporting(true);
+                toast("Génération du rapport…", "info");
+                await generateStoreReport();
+                toast("Rapport téléchargé ✓");
+                setReporting(false);
+              }}
+              className="rounded-xl border border-glass-border bg-glass py-2.5 text-[13px] font-semibold text-ink-dim transition hover:border-glass-hi hover:text-white disabled:opacity-60"
             >
-              Générer un rapport
+              {reporting ? "Génération…" : "Générer un rapport"}
             </button>
           </div>
+
+          <CopilotAnswer answer={copilot.answer} busy={copilot.busy} />
         </>
       )}
     </Sheet>

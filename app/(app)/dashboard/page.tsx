@@ -17,6 +17,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useRange } from "@/hooks/use-range";
 import { getRangeDataSync } from "@/services/analytics.service";
 import { getProducts } from "@/services/products.service";
+import { generateStoreReport } from "@/services/report.service";
 import { parseMetric } from "@/utils/format";
 import type { Kpi, Product, Range } from "@/types";
 
@@ -89,10 +90,25 @@ export default function DashboardPage() {
     return () => clearInterval(id);
   }, [range, source]);
 
+  const [reporting, setReporting] = useState(false);
+
   const refresh = () => {
     loadRange(range);
     loadProducts();
     toast("Données actualisées");
+  };
+
+  const downloadReport = async () => {
+    if (reporting) return;
+    setReporting(true);
+    toast("Génération du rapport…", "info");
+    const { source } = await generateStoreReport();
+    toast(
+      source === "db"
+        ? "Rapport téléchargé ✓"
+        : "Rapport (démo) téléchargé ✓"
+    );
+    setReporting(false);
   };
 
   return (
@@ -118,11 +134,12 @@ export default function DashboardPage() {
           Actualiser
         </button>
         <button
-          onClick={() => toast("Rapport MoonStore généré et envoyé par email")}
-          className="flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-neon-cyan to-neon-cyansoft px-3.5 py-2 text-xs font-bold text-night-950 shadow-glow transition hover:brightness-110"
+          onClick={downloadReport}
+          disabled={reporting}
+          className="flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-neon-cyan to-neon-cyansoft px-3.5 py-2 text-xs font-bold text-night-950 shadow-glow transition hover:brightness-110 disabled:opacity-60"
         >
           <FileText className="h-3.5 w-3.5" />
-          Générer un rapport
+          {reporting ? "Génération…" : "Générer un rapport"}
         </button>
       </div>
 

@@ -6,15 +6,16 @@ import { PageHeader } from "@/components/layout/page-header";
 import { DemoBanner } from "@/components/demo-banner";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { useToast } from "@/hooks/use-toast";
+import { useCopilotAsk } from "@/features/copilot/copilot-answer";
 import { CAMPAIGNS } from "@/services/mock/data";
 import { parseMetric } from "@/utils/format";
 import type { Campaign } from "@/types";
 
 export default function MarketingPage() {
-  const toast = useToast();
   const [campaigns, setCampaigns] = useState<Campaign[]>(CAMPAIGNS);
   const [source, setSource] = useState<"db" | "mock" | null>(null);
+  const copilot = useCopilotAsk();
+  const [optimized, setOptimized] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -128,10 +129,16 @@ export default function MarketingPage() {
                   </td>
                   <td className="px-3 py-3.5">
                     <button
-                      onClick={() => toast(`Optimisation de ${c.channel} lancée`)}
-                      className="rounded-lg border border-glass-border bg-glass px-3 py-1.5 text-xs font-semibold text-ink-dim transition hover:border-neon-cyan hover:text-white"
+                      disabled={copilot.busy}
+                      onClick={() => {
+                        setOptimized(c.channel);
+                        copilot.ask(
+                          `Le canal « ${c.channel} » a dépensé ${c.spend} pour ${c.revenue} de revenu (ROAS ${c.roas.toFixed(1)}×). Dois-je augmenter, réduire ou réallouer ce budget ? Donne une recommandation concrète.`
+                        );
+                      }}
+                      className="rounded-lg border border-glass-border bg-glass px-3 py-1.5 text-xs font-semibold text-ink-dim transition hover:border-neon-cyan hover:text-white disabled:opacity-60"
                     >
-                      Optimiser
+                      {copilot.busy && optimized === c.channel ? "Analyse…" : "Optimiser"}
                     </button>
                   </td>
                 </tr>
@@ -147,16 +154,31 @@ export default function MarketingPage() {
             <span className="absolute h-7 w-7 rounded-full bg-night-900" />
             <span className="relative z-10 text-white">✦</span>
           </span>
-          <div>
+          <div className="flex-1">
             <div className="text-[10px] font-extrabold tracking-wider text-neon-cyansoft">
-              RECOMMANDATION COPILOT
+              {optimized ? `RECOMMANDATION COPILOT — ${optimized}` : "RECOMMANDATION COPILOT"}
             </div>
-            <p className="mt-1 text-[14px] leading-relaxed">
-              <b>Klaviyo Email affiche un ROAS de 19×</b> mais ne consomme que €320.
-              Augmentez le budget email de <b>+40%</b> et réallouez depuis les
-              Influenceurs (ROAS 1.5×). Gain projeté :{" "}
-              <b className="text-neon-lime">+€3,800 / semaine</b>.
-            </p>
+            {copilot.busy ? (
+              <p className="mt-2 flex gap-1">
+                {[0, 1, 2].map((d) => (
+                  <span
+                    key={d}
+                    className="h-1.5 w-1.5 animate-pulsedot rounded-full bg-neon-cyan"
+                    style={{ animationDelay: `${d * 0.2}s` }}
+                  />
+                ))}
+              </p>
+            ) : copilot.answer ? (
+              <p className="mt-1 whitespace-pre-line text-[14px] leading-relaxed">
+                {copilot.answer}
+              </p>
+            ) : (
+              <p className="mt-1 text-[14px] leading-relaxed">
+                Cliquez <b>« Optimiser »</b> sur un canal ci-dessus : le Copilot
+                analyse son ROAS en temps réel et vous dit s&apos;il faut augmenter,
+                réduire ou réallouer le budget.
+              </p>
+            )}
           </div>
         </div>
       </Card>

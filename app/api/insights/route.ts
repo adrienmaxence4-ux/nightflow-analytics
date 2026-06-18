@@ -17,11 +17,12 @@ import { AI_MODEL } from "@/services/ai/client";
  */
 const CACHE_MS = 6 * 60 * 60 * 1000;
 
-export async function GET() {
+export async function GET(req: Request) {
+  const refresh = new URL(req.url).searchParams.get("refresh") === "1";
   const ctx = await buildStoreContext();
 
-  // Try the cache first (only when a real store exists).
-  if (ctx.storeId) {
+  // Try the cache first (only when a real store exists and no refresh asked).
+  if (ctx.storeId && !refresh) {
     const cached = await readCache(ctx.storeId);
     if (cached) return NextResponse.json({ ...cached, cached: true });
   }

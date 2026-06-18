@@ -93,13 +93,16 @@ export default function BillingPage() {
               ))}
             </ul>
             <button
-              onClick={() =>
-                toast(
-                  plan.name === user?.plan
-                    ? "Vous êtes déjà sur ce plan"
-                    : `${plan.cta} — redirection…`
-                )
-              }
+              onClick={() => {
+                if (plan.name === user?.plan) {
+                  toast("Vous êtes déjà sur ce plan");
+                } else if (plan.cta === "Contacter les ventes") {
+                  window.location.href =
+                    "mailto:sales@nightflow.app?subject=Plan%20Scale%20Nightflow";
+                } else {
+                  toast(`${plan.cta} — paiement bientôt disponible`, "info");
+                }
+              }}
               className={`mt-6 w-full rounded-xl py-2.5 text-sm font-bold transition ${
                 plan.highlight
                   ? "bg-gradient-to-r from-neon-cyan to-neon-cyansoft text-night-950 shadow-glow hover:brightness-110"

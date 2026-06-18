@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { PageTransition } from "@/components/layout/page-transition";
 import { PageHeader } from "@/components/layout/page-header";
 import { Card } from "@/components/ui/card";
@@ -37,6 +37,39 @@ export default function SettingsPage() {
   const toast = useToast();
   const { user } = useAuth();
   const [tab, setTab] = useState("integrations");
+  const [storeName, setStoreName] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (user?.store) setStoreName(user.store);
+  }, [user?.store]);
+
+  const saveProfile = async () => {
+    if (saving) return;
+    setSaving(true);
+    try {
+      const res = await fetch("/api/profile", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ storeName }),
+      });
+      const data = await res.json().catch(() => ({}));
+      toast(res.ok ? "Profil enregistré ✓" : data.error ?? "Échec de l'enregistrement", res.ok ? "success" : "info");
+    } catch {
+      toast("Échec de l'enregistrement", "info");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const copyKey = async (key: string) => {
+    try {
+      await navigator.clipboard.writeText(key);
+      toast("Clé copiée ✓");
+    } catch {
+      toast("Copie impossible", "info");
+    }
+  };
 
   return (
     <PageTransition>
@@ -158,8 +191,17 @@ export default function SettingsPage() {
                 </div>
               </div>
               <div className="mt-5 grid grid-cols-1 gap-3 md:grid-cols-2">
+                <label className="block">
+                  <span className="mb-1.5 block text-[11px] font-semibold text-ink-mut">
+                    Nom de la boutique
+                  </span>
+                  <Input
+                    value={storeName}
+                    onChange={(e) => setStoreName(e.target.value)}
+                    placeholder="Nightflow Studio"
+                  />
+                </label>
                 {[
-                  ["Nom de la boutique", user?.store ?? "Nightflow Studio"],
                   ["Fuseau horaire", "Europe/Paris (GMT+1)"],
                   ["Devise", "EUR (€)"],
                   ["Langue", "Français"],
@@ -172,8 +214,8 @@ export default function SettingsPage() {
                   </label>
                 ))}
               </div>
-              <Button className="mt-5" onClick={() => toast("Profil enregistré")}>
-                Enregistrer
+              <Button className="mt-5" onClick={saveProfile} disabled={saving}>
+                {saving ? "Enregistrement…" : "Enregistrer"}
               </Button>
             </Card>
           )}
@@ -197,7 +239,7 @@ export default function SettingsPage() {
                     {k.key}
                   </span>
                   <button
-                    onClick={() => toast("Clé copiée")}
+                    onClick={() => copyKey(k.key)}
                     className="rounded-lg border border-glass-border bg-glass px-3 py-1 text-[11px] font-semibold text-ink-dim hover:text-white"
                   >
                     Copier

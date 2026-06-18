@@ -4,15 +4,14 @@ import { motion } from "framer-motion";
 import { Send } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
-import { useToast } from "@/hooks/use-toast";
-import { askCopilot, getInsights, getRecommendations } from "@/services/copilot.service";
+import { CopilotAnswer, useCopilotAsk } from "@/features/copilot/copilot-answer";
+import { getInsights, getRecommendations } from "@/services/copilot.service";
 import type { Insight, Recommendation } from "@/types";
 
 /** Compact Copilot side panel: quick insights + actionable recos + chat. */
 export function CopilotPanel() {
-  const toast = useToast();
+  const copilot = useCopilotAsk();
   const [q, setQ] = useState("");
-  const [busy, setBusy] = useState(false);
   const [insights, setInsights] = useState<Insight[]>(getInsights().slice(0, 3));
   const [recos, setRecos] = useState<Recommendation[]>(getRecommendations());
 
@@ -32,13 +31,10 @@ export function CopilotPanel() {
     };
   }, []);
 
-  const ask = async () => {
-    if (!q.trim() || busy) return;
-    setBusy(true);
-    const answer = await askCopilot(q);
-    toast(`✦ ${answer}`, "info");
+  const ask = () => {
+    if (!q.trim() || copilot.busy) return;
+    copilot.ask(q);
     setQ("");
-    setBusy(false);
   };
 
   return (
@@ -105,13 +101,20 @@ export function CopilotPanel() {
               <span className="text-[11px] text-ink-dim">{r.detail}</span>
             </div>
             <button
-              onClick={() => toast(`${r.cta} : ${r.title}`)}
-              className="flex-none rounded-[9px] bg-gradient-to-r from-neon-pink to-neon-violet px-3 py-2 text-[11px] font-bold text-white transition hover:-translate-y-0.5 hover:brightness-110"
+              disabled={copilot.busy}
+              onClick={() =>
+                copilot.ask(
+                  `${r.title} — ${r.detail}. Explique comment appliquer cette recommandation en 2-3 étapes concrètes.`
+                )
+              }
+              className="flex-none rounded-[9px] bg-gradient-to-r from-neon-pink to-neon-violet px-3 py-2 text-[11px] font-bold text-white transition hover:-translate-y-0.5 hover:brightness-110 disabled:opacity-60"
             >
               {r.cta}
             </button>
           </motion.div>
         ))}
+
+        <CopilotAnswer answer={copilot.answer} busy={copilot.busy} />
       </div>
 
       <div className="border-t border-glass-border px-4 py-3.5">
@@ -125,7 +128,7 @@ export function CopilotPanel() {
           />
           <button
             onClick={ask}
-            disabled={busy}
+            disabled={copilot.busy}
             className="grid h-[34px] w-[34px] place-items-center rounded-[9px] bg-gradient-to-r from-neon-cyan to-neon-cyansoft text-night-950 transition hover:brightness-110 disabled:opacity-50"
             aria-label="Envoyer"
           >

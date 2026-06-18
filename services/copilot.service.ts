@@ -5,13 +5,13 @@ import {
   INSIGHTS,
   RECOMMENDATIONS,
 } from "./mock/data";
-import { isAiConfigured } from "@/lib/env";
 
 /**
- * AI Copilot service.
+ * AI Copilot service (client-side).
  *
- * Phase 1 (default): rule-based / mocked narrative insights.
- * Phase 2: when ANTHROPIC_API_KEY is set, route `askCopilot` to the real LLM.
+ * `askCopilot` hits the /api/copilot route — a real Claude answer grounded in
+ * the user's store data — and gracefully falls back to a deterministic mock
+ * answer when the network/AI is unavailable.
  */
 
 export function getInsights(): Insight[] {
@@ -48,14 +48,28 @@ export function getInsightSummary() {
 }
 
 /**
- * Ask the Copilot a free-form question.
- * Returns a deterministic mock answer in demo mode.
+ * Ask the Copilot a free-form question. Calls the real AI endpoint and falls
+ * back to a deterministic mock answer when the network/AI is unavailable.
  */
 export async function askCopilot(question: string): Promise<string> {
-  if (isAiConfigured) {
-    // Phase 2: forward `question` to Anthropic here.
-    // const res = await anthropic.messages.create({...})
+  try {
+    const res = await fetch("/api/copilot", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ question }),
+    });
+    if (res.ok) {
+      const data = (await res.json()) as { answer?: string };
+      if (data.answer) return data.answer;
+    }
+  } catch {
+    /* network error → fall back to the local mock */
   }
+  return mockAnswer(question);
+}
+
+/** Deterministic offline answer used as a fallback. */
+function mockAnswer(question: string): string {
   const q = question.toLowerCase();
   if (q.includes("stock") || q.includes("rupture")) return COPILOT_ANSWERS[0];
   if (q.includes("mobile") || q.includes("conversion")) return COPILOT_ANSWERS[1];

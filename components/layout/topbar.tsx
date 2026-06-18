@@ -42,7 +42,7 @@ export function Topbar({ title }: { title: string }) {
         <Button
           size="sm"
           className="h-11"
-          onClick={() => toast("Boutique Shopify connectée ✓")}
+          onClick={() => router.push("/integrations")}
         >
           <Plus className="h-4 w-4" strokeWidth={2.4} />
           <span className="hidden sm:inline">Connecter une boutique</span>

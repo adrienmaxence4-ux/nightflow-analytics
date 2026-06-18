@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
+import { exportProductsCsv } from "@/services/report.service";
 import type { Product } from "@/types";
 
 export function ProductTable({
@@ -27,7 +28,14 @@ export function ProductTable({
           </div>
         </div>
         <button
-          onClick={() => toast("Export CSV généré")}
+          onClick={() => {
+            if (!products.length) {
+              toast("Aucun produit à exporter", "info");
+              return;
+            }
+            exportProductsCsv(products);
+            toast(`Export CSV : ${products.length} produits ✓`);
+          }}
           className="rounded-xl border border-glass-border bg-glass px-3.5 py-2 text-xs font-semibold text-ink-dim transition hover:border-glass-hi hover:text-white hover:shadow-glow"
         >
           Exporter
