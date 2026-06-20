@@ -2,22 +2,34 @@ import { NextResponse } from "next/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { env } from "@/lib/env";
 import { createClient } from "@/lib/supabase/server";
-import { exchangeStripeCode, syncStripe } from "@/services/integrations/stripe";
+import { getOAuthProvider } from "@/services/integrations/oauth-registry";
 
 /**
- * GET /api/integrations/stripe/oauth/callback
- * Verifies the OAuth redirect (state), exchanges the code for the connected
- * account's token, links it to the logged-in user's store, and runs an initial
- * sync. Then redirects back to /integrations.
+ * GET /api/integrations/[provider]/oauth/callback
+ * Verifies the OAuth redirect (state + PKCE), exchanges the code for the
+ * connected account's token, links it to the logged-in user's store, runs an
+ * initial sync, then redirects back to /integrations.
  */
+function readCookie(req: Request, name: string): string | undefined {
+  return req.headers
+    .get("cookie")
+    ?.split(";")
+    .map((c) => c.trim())
+    .find((c) => c.startsWith(`${name}=`))
+    ?.split("=")[1];
+}
+
 export async function GET(
   req: Request,
   { params }: { params: { provider: string } }
 ) {
   const err = (reason: string) =>
-    NextResponse.redirect(`${env.siteUrl}/integrations?stripe=error&reason=${reason}`);
+    NextResponse.redirect(
+      `${env.siteUrl}/integrations?${params.provider}=error&reason=${reason}`
+    );
 
-  if (params.provider !== "stripe") return err("provider");
+  const def = getOAuthProvider(params.provider);
+  if (!def) return err("provider");
 
   const url = new URL(req.url);
   const code = url.searchParams.get("code");
@@ -26,15 +38,14 @@ export async function GET(
   if (!code) return err("params");
 
   // CSRF: state must match the cookie set when the grant started.
-  const cookieState = req.headers
-    .get("cookie")
-    ?.split(";")
-    .map((c) => c.trim())
-    .find((c) => c.startsWith("stripe_oauth_state="))
-    ?.split("=")[1];
-  if (!state || state !== cookieState) return err("state");
+  if (!state || state !== readCookie(req, `${def.id}_oauth_state`)) {
+    return err("state");
+  }
+  const verifier = def.usesPkce
+    ? readCookie(req, `${def.id}_oauth_verifier`)
+    : undefined;
 
-  const result = await exchangeStripeCode(code);
+  const result = await def.exchangeCode(code, verifier);
   if (!result) return err("token");
 
   const supabase = createClient();
@@ -54,23 +65,26 @@ export async function GET(
   await db.from("integrations").upsert(
     {
       store_id: storeId,
-      provider: "stripe",
+      provider: def.id,
       status: "connected",
       access_token: result.accessToken,
       connected_at: new Date().toISOString(),
-      metadata: { stripe_user_id: result.stripeUserId },
+      metadata: result.metadata ?? {},
     },
     { onConflict: "store_id,provider" }
   );
 
   // Initial sync — best-effort, connection still succeeds if it hiccups.
   try {
-    await syncStripe(result.accessToken, storeId, db);
+    await def.sync(result.accessToken, storeId, db);
   } catch (e) {
-    console.error("[stripe] initial sync failed", e);
+    console.error(`[${def.id}] initial sync failed`, e);
   }
 
-  const res = NextResponse.redirect(`${env.siteUrl}/integrations?stripe=connected`);
-  res.cookies.delete("stripe_oauth_state");
+  const res = NextResponse.redirect(
+    `${env.siteUrl}/integrations?${def.id}=connected`
+  );
+  res.cookies.delete(`${def.id}_oauth_state`);
+  if (def.usesPkce) res.cookies.delete(`${def.id}_oauth_verifier`);
   return res;
 }

@@ -1,36 +1,61 @@
 import crypto from "crypto";
 import { NextResponse } from "next/server";
-import { env, isStripeOAuthConfigured } from "@/lib/env";
-import { buildStripeAuthorizeUrl } from "@/services/integrations/stripe";
+import { env } from "@/lib/env";
+import { getOAuthProvider } from "@/services/integrations/oauth-registry";
 
 /**
- * GET /api/integrations/stripe/oauth
- * Starts the "Connect with Stripe" OAuth grant: stores a CSRF state cookie and
- * redirects to Stripe's authorize screen. (Only Stripe supports OAuth so far.)
+ * GET /api/integrations/[provider]/oauth
+ * Starts the "Connect with <provider>" OAuth grant: stores a CSRF state cookie
+ * (plus a PKCE verifier when the provider requires it) and redirects to the
+ * provider's authorize screen.
  */
+function base64url(buf: Buffer): string {
+  return buf
+    .toString("base64")
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/, "");
+}
+
 export async function GET(
   _req: Request,
   { params }: { params: { provider: string } }
 ) {
-  if (params.provider !== "stripe") {
+  const def = getOAuthProvider(params.provider);
+  if (!def) {
     return new NextResponse("OAuth indisponible pour ce fournisseur", {
       status: 404,
     });
   }
-  if (!isStripeOAuthConfigured) {
+  if (!def.isConfigured) {
     return NextResponse.redirect(
-      `${env.siteUrl}/integrations?stripe=notconfigured`
+      `${env.siteUrl}/integrations?${def.id}=notconfigured`
     );
   }
 
   const state = crypto.randomBytes(16).toString("hex");
-  const res = NextResponse.redirect(buildStripeAuthorizeUrl(state));
-  res.cookies.set("stripe_oauth_state", state, {
+  const cookieOpts = {
     httpOnly: true,
     secure: env.siteUrl.startsWith("https"),
-    sameSite: "lax",
+    sameSite: "lax" as const,
     maxAge: 600,
     path: "/",
-  });
+  };
+
+  let url: string;
+  let verifier: string | null = null;
+  if (def.usesPkce) {
+    verifier = base64url(crypto.randomBytes(32));
+    const challenge = base64url(
+      crypto.createHash("sha256").update(verifier).digest()
+    );
+    url = def.buildAuthorizeUrl(state, challenge);
+  } else {
+    url = def.buildAuthorizeUrl(state);
+  }
+
+  const res = NextResponse.redirect(url);
+  res.cookies.set(`${def.id}_oauth_state`, state, cookieOpts);
+  if (verifier) res.cookies.set(`${def.id}_oauth_verifier`, verifier, cookieOpts);
   return res;
 }

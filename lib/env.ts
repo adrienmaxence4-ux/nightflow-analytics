@@ -41,6 +41,10 @@ export const env = {
   // exchange the OAuth code for the connected account's token).
   stripeClientId: process.env.STRIPE_CONNECT_CLIENT_ID ?? "",
   stripeSecretKey: process.env.STRIPE_SECRET_KEY ?? "",
+
+  // Klaviyo OAuth ("Se connecter avec Klaviyo" — one-click, PKCE).
+  klaviyoClientId: process.env.KLAVIYO_CLIENT_ID ?? "",
+  klaviyoClientSecret: process.env.KLAVIYO_CLIENT_SECRET ?? "",
 };
 
 /** True when real Supabase credentials are configured. */
@@ -63,3 +67,7 @@ export const isShopifyConfigured =
 /** True when Stripe Connect OAuth is configured (one-click connect). */
 export const isStripeOAuthConfigured =
   env.stripeClientId.length > 0 && env.stripeSecretKey.length > 0;
+
+/** True when Klaviyo OAuth is configured (one-click connect). */
+export const isKlaviyoOAuthConfigured =
+  env.klaviyoClientId.length > 0 && env.klaviyoClientSecret.length > 0;

@@ -8,7 +8,6 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { ShopifyConnect } from "@/features/integrations/shopify-connect";
-import { ApiKeyConnect } from "@/features/integrations/api-key-connect";
 import { OAuthConnect } from "@/features/integrations/oauth-connect";
 
 interface Integration {
@@ -74,16 +73,13 @@ export default function IntegrationsPage() {
           description="Connexion en un clic — autorisez votre compte, aucune clé à créer."
           connectedHint="Revenus & commandes importés depuis Stripe."
         />
-        <ApiKeyConnect
+        <OAuthConnect
           provider="klaviyo"
           name="Klaviyo"
           logo="✉️"
           accent="from-fuchsia-400 to-pink-500"
-          description="Collez votre clé privée pour suivre le CA email & SMS attribué."
+          description="Connexion en un clic — autorisez votre compte, aucune clé à créer."
           connectedHint="Revenu attribué Klaviyo affiché dans Marketing."
-          placeholder="pk_…"
-          helpHref="https://www.klaviyo.com/settings/account/api-keys"
-          helpLabel="Où trouver ma clé privée ?"
         />
       </div>
 
