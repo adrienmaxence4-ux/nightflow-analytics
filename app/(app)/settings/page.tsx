@@ -22,7 +22,6 @@ interface Integration {
 
 // OAuth-only sources — need platform app review before they go live → "Bientôt".
 const INTEGRATIONS: Integration[] = [
-  { id: "ga4", name: "Google Analytics 4", description: "Trafic, attribution & funnel.", logo: "📈", accent: "from-amber-300 to-orange-500" },
   { id: "meta", name: "Meta Ads", description: "Performance Facebook & Instagram.", logo: "📘", accent: "from-blue-400 to-blue-600" },
   { id: "tiktok", name: "TikTok Ads", description: "ROAS & créatives par campagne.", logo: "🎵", accent: "from-neon-pink to-neon-violet" },
 ];
@@ -128,6 +127,15 @@ export default function SettingsPage() {
                   accent="from-fuchsia-400 to-pink-500"
                   description="Connexion en un clic — autorisez votre compte, aucune clé à créer."
                   connectedHint="Revenu attribué Klaviyo affiché dans Marketing."
+                />
+                <OAuthConnect
+                  provider="google"
+                  name="Google Analytics"
+                  logo="📈"
+                  accent="from-amber-300 to-orange-500"
+                  description="Connexion en un clic — trafic, canaux & appareils."
+                  connectedHint="Trafic, canaux & appareils affichés dans Analytics."
+                  showSync={false}
                 />
               </div>
 

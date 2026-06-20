@@ -18,6 +18,8 @@ export interface OAuthConnectProps {
   accent: string;
   description: string;
   connectedHint: string;
+  /** Show the manual "Synchroniser" button (false for live-data providers). */
+  showSync?: boolean;
 }
 
 export function OAuthConnect({
@@ -27,6 +29,7 @@ export function OAuthConnect({
   accent,
   description,
   connectedHint,
+  showSync = true,
 }: OAuthConnectProps) {
   const toast = useToast();
   const [connected, setConnected] = useState(false);
@@ -126,14 +129,16 @@ export function OAuthConnect({
 
         {connected ? (
           <div className="flex flex-wrap items-center gap-2">
-            <button
-              onClick={sync}
-              disabled={busy}
-              className="flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-neon-cyan to-neon-cyansoft px-4 py-2.5 text-[13px] font-bold text-night-950 shadow-glow transition hover:brightness-110 disabled:opacity-60"
-            >
-              <RefreshCw className="h-3.5 w-3.5" />
-              {busy ? "Synchro…" : "Synchroniser"}
-            </button>
+            {showSync && (
+              <button
+                onClick={sync}
+                disabled={busy}
+                className="flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-neon-cyan to-neon-cyansoft px-4 py-2.5 text-[13px] font-bold text-night-950 shadow-glow transition hover:brightness-110 disabled:opacity-60"
+              >
+                <RefreshCw className="h-3.5 w-3.5" />
+                {busy ? "Synchro…" : "Synchroniser"}
+              </button>
+            )}
             <button
               onClick={disconnect}
               disabled={busy}

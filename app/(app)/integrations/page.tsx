@@ -24,15 +24,6 @@ interface Integration {
 // they can go live, so they stay "Coming soon" for now.
 const COMING_SOON: Integration[] = [
   {
-    id: "ga4",
-    name: "Google Analytics",
-    category: "Analytics",
-    description: "Trafic, sources d'acquisition, comportement et attribution.",
-    logo: "📈",
-    accent: "from-amber-300 to-orange-500",
-    willSync: ["Sessions", "Sources", "Funnel", "Audiences"],
-  },
-  {
     id: "meta",
     name: "Meta Ads",
     category: "Publicité",
@@ -81,6 +72,15 @@ export default function IntegrationsPage() {
           description="Connexion en un clic — autorisez votre compte, aucune clé à créer."
           connectedHint="Revenu attribué Klaviyo affiché dans Marketing."
         />
+        <OAuthConnect
+          provider="google"
+          name="Google Analytics"
+          logo="📈"
+          accent="from-amber-300 to-orange-500"
+          description="Connexion en un clic — trafic, canaux d'acquisition & appareils."
+          connectedHint="Trafic, canaux & appareils affichés dans Analytics."
+          showSync={false}
+        />
       </div>
 
       <Card className="p-5 [background:linear-gradient(110deg,rgba(154,107,255,0.14),rgba(61,242,255,0.06))]">
@@ -93,10 +93,10 @@ export default function IntegrationsPage() {
               Régies publicitaires — bientôt
             </h3>
             <p className="mt-1 text-[13px] leading-relaxed text-ink-dim">
-              Google Analytics, Meta Ads et TikTok Ads passent par une connexion
-              OAuth qui nécessite la validation de l&apos;app par chaque
-              plateforme. Une fois disponibles, le Copilot analysera aussi ces
-              données. Activez les notifications pour être prévenu.
+              Meta Ads et TikTok Ads passent par une connexion OAuth qui
+              nécessite la validation de l&apos;app par chaque plateforme. Une
+              fois disponibles, le Copilot analysera aussi ces données. Activez
+              les notifications pour être prévenu.
             </p>
           </div>
         </div>

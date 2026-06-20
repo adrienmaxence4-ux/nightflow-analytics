@@ -2,16 +2,17 @@ import { NextResponse } from "next/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 import { getKeyedProvider } from "@/services/integrations/registry";
+import { getOAuthProvider } from "@/services/integrations/oauth-registry";
 
 /**
  * POST /api/integrations/[provider]/disconnect
- * Marks a key-based provider disconnected and clears the stored key.
+ * Marks a provider (key-based or OAuth) disconnected and clears the token.
  */
 export async function POST(
   _req: Request,
   { params }: { params: { provider: string } }
 ) {
-  const def = getKeyedProvider(params.provider);
+  const def = getKeyedProvider(params.provider) ?? getOAuthProvider(params.provider);
   if (!def) {
     return NextResponse.json({ error: "Fournisseur inconnu" }, { status: 404 });
   }

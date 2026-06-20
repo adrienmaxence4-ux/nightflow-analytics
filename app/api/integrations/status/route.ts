@@ -1,19 +1,24 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { KEYED_PROVIDER_IDS } from "@/services/integrations/registry";
+import { OAUTH_PROVIDERS } from "@/services/integrations/oauth-registry";
 
 /**
  * GET /api/integrations/status
  * Returns which providers are connected for the logged-in user's store.
- * Shopify carries its connected shop domain; key-based providers (stripe,
- * klaviyo, …) just report {connected} under their id.
+ * Shopify carries its connected shop domain; the rest just report {connected}.
  */
 type ProviderStatus = { connected: boolean; shop?: string | null };
 type StatusMap = Record<string, ProviderStatus>;
 
+// Every provider the UI may ask about (keyed + OAuth), deduped.
+const PROVIDER_IDS = Array.from(
+  new Set([...KEYED_PROVIDER_IDS, ...Object.keys(OAUTH_PROVIDERS)])
+);
+
 function emptyResponse(): StatusMap {
   const out: StatusMap = { shopify: { connected: false, shop: null } };
-  for (const id of KEYED_PROVIDER_IDS) out[id] = { connected: false };
+  for (const id of PROVIDER_IDS) out[id] = { connected: false };
   return out;
 }
 
@@ -48,7 +53,7 @@ export async function GET() {
     connected: !!shopify,
     shop: shopify?.metadata?.shop ?? null,
   };
-  for (const id of KEYED_PROVIDER_IDS) {
+  for (const id of PROVIDER_IDS) {
     result[id] = { connected: !!connected(id) };
   }
 

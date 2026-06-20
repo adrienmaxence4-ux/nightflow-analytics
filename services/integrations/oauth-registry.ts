@@ -1,5 +1,9 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { isStripeOAuthConfigured, isKlaviyoOAuthConfigured } from "@/lib/env";
+import {
+  isStripeOAuthConfigured,
+  isKlaviyoOAuthConfigured,
+  isGoogleOAuthConfigured,
+} from "@/lib/env";
 import {
   buildStripeAuthorizeUrl,
   exchangeStripeCode,
@@ -10,6 +14,10 @@ import {
   exchangeKlaviyoCode,
   syncKlaviyo,
 } from "@/services/integrations/klaviyo";
+import {
+  buildGoogleAuthorizeUrl,
+  exchangeGoogleCode,
+} from "@/services/integrations/google";
 
 /**
  * SERVER-ONLY. Registry of OAuth ("Se connecter avec …") providers.
@@ -69,6 +77,22 @@ export const OAUTH_PROVIDERS: Record<string, OAuthProviderDef> = {
       return r ? { accessToken: r.accessToken } : null;
     },
     sync: syncKlaviyo,
+  },
+  google: {
+    id: "google",
+    label: "Google Analytics",
+    isConfigured: isGoogleOAuthConfigured,
+    usesPkce: false,
+    buildAuthorizeUrl: (state) => buildGoogleAuthorizeUrl(state),
+    exchangeCode: async (code) => {
+      const r = await exchangeGoogleCode(code);
+      // Store the refresh token (durable) + the chosen GA4 property id.
+      return r
+        ? { accessToken: r.refreshToken, metadata: { property_id: r.propertyId } }
+        : null;
+    },
+    // GA4 powers traffic (not revenue) — fetched live, so no sync to run.
+    sync: async () => ({ orders: 0, revenueCents: 0, days: 0 }),
   },
 };
 

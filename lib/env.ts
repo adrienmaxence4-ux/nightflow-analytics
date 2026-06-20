@@ -45,6 +45,10 @@ export const env = {
   // Klaviyo OAuth ("Se connecter avec Klaviyo" — one-click, PKCE).
   klaviyoClientId: process.env.KLAVIYO_CLIENT_ID ?? "",
   klaviyoClientSecret: process.env.KLAVIYO_CLIENT_SECRET ?? "",
+
+  // Google OAuth ("Se connecter avec Google" → Google Analytics GA4).
+  googleClientId: process.env.GOOGLE_CLIENT_ID ?? "",
+  googleClientSecret: process.env.GOOGLE_CLIENT_SECRET ?? "",
 };
 
 /** True when real Supabase credentials are configured. */
@@ -71,3 +75,7 @@ export const isStripeOAuthConfigured =
 /** True when Klaviyo OAuth is configured (one-click connect). */
 export const isKlaviyoOAuthConfigured =
   env.klaviyoClientId.length > 0 && env.klaviyoClientSecret.length > 0;
+
+/** True when Google OAuth (Google Analytics) is configured. */
+export const isGoogleOAuthConfigured =
+  env.googleClientId.length > 0 && env.googleClientSecret.length > 0;
