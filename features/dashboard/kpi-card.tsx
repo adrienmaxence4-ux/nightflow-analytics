@@ -4,7 +4,7 @@ import { motion } from "framer-motion";
 import { ArrowDownRight, ArrowUpRight } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-import type { Kpi } from "@/types";
+import type { Kpi, SeriesPoint } from "@/types";
 
 const TONE: Record<Kpi["tone"], { ic: string; spark: string }> = {
   cyan: { ic: "bg-neon-cyan/10 border-neon-cyan/20", spark: "#3df2ff" },
@@ -13,12 +13,22 @@ const TONE: Record<Kpi["tone"], { ic: string; spark: string }> = {
   lime: { ic: "bg-neon-lime/10 border-neon-lime/22", spark: "#7dffb0" },
 };
 
-/** Deterministic sparkline so SSR & client markup match. */
-function sparkPoints(seed: number) {
-  const pts: number[] = [];
-  for (let i = 0; i < 14; i++) {
-    pts.push(20 + Math.sin(i * 0.7 + seed) * 9 + ((i * 7) % 5) + i);
-  }
+/** Pulls this KPI's real values out of the time series. */
+function seriesValues(series: SeriesPoint[], key: Kpi["key"]): number[] {
+  return series.map((s) =>
+    key === "revenue"
+      ? s.revenue
+      : key === "orders"
+        ? s.orders
+        : key === "visitors"
+          ? s.visitors ?? 0
+          : s.conversion ?? 0
+  );
+}
+
+/** Builds the sparkline polyline from REAL values (flat when there's no data). */
+function sparkPoints(values: number[]): string {
+  const pts = values.length >= 2 ? values : [0, 0];
   const max = Math.max(...pts);
   const min = Math.min(...pts);
   const W = 120;
@@ -26,7 +36,10 @@ function sparkPoints(seed: number) {
   return pts
     .map(
       (p, i) =>
-        `${(i / (pts.length - 1)) * W},${H - ((p - min) / (max - min || 1)) * (H - 6) - 3}`
+        `${(i / (pts.length - 1)) * W},${
+          // Flat line near the bottom when every value is equal (e.g. all 0).
+          max === min ? H - 4 : H - ((p - min) / (max - min)) * (H - 6) - 3
+        }`
     )
     .join(" ");
 }
@@ -34,14 +47,16 @@ function sparkPoints(seed: number) {
 export function KpiCard({
   kpi,
   index,
+  series = [],
   onClick,
 }: {
   kpi: Kpi;
   index: number;
+  series?: SeriesPoint[];
   onClick: () => void;
 }) {
   const tone = TONE[kpi.tone];
-  const pts = sparkPoints(index);
+  const pts = sparkPoints(seriesValues(series, kpi.key));
 
   return (
     <motion.div

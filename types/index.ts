@@ -28,6 +28,9 @@ export interface SeriesPoint {
   label: string;
   revenue: number;
   orders: number;
+  /** Optional per-point series so each KPI card can draw its own real curve. */
+  visitors?: number;
+  conversion?: number;
 }
 
 export interface FunnelStep {

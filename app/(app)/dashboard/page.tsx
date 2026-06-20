@@ -145,7 +145,13 @@ export default function DashboardPage() {
 
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
         {data.kpis.map((k, i) => (
-          <KpiCard key={k.key} kpi={k} index={i} onClick={() => setActiveKpi(k)} />
+          <KpiCard
+            key={k.key}
+            kpi={k}
+            index={i}
+            series={data.series}
+            onClick={() => setActiveKpi(k)}
+          />
         ))}
       </div>
 

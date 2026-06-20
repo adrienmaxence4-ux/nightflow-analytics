@@ -226,6 +226,8 @@ export async function getRangeDataForStore(
       }),
       revenue: Math.round(m.revenue_cents / 100),
       orders: m.orders,
+      visitors: m.visitors,
+      conversion: Number(m.conversion),
     }));
 
   // Bars: top products by units sold.

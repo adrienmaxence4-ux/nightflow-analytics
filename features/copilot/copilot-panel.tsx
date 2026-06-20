@@ -85,21 +85,28 @@ export function CopilotPanel() {
             initial={{ opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: i * 0.05 + 0.15 }}
-            className="flex items-center gap-3 rounded-2xl border border-glass-border p-3.5 [background:linear-gradient(100deg,rgba(255,92,174,0.08),rgba(154,107,255,0.06))]"
+            className="flex flex-col gap-2 rounded-2xl border border-glass-border p-3.5 [background:linear-gradient(100deg,rgba(255,92,174,0.08),rgba(154,107,255,0.06))]"
           >
-            <span
-              className={`flex-none rounded-md px-1.5 py-0.5 text-[10px] font-extrabold text-night-950 ${
-                r.impactLevel === "high"
-                  ? "bg-gradient-to-b from-neon-lime to-emerald-400"
-                  : "bg-gradient-to-b from-neon-amber to-orange-400"
-              }`}
-            >
-              {r.impact}
-            </span>
-            <div className="flex-1">
-              <b className="block text-[13px] leading-tight">{r.title}</b>
-              <span className="text-[11px] text-ink-dim">{r.detail}</span>
+            <div className="flex items-start justify-between gap-2">
+              <b className="text-[13px] font-bold leading-snug">{r.title}</b>
+              <span
+                className={`flex-none rounded-md px-1.5 py-0.5 text-[9px] font-extrabold uppercase tracking-wide text-night-950 ${
+                  r.impactLevel === "high"
+                    ? "bg-gradient-to-b from-neon-lime to-emerald-400"
+                    : "bg-gradient-to-b from-neon-amber to-orange-400"
+                }`}
+              >
+                {r.impactLevel === "high" ? "Fort" : "Moyen"}
+              </span>
             </div>
+            {r.detail && (
+              <p className="text-[11px] leading-relaxed text-ink-dim">{r.detail}</p>
+            )}
+            {r.impact && (
+              <p className="text-[11px] font-bold leading-snug text-neon-lime">
+                ↑ {r.impact}
+              </p>
+            )}
             <button
               disabled={copilot.busy}
               onClick={() =>
@@ -107,7 +114,7 @@ export function CopilotPanel() {
                   `${r.title} — ${r.detail}. Explique comment appliquer cette recommandation en 2-3 étapes concrètes.`
                 )
               }
-              className="flex-none rounded-[9px] bg-gradient-to-r from-neon-pink to-neon-violet px-3 py-2 text-[11px] font-bold text-white transition hover:-translate-y-0.5 hover:brightness-110 disabled:opacity-60"
+              className="mt-0.5 self-start rounded-[9px] bg-gradient-to-r from-neon-pink to-neon-violet px-3.5 py-1.5 text-[11px] font-bold text-white transition hover:-translate-y-0.5 hover:brightness-110 disabled:opacity-60"
             >
               {r.cta}
             </button>
