@@ -2,7 +2,6 @@ import { downloadBlob, toCsv, dateStamp } from "@/utils/download";
 import type {
   Campaign,
   Insight,
-  Kpi,
   Product,
   RangeData,
   Recommendation,
@@ -13,8 +12,8 @@ import type {
  *
  * Pulls the user's REAL data from the API routes (dashboard, products,
  * marketing, insights — each falls back to the MoonStore mock server-side) and
- * turns it into downloadable artefacts: a branded HTML report (printable to
- * PDF) and CSV exports. No external dependencies.
+ * turns it into downloadable artefacts: a branded PDF report and CSV exports.
+ * jsPDF is dynamically imported so it ships in its own chunk (browser-only).
  */
 
 interface ReportData {
@@ -53,7 +52,9 @@ async function collect(): Promise<ReportData> {
 
   return {
     source: dash?.source ?? prod?.source ?? "mock",
-    range: dash?.data ?? ({ sub: "", kpis: [], series: [], funnel: [], bars: [] } as RangeData),
+    range:
+      dash?.data ??
+      ({ sub: "", kpis: [], series: [], funnel: [], bars: [] } as RangeData),
     products: prod?.products ?? [],
     campaigns: mkt?.campaigns ?? [],
     insights: ins?.insights ?? [],
@@ -62,151 +63,196 @@ async function collect(): Promise<ReportData> {
   };
 }
 
-function esc(s: string): string {
-  return s.replace(/[&<>"]/g, (c) =>
-    c === "&" ? "&amp;" : c === "<" ? "&lt;" : c === ">" ? "&gt;" : "&quot;"
-  );
-}
+// jsPDF augments its instance with lastAutoTable after a table is drawn.
+type WithAutoTable = { lastAutoTable?: { finalY: number } };
 
-function kpiCards(kpis: Kpi[]): string {
-  if (!kpis.length) return "<p class='muted'>Aucune donnée KPI.</p>";
-  return kpis
-    .map(
-      (k) => `<div class="kpi">
-        <div class="kpi-label">${esc(k.label)}</div>
-        <div class="kpi-value">${esc(k.value)}</div>
-        <div class="kpi-delta ${k.dir}">${k.dir === "up" ? "▲" : "▼"} ${esc(k.delta)} · ${esc(k.sub)}</div>
-        <div class="kpi-insight">${esc(k.insight)}</div>
-      </div>`
-    )
-    .join("");
-}
+/**
+ * Generates a branded PDF report from the store's real data and downloads it.
+ */
+export async function generateStoreReport(): Promise<{ source: "db" | "mock" }> {
+  const data = await collect();
+  const { jsPDF } = await import("jspdf");
+  const { autoTable } = await import("jspdf-autotable");
 
-function productRows(products: Product[]): string {
-  if (!products.length)
-    return "<tr><td colspan='5' class='muted'>Aucun produit synchronisé.</td></tr>";
-  return products
-    .map(
-      (p) => `<tr>
-        <td>${esc(p.icon)} ${esc(p.name)}</td>
-        <td>${p.sales}</td>
-        <td>${esc(p.revenue)}</td>
-        <td>${esc(p.conversion)}</td>
-        <td>${esc(p.delta || "—")}</td>
-      </tr>`
-    )
-    .join("");
-}
+  const doc = new jsPDF({ unit: "mm", format: "a4" });
+  const pageW = doc.internal.pageSize.getWidth();
+  const pageH = doc.internal.pageSize.getHeight();
+  const margin = 14;
+  const contentW = pageW - margin * 2;
 
-function campaignRows(campaigns: Campaign[]): string {
-  if (!campaigns.length)
-    return "<tr><td colspan='4' class='muted'>Aucune campagne.</td></tr>";
-  return campaigns
-    .map(
-      (c) => `<tr>
-        <td>${esc(c.logo)} ${esc(c.channel)}</td>
-        <td>${esc(c.spend)}</td>
-        <td>${esc(c.revenue)}</td>
-        <td>${c.roas.toFixed(1)}×</td>
-      </tr>`
-    )
-    .join("");
-}
-
-function insightItems(insights: Insight[]): string {
-  if (!insights.length) return "<li class='muted'>Aucun insight pour l'instant.</li>";
-  return insights
-    .map(
-      (i) =>
-        `<li><b>${esc(i.what)}</b><br/><span class="muted">Pourquoi : ${esc(i.why)}</span><br/>→ ${esc(i.action)}</li>`
-    )
-    .join("");
-}
-
-function buildHtml(d: ReportData): string {
+  const store = (data.range.sub || "Votre boutique").split(" · ")[0];
   const today = new Date().toLocaleDateString("fr-FR", {
     day: "numeric",
     month: "long",
     year: "numeric",
   });
-  const store = d.range.sub || "Votre boutique";
-  const banner =
-    d.source === "mock"
-      ? `<div class="demo">⚠️ Données de démonstration (aucune boutique connectée avec des ventes réelles).</div>`
-      : "";
 
-  return `<!doctype html>
-<html lang="fr"><head><meta charset="utf-8"/>
-<title>Nightflow — Rapport ${esc(dateStamp())}</title>
-<style>
-  :root { color-scheme: light; }
-  * { box-sizing: border-box; }
-  body { font-family: -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
-    margin: 0; background: #0b1020; color: #1a1f36; }
-  .page { max-width: 880px; margin: 0 auto; background: #fff; }
-  .hero { background: linear-gradient(115deg,#1a1340,#0b1733); color: #fff; padding: 40px 48px; }
-  .brand { font-weight: 800; letter-spacing: .14em; font-size: 13px; color: #6ad9ff; }
-  h1 { margin: 8px 0 4px; font-size: 28px; }
-  .sub { color: #b9c4e6; font-size: 14px; }
-  .body { padding: 32px 48px 48px; }
-  h2 { font-size: 16px; margin: 32px 0 14px; border-bottom: 2px solid #ece9ff; padding-bottom: 8px; }
-  .demo { background: #fff4d6; color: #7a5b00; padding: 10px 14px; border-radius: 8px; font-size: 13px; margin-top: 16px; }
-  .kpis { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
-  .kpi { border: 1px solid #ece9ff; border-radius: 12px; padding: 14px 16px; }
-  .kpi-label { font-size: 12px; color: #6b7394; }
-  .kpi-value { font-size: 24px; font-weight: 800; margin: 2px 0; }
-  .kpi-delta { font-size: 12px; font-weight: 700; }
-  .kpi-delta.up { color: #0a9d5a; } .kpi-delta.down { color: #d23b6e; }
-  .kpi-insight { font-size: 12px; color: #6b7394; margin-top: 6px; }
-  table { width: 100%; border-collapse: collapse; font-size: 13px; }
-  th { text-align: left; color: #6b7394; font-size: 11px; letter-spacing: .04em;
-    border-bottom: 1px solid #ece9ff; padding: 8px; }
-  td { padding: 9px 8px; border-bottom: 1px solid #f3f1ff; }
-  ul { padding-left: 18px; } li { margin-bottom: 12px; font-size: 13px; line-height: 1.5; }
-  .muted { color: #9aa1bd; }
-  .summary { background: #f6f4ff; border-radius: 12px; padding: 16px 18px; font-size: 14px; line-height: 1.6; }
-  .foot { padding: 20px 48px 40px; color: #9aa1bd; font-size: 11px; }
-  @media print { body { background: #fff; } .page { max-width: none; } }
-</style></head>
-<body><div class="page">
-  <div class="hero">
-    <div class="brand">✦ NIGHTFLOW ANALYTICS</div>
-    <h1>Rapport de performance</h1>
-    <div class="sub">${esc(store)} · généré le ${esc(today)}</div>
-    ${banner}
-  </div>
-  <div class="body">
-    ${d.summary ? `<h2>Synthèse du Copilot</h2><div class="summary">${esc(d.summary)}</div>` : ""}
+  // ── Header band ──
+  doc.setFillColor(16, 19, 40);
+  doc.rect(0, 0, pageW, 34, "F");
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(10);
+  doc.setTextColor(120, 210, 255);
+  doc.text("NIGHTFLOW ANALYTICS", margin, 13);
+  doc.setFontSize(20);
+  doc.setTextColor(255, 255, 255);
+  doc.text("Rapport de performance", margin, 23);
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(10);
+  doc.setTextColor(185, 196, 230);
+  doc.text(`${store} - genere le ${today}`, margin, 30);
 
-    <h2>Indicateurs clés (30 derniers jours)</h2>
-    <div class="kpis">${kpiCards(d.range.kpis)}</div>
+  let y = 44;
 
-    <h2>Produits</h2>
-    <table><thead><tr><th>Produit</th><th>Ventes</th><th>Revenu</th><th>Conv.</th><th>Tendance</th></tr></thead>
-    <tbody>${productRows(d.products)}</tbody></table>
+  if (data.source === "mock") {
+    doc.setFillColor(255, 244, 214);
+    doc.rect(margin, y - 5, contentW, 9, "F");
+    doc.setTextColor(122, 91, 0);
+    doc.setFontSize(9);
+    doc.text(
+      "Donnees de demonstration (aucune boutique connectee avec des ventes reelles).",
+      margin + 3,
+      y + 1
+    );
+    y += 12;
+  }
 
-    <h2>Canaux marketing</h2>
-    <table><thead><tr><th>Canal</th><th>Dépenses</th><th>Revenu</th><th>ROAS</th></tr></thead>
-    <tbody>${campaignRows(d.campaigns)}</tbody></table>
+  const sectionTitle = (label: string): void => {
+    if (y > pageH - 30) {
+      doc.addPage();
+      y = 20;
+    }
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(13);
+    doc.setTextColor(26, 20, 64);
+    doc.text(label, margin, y);
+    doc.setDrawColor(220, 215, 245);
+    doc.line(margin, y + 2, margin + contentW, y + 2);
+    y += 9;
+  };
 
-    <h2>Insights & recommandations</h2>
-    <ul>${insightItems(d.insights)}</ul>
-  </div>
-  <div class="foot">Rapport généré automatiquement par Nightflow Analytics — votre directeur e-commerce IA.</div>
-</div></body></html>`;
-}
+  const tableStyle = {
+    startY: y,
+    margin: { left: margin, right: margin },
+    theme: "striped" as const,
+    styles: { fontSize: 9, cellPadding: 2.5, textColor: [40, 44, 60] as [number, number, number] },
+    headStyles: { fillColor: [26, 20, 64] as [number, number, number], textColor: 255, fontStyle: "bold" as const },
+    alternateRowStyles: { fillColor: [246, 244, 255] as [number, number, number] },
+  };
 
-/**
- * Generates a branded HTML report from the store's real data and downloads it.
- * The file opens in any browser and can be printed / saved as PDF.
- */
-export async function generateStoreReport(): Promise<{ source: "db" | "mock" }> {
-  const data = await collect();
-  downloadBlob(
-    `nightflow-rapport-${dateStamp()}.html`,
-    buildHtml(data),
-    "text/html;charset=utf-8"
-  );
+  const advanceAfterTable = (): void => {
+    y = ((doc as unknown as WithAutoTable).lastAutoTable?.finalY ?? y) + 9;
+  };
+
+  // ── Summary ──
+  if (data.summary) {
+    sectionTitle("Synthese du Copilot");
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10);
+    doc.setTextColor(45, 48, 64);
+    const lines = doc.splitTextToSize(data.summary, contentW);
+    doc.text(lines, margin, y);
+    y += lines.length * 5 + 6;
+  }
+
+  // ── KPIs ──
+  sectionTitle("Indicateurs cles (30 derniers jours)");
+  autoTable(doc, {
+    ...tableStyle,
+    startY: y,
+    head: [["Indicateur", "Valeur", "Evolution"]],
+    body: data.range.kpis.length
+      ? data.range.kpis.map((k) => [k.label, k.value, `${k.delta} ${k.sub}`])
+      : [["Aucune donnee", "-", "-"]],
+  });
+  advanceAfterTable();
+
+  // ── Products ──
+  sectionTitle("Produits");
+  autoTable(doc, {
+    ...tableStyle,
+    startY: y,
+    head: [["Produit", "Ventes", "Revenu", "Conv.", "Tendance"]],
+    body: data.products.length
+      ? data.products.map((p) => [
+          p.name,
+          String(p.sales),
+          p.revenue,
+          p.conversion,
+          p.delta || "-",
+        ])
+      : [["Aucun produit synchronise", "-", "-", "-", "-"]],
+  });
+  advanceAfterTable();
+
+  // ── Campaigns ──
+  sectionTitle("Canaux marketing");
+  autoTable(doc, {
+    ...tableStyle,
+    startY: y,
+    head: [["Canal", "Depenses", "Revenu", "ROAS"]],
+    body: data.campaigns.length
+      ? data.campaigns.map((c) => [
+          c.channel,
+          c.spend,
+          c.revenue,
+          `${c.roas.toFixed(1)}x`,
+        ])
+      : [["Aucune campagne", "-", "-", "-"]],
+  });
+  advanceAfterTable();
+
+  // ── Insights ──
+  sectionTitle("Insights & recommandations");
+  doc.setFontSize(10);
+  if (!data.insights.length) {
+    doc.setFont("helvetica", "italic");
+    doc.setTextColor(150, 155, 180);
+    doc.text("Aucun insight pour l'instant.", margin, y);
+    y += 6;
+  }
+  for (const ins of data.insights) {
+    const block = [
+      ...doc.splitTextToSize(`- ${ins.what}`, contentW),
+      ...doc.splitTextToSize(`  Pourquoi : ${ins.why}`, contentW),
+      ...doc.splitTextToSize(`  -> ${ins.action}`, contentW),
+    ];
+    if (y + block.length * 5 > pageH - 18) {
+      doc.addPage();
+      y = 20;
+    }
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(26, 20, 64);
+    const whatLines = doc.splitTextToSize(`- ${ins.what}`, contentW);
+    doc.text(whatLines, margin, y);
+    y += whatLines.length * 5;
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(110, 115, 140);
+    const whyLines = doc.splitTextToSize(`  Pourquoi : ${ins.why}`, contentW);
+    doc.text(whyLines, margin, y);
+    y += whyLines.length * 5;
+    doc.setTextColor(40, 44, 60);
+    const actLines = doc.splitTextToSize(`  -> ${ins.action}`, contentW);
+    doc.text(actLines, margin, y);
+    y += actLines.length * 5 + 4;
+  }
+
+  // ── Footer on every page ──
+  const pages = doc.getNumberOfPages();
+  for (let i = 1; i <= pages; i++) {
+    doc.setPage(i);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8);
+    doc.setTextColor(150, 155, 180);
+    doc.text(
+      "Genere automatiquement par Nightflow Analytics - votre directeur e-commerce IA.",
+      margin,
+      pageH - 8
+    );
+    doc.text(`${i} / ${pages}`, pageW - margin, pageH - 8, { align: "right" });
+  }
+
+  doc.save(`nightflow-rapport-${dateStamp()}.pdf`);
   return { source: data.source };
 }
 
@@ -237,9 +283,6 @@ export function exportCampaignsCsv(campaigns: Campaign[]): void {
     c.revenue,
     `${c.roas.toFixed(2)}x`,
   ]);
-  const csv = toCsv(
-    ["Canal", "Statut", "Dépenses", "Revenu", "ROAS"],
-    rows
-  );
+  const csv = toCsv(["Canal", "Statut", "Dépenses", "Revenu", "ROAS"], rows);
   downloadBlob(`nightflow-campagnes-${dateStamp()}.csv`, csv, "text/csv;charset=utf-8");
 }
