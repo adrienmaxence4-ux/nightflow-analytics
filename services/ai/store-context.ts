@@ -84,10 +84,29 @@ function formatRealContext(
 ): string {
   const lines: string[] = [`Boutique : ${store.name} (devise ${store.currency})`];
 
-  lines.push("\nPRODUITS :");
-  for (const p of products) {
+  // Real store totals so the AI reasons on actual numbers (and knows when a
+  // value is genuinely zero vs simply missing).
+  const totalRev = metrics.reduce((t, m) => t + (m.revenue_cents || 0), 0);
+  const totalOrders = metrics.reduce((t, m) => t + (m.orders || 0), 0);
+  const totalVisitors = metrics.reduce((t, m) => t + (m.visitors || 0), 0);
+  lines.push(
+    `\nACTIVITÉ RÉELLE : ${totalOrders} commande(s), ${euros(totalRev)} de CA, ${totalVisitors} visiteur(s) sur ${metrics.length} jour(s) de données enregistrées.`
+  );
+  if (metrics.length === 0) {
     lines.push(
-      `- ${p.name} : prix ${euros(p.price_cents)}, stock ${p.stock}, conversion ${p.conversion}%, tendance ${p.trend} ${p.delta ?? ""}`
+      "Aucune donnée de trafic ni de ventes enregistrée pour l'instant (boutique récemment connectée et/ou Google Analytics sans trafic). N'invente pas de chiffres de trafic, de CA ou de tendance."
+    );
+  }
+
+  lines.push("\nPRODUITS (valeurs réelles) :");
+  for (const p of products) {
+    const base = `- ${p.name} : prix ${euros(p.price_cents)}, stock ${p.stock} unités, ${p.sales} vente(s), conversion ${p.conversion}%`;
+    // Only state a trend when real sales movement backs it — otherwise the
+    // DB default ("up") would be a fabricated signal.
+    lines.push(
+      p.sales > 0
+        ? `${base}, tendance ${p.trend} ${p.delta ?? ""}`
+        : `${base} (aucune vente encore — pas de tendance fiable)`
     );
   }
 

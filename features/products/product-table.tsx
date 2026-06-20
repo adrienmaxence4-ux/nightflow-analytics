@@ -78,9 +78,13 @@ export function ProductTable({
                 <td className="px-3 py-3.5">{p.revenue}</td>
                 <td className="px-3 py-3.5">{p.conversion}</td>
                 <td className="px-3 py-3.5">
-                  <Badge variant={p.trend === "up" ? "lime" : "pink"}>
-                    {p.trend === "up" ? "▲" : "▼"} {p.delta}
-                  </Badge>
+                  {p.sales > 0 && p.delta ? (
+                    <Badge variant={p.trend === "up" ? "lime" : "pink"}>
+                      {p.trend === "up" ? "▲" : "▼"} {p.delta}
+                    </Badge>
+                  ) : (
+                    <span className="text-[12px] text-ink-mut">—</span>
+                  )}
                 </td>
               </motion.tr>
             ))}
