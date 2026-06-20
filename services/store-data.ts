@@ -234,27 +234,19 @@ export async function getRangeDataForStore(
     value: p.sales,
   }));
 
-  // Funnel: visitors (real) → purchases (real), middle steps estimated.
-  const visitors = Math.max(visCur, 1);
+  // Funnel: only the endpoints are real (visitors + purchases from our data).
+  // The middle steps (product views, add-to-cart, checkout) are web-behaviour
+  // metrics that require Google Analytics — left at 0 until GA4 is connected,
+  // rather than fabricating ratios.
+  const visitors = visCur;
   const purchases = ordCur;
+  const buyPct = visitors > 0 ? Math.round((purchases / visitors) * 100) : 0;
   const funnel: FunnelStep[] = [
-    { label: "Visiteurs", value: visitors, pct: 100 },
-    {
-      label: "Pages produit",
-      value: Math.round(visitors * 0.52),
-      pct: 52,
-    },
-    { label: "Ajouts panier", value: Math.round(visitors * 0.16), pct: 16 },
-    {
-      label: "Checkout",
-      value: Math.round(purchases * 1.3),
-      pct: Math.round(((purchases * 1.3) / visitors) * 100),
-    },
-    {
-      label: "Achat",
-      value: purchases,
-      pct: Math.max(1, Math.round((purchases / visitors) * 100)),
-    },
+    { label: "Visiteurs", value: visitors, pct: visitors > 0 ? 100 : 0 },
+    { label: "Pages produit", value: 0, pct: 0 },
+    { label: "Ajouts panier", value: 0, pct: 0 },
+    { label: "Checkout", value: 0, pct: 0 },
+    { label: "Achat", value: purchases, pct: buyPct },
   ];
 
   return {

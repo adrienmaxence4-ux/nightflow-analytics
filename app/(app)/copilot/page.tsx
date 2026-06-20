@@ -30,10 +30,42 @@ function group(insights: Insight[]) {
   };
 }
 
+const ACCENT_BY_SEV = {
+  critical: "pink",
+  warning: "violet",
+  positive: "lime",
+  info: "cyan",
+} as const;
+const TITLE_BY_SEV = {
+  critical: "Risque détecté",
+  warning: "Point de vigilance",
+  positive: "Opportunité",
+  info: "Analyse",
+};
+
+/** Turns real AI insights into the clickable analysis cards (top grid). */
+function insightsToCards(insights: Insight[]): AnalysisCardType[] {
+  return insights.slice(0, 4).map((i) => ({
+    id: i.id,
+    category: "sales",
+    icon: i.icon,
+    title: TITLE_BY_SEV[i.severity] ?? "Analyse",
+    metric: i.impact || (i.impactScore != null ? `${i.impactScore}/100` : "IA"),
+    trend: i.severity === "positive" || i.severity === "info" ? "up" : "down",
+    delta: i.confidenceScore != null ? `${i.confidenceScore}%` : "IA",
+    accent: ACCENT_BY_SEV[i.severity] ?? "cyan",
+    what: i.what,
+    why: i.why,
+    action: i.action,
+    // Decorative mini-trend derived deterministically from the id (not data).
+    spark: Array.from({ length: 7 }, (_, k) => 5 + (i.id.charCodeAt(k % i.id.length) % 5)),
+  }));
+}
+
 export default function CopilotPage() {
   const toast = useToast();
   const { user } = useAuth();
-  const analyses = getAnalysisCards();
+  const [analyses, setAnalyses] = useState<AnalysisCardType[]>(getAnalysisCards());
   const [groups, setGroups] = useState(getGroupedInsights());
   const [openAnalysis, setOpenAnalysis] = useState<AnalysisCardType | null>(null);
   const [reporting, setReporting] = useState(false);
@@ -50,6 +82,7 @@ export default function CopilotPage() {
       .then((data: { insights?: Insight[] } | null) => {
         if (alive && data?.insights && data.insights.length > 0) {
           setGroups(group(data.insights));
+          setAnalyses(insightsToCards(data.insights));
         }
       })
       .catch(() => {});
@@ -81,7 +114,10 @@ export default function CopilotPage() {
       const res = await fetch("/api/insights?refresh=1");
       const data = (await res.json()) as { insights?: Insight[] };
       const items = data.insights ?? [];
-      if (items.length) setGroups(group(items));
+      if (items.length) {
+        setGroups(group(items));
+        setAnalyses(insightsToCards(items));
+      }
       toast(`Analyse actualisée — ${items.length} insights détectés`);
     } catch {
       toast("Actualisation impossible", "info");
