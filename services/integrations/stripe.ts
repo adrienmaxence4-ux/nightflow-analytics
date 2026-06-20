@@ -20,12 +20,17 @@ export function stripeRedirectUri(): string {
   return `${env.siteUrl}/api/integrations/stripe/oauth/callback`;
 }
 
-/** Builds the "Connect with Stripe" authorize URL (read-only scope). */
+/**
+ * Builds the "Connect with Stripe" authorize URL.
+ * Stripe requires `read_write` for new Standard OAuth integrations (read_only
+ * needs Stripe support approval). We only ever issue GET requests, so no data
+ * is ever written — the broader scope is just what Stripe mandates.
+ */
 export function buildStripeAuthorizeUrl(state: string): string {
   const params = new URLSearchParams({
     response_type: "code",
     client_id: env.stripeClientId,
-    scope: "read_only",
+    scope: "read_write",
     redirect_uri: stripeRedirectUri(),
     state,
   });
