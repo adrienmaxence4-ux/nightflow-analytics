@@ -12,20 +12,30 @@ import type { Insight, Recommendation } from "@/types";
 export function CopilotPanel() {
   const copilot = useCopilotAsk();
   const [q, setQ] = useState("");
-  const [insights, setInsights] = useState<Insight[]>(getInsights().slice(0, 3));
-  const [recos, setRecos] = useState<Recommendation[]>(getRecommendations());
+  // Start empty + loading so we never flash mock examples while the AI runs.
+  const [insights, setInsights] = useState<Insight[]>([]);
+  const [recos, setRecos] = useState<Recommendation[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  // Upgrade to real AI insights/recommendations when available.
+  // Real AI insights/recommendations; fall back to mock only if AI unavailable.
   useEffect(() => {
     let alive = true;
     fetch("/api/insights")
       .then((r) => (r.ok ? r.json() : null))
       .then((data: { insights?: Insight[]; recommendations?: Recommendation[] } | null) => {
-        if (!alive || !data) return;
-        if (data.insights?.length) setInsights(data.insights.slice(0, 3));
-        if (data.recommendations?.length) setRecos(data.recommendations);
+        if (!alive) return;
+        const ins = data?.insights ?? [];
+        const rec = data?.recommendations ?? [];
+        setInsights(ins.length ? ins.slice(0, 3) : getInsights().slice(0, 3));
+        setRecos(rec.length ? rec : getRecommendations());
+        setLoading(false);
       })
-      .catch(() => {});
+      .catch(() => {
+        if (!alive) return;
+        setInsights(getInsights().slice(0, 3));
+        setRecos(getRecommendations());
+        setLoading(false);
+      });
     return () => {
       alive = false;
     };
@@ -55,8 +65,15 @@ export function CopilotPanel() {
 
       <div className="flex flex-col gap-3 px-4 py-4">
         <div className="px-1 text-[10px] font-bold tracking-[1.6px] text-ink-mut">
-          INSIGHTS PRIORITAIRES
+          {loading ? "✦ ANALYSE IA EN COURS…" : "INSIGHTS PRIORITAIRES"}
         </div>
+        {loading &&
+          Array.from({ length: 3 }).map((_, i) => (
+            <div
+              key={`sk-${i}`}
+              className="h-[68px] animate-pulse rounded-2xl border border-glass-border bg-glass-2"
+            />
+          ))}
         {insights.map((ins, i) => (
           <motion.div
             key={ins.id}

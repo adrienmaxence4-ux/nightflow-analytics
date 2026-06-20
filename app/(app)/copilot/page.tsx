@@ -7,6 +7,7 @@ import { PageTransition } from "@/components/layout/page-transition";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Sheet } from "@/components/ui/sheet";
+import { Skeleton } from "@/components/ui/skeleton";
 import { InsightCard } from "@/features/copilot/insight-card";
 import { AnalysisCard } from "@/features/copilot/analysis-card";
 import { CopilotChat } from "@/features/copilot/copilot-chat";
@@ -65,8 +66,10 @@ function insightsToCards(insights: Insight[]): AnalysisCardType[] {
 export default function CopilotPage() {
   const toast = useToast();
   const { user } = useAuth();
-  const [analyses, setAnalyses] = useState<AnalysisCardType[]>(getAnalysisCards());
-  const [groups, setGroups] = useState(getGroupedInsights());
+  // Start empty + loading so we never flash mock examples while the AI runs.
+  const [analyses, setAnalyses] = useState<AnalysisCardType[]>([]);
+  const [groups, setGroups] = useState(() => group([]));
+  const [loadingInsights, setLoadingInsights] = useState(true);
   const [openAnalysis, setOpenAnalysis] = useState<AnalysisCardType | null>(null);
   const [reporting, setReporting] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -74,18 +77,29 @@ export default function CopilotPage() {
   const { reset: resetDrawer } = drawerCopilot;
   useEffect(() => resetDrawer(), [openAnalysis?.id, resetDrawer]);
 
-  // Upgrade to real AI insights when available; mock stays as the initial view.
+  // Real AI insights; fall back to the mock only if the AI is unavailable.
   useEffect(() => {
     let alive = true;
     fetch("/api/insights")
       .then((r) => (r.ok ? r.json() : null))
       .then((data: { insights?: Insight[] } | null) => {
-        if (alive && data?.insights && data.insights.length > 0) {
-          setGroups(group(data.insights));
-          setAnalyses(insightsToCards(data.insights));
+        if (!alive) return;
+        const items = data?.insights ?? [];
+        if (items.length > 0) {
+          setGroups(group(items));
+          setAnalyses(insightsToCards(items));
+        } else {
+          setGroups(getGroupedInsights());
+          setAnalyses(getAnalysisCards());
         }
+        setLoadingInsights(false);
       })
-      .catch(() => {});
+      .catch(() => {
+        if (!alive) return;
+        setGroups(getGroupedInsights());
+        setAnalyses(getAnalysisCards());
+        setLoadingInsights(false);
+      });
     return () => {
       alive = false;
     };
@@ -178,12 +192,18 @@ export default function CopilotPage() {
           {/* ── Analysis cards ── */}
           <div>
             <div className="mb-3 text-[10px] font-bold tracking-[1.6px] text-ink-mut">
-              ANALYSES — CLIQUEZ POUR EXPLORER
+              {loadingInsights
+                ? "✦ ANALYSE IA EN COURS…"
+                : "ANALYSES — CLIQUEZ POUR EXPLORER"}
             </div>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              {analyses.map((c, i) => (
-                <AnalysisCard key={c.id} card={c} index={i} onOpen={setOpenAnalysis} />
-              ))}
+              {loadingInsights
+                ? Array.from({ length: 4 }).map((_, i) => (
+                    <Skeleton key={i} className="h-[210px]" />
+                  ))
+                : analyses.map((c, i) => (
+                    <AnalysisCard key={c.id} card={c} index={i} onOpen={setOpenAnalysis} />
+                  ))}
             </div>
           </div>
 
