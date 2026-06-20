@@ -2,7 +2,12 @@
 
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Database, Sparkles } from "lucide-react";
+import { Bell, Database, Sparkles } from "lucide-react";
+import {
+  isDesktopEnabled,
+  markNotified,
+  setDesktopEnabled,
+} from "@/lib/notif-prefs";
 import { PageTransition } from "@/components/layout/page-transition";
 import { PageHeader } from "@/components/layout/page-header";
 import { Card } from "@/components/ui/card";
@@ -34,6 +39,29 @@ export default function NotificationsPage() {
   const [loading, setLoading] = useState(true);
   const [seeding, setSeeding] = useState(false);
   const [filter, setFilter] = useState("Toutes");
+  const [desktopOn, setDesktopOn] = useState(false);
+
+  useEffect(() => setDesktopOn(isDesktopEnabled()), []);
+
+  const enableDesktop = async () => {
+    if (typeof Notification === "undefined") {
+      toast("Notifications bureau non supportées par ce navigateur", "info");
+      return;
+    }
+    const perm = await Notification.requestPermission();
+    if (perm !== "granted") {
+      toast("Permission refusée — autorise les notifications du site", "info");
+      return;
+    }
+    // Don't replay existing alerts; only future ones will pop.
+    markNotified(items.map((n) => n.id));
+    setDesktopEnabled(true);
+    setDesktopOn(true);
+    new Notification("Nightflow · Notifications activées ✓", {
+      body: "Tu recevras les nouvelles alertes ici, même en dehors de l'onglet.",
+    });
+    toast("Notifications bureau activées ✓");
+  };
 
   const load = async () => {
     setLoading(true);
@@ -102,14 +130,24 @@ export default function NotificationsPage() {
             : `${unread} non lue${unread > 1 ? "s" : ""} · alertes intelligentes`
         }
         action={
-          items.length > 0 ? (
+          <div className="flex flex-wrap items-center gap-2">
             <button
-              onClick={handleMarkAllRead}
-              className="rounded-xl border border-glass-border bg-glass px-3.5 py-2 text-xs font-semibold text-ink-dim transition hover:border-glass-hi hover:text-white"
+              onClick={enableDesktop}
+              disabled={desktopOn}
+              className="flex items-center gap-1.5 rounded-xl border border-glass-border bg-glass px-3.5 py-2 text-xs font-semibold text-ink-dim transition hover:border-glass-hi hover:text-white disabled:opacity-60"
             >
-              Tout marquer comme lu
+              <Bell className="h-3.5 w-3.5" />
+              {desktopOn ? "Notifications bureau activées" : "Activer les notifications bureau"}
             </button>
-          ) : null
+            {items.length > 0 && (
+              <button
+                onClick={handleMarkAllRead}
+                className="rounded-xl border border-glass-border bg-glass px-3.5 py-2 text-xs font-semibold text-ink-dim transition hover:border-glass-hi hover:text-white"
+              >
+                Tout marquer comme lu
+              </button>
+            )}
+          </div>
         }
       />
 

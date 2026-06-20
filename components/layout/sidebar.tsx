@@ -5,21 +5,30 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Moon } from "lucide-react";
 import { NAV_MAIN, NAV_SECONDARY, type NavItem } from "@/lib/nav";
+import { getSeenIds, markSeen } from "@/lib/notif-prefs";
 import { cn } from "@/lib/utils";
 
 export function Sidebar() {
   const pathname = usePathname();
-  // Real, live badge counts (alerts + actionable items) from /api/notifications.
+  // Live badge counts = UNSEEN notifications; clear once the page is opened.
   const [badges, setBadges] = useState<Record<string, number>>({});
 
   useEffect(() => {
     fetch("/api/notifications")
       .then((r) => (r.ok ? r.json() : null))
-      .then((j: { items?: unknown[]; count?: number } | null) => {
-        if (!j) return;
+      .then((j: { items?: { id: string; severity: string }[] } | null) => {
+        if (!j?.items) return;
+        const items = j.items;
+        const actionable = items.filter(
+          (i) => i.severity === "warning" || i.severity === "critical"
+        );
+        // Opening a page marks its notifications as seen → badge disappears.
+        if (pathname === "/notifications") markSeen(items.map((i) => i.id));
+        if (pathname === "/copilot") markSeen(actionable.map((i) => i.id));
+        const seen = getSeenIds();
         setBadges({
-          "/notifications": j.items?.length ?? 0,
-          "/copilot": j.count ?? 0,
+          "/notifications": items.filter((i) => !seen.has(i.id)).length,
+          "/copilot": actionable.filter((i) => !seen.has(i.id)).length,
         });
       })
       .catch(() => {});

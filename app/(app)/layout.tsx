@@ -5,6 +5,7 @@ import { useEffect } from "react";
 import { Sidebar } from "@/components/layout/sidebar";
 import { Topbar } from "@/components/layout/topbar";
 import { MobileNav } from "@/components/layout/mobile-nav";
+import { DesktopNotifier } from "@/features/notifications/desktop-notifier";
 import { useAuth } from "@/hooks/use-auth";
 import { NAV_MAIN, NAV_SECONDARY } from "@/lib/nav";
 
@@ -45,6 +46,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         </main>
       </div>
       <MobileNav />
+      <DesktopNotifier />
     </div>
   );
 }
