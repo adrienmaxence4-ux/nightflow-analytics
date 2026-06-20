@@ -35,6 +35,12 @@ export const env = {
   shopifyScopes:
     process.env.SHOPIFY_SCOPES ??
     "read_products,read_orders,read_customers,read_inventory",
+
+  // Stripe Connect OAuth ("Se connecter avec Stripe" — one-click, no API key).
+  // STRIPE_CONNECT_CLIENT_ID = ca_… ; STRIPE_SECRET_KEY = platform sk_… (used to
+  // exchange the OAuth code for the connected account's token).
+  stripeClientId: process.env.STRIPE_CONNECT_CLIENT_ID ?? "",
+  stripeSecretKey: process.env.STRIPE_SECRET_KEY ?? "",
 };
 
 /** True when real Supabase credentials are configured. */
@@ -53,3 +59,7 @@ export const isAiEnabled = isAiConfigured || isGithubConfigured;
 /** True when Shopify OAuth credentials are configured. */
 export const isShopifyConfigured =
   env.shopifyClientId.length > 0 && env.shopifyClientSecret.length > 0;
+
+/** True when Stripe Connect OAuth is configured (one-click connect). */
+export const isStripeOAuthConfigured =
+  env.stripeClientId.length > 0 && env.stripeSecretKey.length > 0;

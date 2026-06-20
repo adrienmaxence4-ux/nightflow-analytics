@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { ShopifyConnect } from "@/features/integrations/shopify-connect";
 import { ApiKeyConnect } from "@/features/integrations/api-key-connect";
+import { OAuthConnect } from "@/features/integrations/oauth-connect";
 
 interface Integration {
   id: string;
@@ -65,16 +66,13 @@ export default function IntegrationsPage() {
       {/* Connecteurs actifs — chacun connecte SON propre compte (multi-tenant). */}
       <div className="flex flex-col gap-4">
         <ShopifyConnect />
-        <ApiKeyConnect
+        <OAuthConnect
           provider="stripe"
           name="Stripe"
           logo="💳"
           accent="from-indigo-400 to-violet-500"
-          description="Collez une clé restreinte pour importer paiements & revenus."
+          description="Connexion en un clic — autorisez votre compte, aucune clé à créer."
           connectedHint="Revenus & commandes importés depuis Stripe."
-          placeholder="rk_live_… ou sk_live_…"
-          helpHref="https://dashboard.stripe.com/apikeys"
-          helpLabel="Créer une clé restreinte (lecture seule)"
         />
         <ApiKeyConnect
           provider="klaviyo"

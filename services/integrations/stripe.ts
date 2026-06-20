@@ -1,12 +1,66 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { env } from "@/lib/env";
 
 /**
- * SERVER-ONLY. Stripe integration via per-customer API key (Bearer).
- * Each customer pastes THEIR OWN secret/restricted key — stored per store,
- * RLS-isolated. We pull their charges and write daily revenue to metrics_daily.
+ * SERVER-ONLY. Stripe integration.
+ *
+ * Two ways to connect, both multi-tenant (per store, RLS-isolated):
+ *  - OAuth ("Se connecter avec Stripe") — preferred: the customer authorises
+ *    their account in one click and we store the returned access token.
+ *  - API key — the customer pastes their own restricted/secret key.
+ * Either way we end up with a token used to read their charges into
+ * metrics_daily.
  */
 
 const STRIPE_API = "https://api.stripe.com/v1";
+const STRIPE_CONNECT = "https://connect.stripe.com/oauth";
+
+/** The fixed redirect URI registered in the Stripe Connect settings. */
+export function stripeRedirectUri(): string {
+  return `${env.siteUrl}/api/integrations/stripe/oauth/callback`;
+}
+
+/** Builds the "Connect with Stripe" authorize URL (read-only scope). */
+export function buildStripeAuthorizeUrl(state: string): string {
+  const params = new URLSearchParams({
+    response_type: "code",
+    client_id: env.stripeClientId,
+    scope: "read_only",
+    redirect_uri: stripeRedirectUri(),
+    state,
+  });
+  return `${STRIPE_CONNECT}/authorize?${params.toString()}`;
+}
+
+/** Exchanges an OAuth code for the connected account's access token. */
+export async function exchangeStripeCode(
+  code: string
+): Promise<{ accessToken: string; stripeUserId: string } | null> {
+  try {
+    const res = await fetch(`${STRIPE_CONNECT}/token`, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        client_secret: env.stripeSecretKey,
+        code,
+        grant_type: "authorization_code",
+      }),
+      signal: AbortSignal.timeout(20_000),
+    });
+    if (!res.ok) return null;
+    const data = (await res.json()) as {
+      access_token?: string;
+      stripe_user_id?: string;
+    };
+    if (!data.access_token) return null;
+    return {
+      accessToken: data.access_token,
+      stripeUserId: data.stripe_user_id ?? "",
+    };
+  } catch {
+    return null;
+  }
+}
 
 /** Quick validation: the key can read the account balance. */
 export async function validateStripeKey(key: string): Promise<boolean> {
