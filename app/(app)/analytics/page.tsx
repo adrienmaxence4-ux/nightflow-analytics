@@ -14,37 +14,60 @@ import { useRange } from "@/hooks/use-range";
 import { getRangeDataSync } from "@/services/analytics.service";
 import type { Range } from "@/types";
 
-/** Honest empty state for sections that require Google Analytics data. */
+const GA_REASON_MSG: Record<string, string> = {
+  no_property:
+    "Connecté ✓ mais aucune propriété GA4 trouvée. Vérifie que ton compte Google possède bien une propriété Google Analytics 4 (et que l'API Admin est activée).",
+  no_data:
+    "Connecté ✓ — mais aucune session enregistrée sur les 30 derniers jours. Les graphiques se rempliront dès que ta propriété GA4 reçoit du trafic.",
+  auth:
+    "Connecté mais l'accès aux données a échoué. Reconnecte Google Analytics depuis Intégrations.",
+};
+
+/** State for GA-powered sections: connect CTA, or a "connected but empty" note. */
 function ConnectGaCard({
   title,
   subtitle,
   className,
+  connected = false,
+  reason,
 }: {
   title: string;
   subtitle: string;
   className?: string;
+  connected?: boolean;
+  reason?: string;
 }) {
+  const msg = connected
+    ? GA_REASON_MSG[reason ?? ""] ??
+      "Connecté ✓ — en attente de données de trafic."
+    : "Ces données de trafic proviennent de Google Analytics — connectez-le pour les afficher en réel.";
+
   return (
     <Card className={`p-5 ${className ?? ""}`}>
       <h3 className="mb-1 text-[15px] font-bold">{title}</h3>
       <p className="mb-4 text-xs text-ink-mut">{subtitle}</p>
       <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-glass-border bg-glass-2 px-4 py-9 text-center">
-        <span className="grid h-12 w-12 place-items-center rounded-xl bg-gradient-to-br from-amber-300 to-orange-500 text-xl">
-          📈
+        <span
+          className={`grid h-12 w-12 place-items-center rounded-xl bg-gradient-to-br text-xl ${
+            connected ? "from-emerald-400 to-emerald-600" : "from-amber-300 to-orange-500"
+          }`}
+        >
+          {connected ? "✓" : "📈"}
         </span>
         <div>
-          <div className="text-[13px] font-bold">Connectez Google Analytics</div>
-          <p className="mx-auto mt-1 max-w-xs text-[12px] text-ink-mut">
-            Ces données de trafic proviennent de Google Analytics — connectez-le
-            pour les afficher en réel.
-          </p>
+          <div className="text-[13px] font-bold">
+            {connected ? "Google Analytics connecté" : "Connectez Google Analytics"}
+          </div>
+          <p className="mx-auto mt-1 max-w-sm text-[12px] text-ink-mut">{msg}</p>
         </div>
-        <Link
-          href="/integrations"
-          className="rounded-xl bg-gradient-to-r from-neon-cyan to-neon-cyansoft px-4 py-2 text-[12px] font-bold text-night-950 shadow-glow transition hover:brightness-110"
-        >
-          Connecter Google Analytics
-        </Link>
+        {!connected && (
+          <Link
+            href="/integrations"
+            className="rounded-xl bg-gradient-to-r from-neon-cyan to-neon-cyansoft px-4 py-2 text-[12px] font-bold text-night-950 shadow-glow transition hover:brightness-110"
+          >
+            Connecter Google Analytics
+          </Link>
+        )}
       </div>
     </Card>
   );
@@ -131,6 +154,7 @@ export default function AnalyticsPage() {
     connected: boolean;
     channels?: GaChannel[];
     devices?: GaDevice[];
+    reason?: string;
   } | null>(null);
 
   // Pull real GA4 traffic when Google Analytics is connected.
@@ -180,6 +204,8 @@ export default function AnalyticsPage() {
             title="Trafic par canal"
             subtitle="Sessions par source d'acquisition"
             className="lg:col-span-2"
+            connected={ga?.connected}
+            reason={ga?.reason}
           />
         )}
         <Funnel steps={data.funnel} />
@@ -193,6 +219,8 @@ export default function AnalyticsPage() {
           <ConnectGaCard
             title="Répartition par appareil"
             subtitle="Mobile vs Desktop vs Tablette"
+            connected={ga?.connected}
+            reason={ga?.reason}
           />
         )}
       </div>

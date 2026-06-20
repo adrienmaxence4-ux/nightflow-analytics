@@ -37,6 +37,21 @@ export default function NotificationsPage() {
 
   const load = async () => {
     setLoading(true);
+    // Primary: live alerts computed from real data (integrations, stock, sales).
+    try {
+      const res = await fetch("/api/notifications");
+      if (res.ok) {
+        const j = (await res.json()) as { items?: Notification[] };
+        if (j.items && j.items.length > 0) {
+          setSource("live");
+          setItems(j.items);
+          setLoading(false);
+          return;
+        }
+      }
+    } catch {
+      /* fall back below */
+    }
     const { source, items } = await fetchNotifications();
     setSource(source);
     setItems(items);
@@ -102,9 +117,11 @@ export default function NotificationsPage() {
       {!loading && (
         <div className="flex items-center gap-2 text-[11px] text-ink-mut">
           <Database className="h-3.5 w-3.5" />
-          {source === "db"
-            ? "Données en direct depuis votre base Supabase"
-            : "Mode démo — données fictives (connectez Supabase pour la base réelle)"}
+          {source === "live"
+            ? "Alertes en direct calculées sur vos données réelles"
+            : source === "db"
+              ? "Données en direct depuis votre base Supabase"
+              : "Mode démo — données fictives (connectez Supabase pour la base réelle)"}
         </div>
       )}
 

@@ -2,12 +2,28 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
 import { Moon } from "lucide-react";
 import { NAV_MAIN, NAV_SECONDARY, type NavItem } from "@/lib/nav";
 import { cn } from "@/lib/utils";
 
 export function Sidebar() {
   const pathname = usePathname();
+  // Real, live badge counts (alerts + actionable items) from /api/notifications.
+  const [badges, setBadges] = useState<Record<string, number>>({});
+
+  useEffect(() => {
+    fetch("/api/notifications")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j: { items?: unknown[]; count?: number } | null) => {
+        if (!j) return;
+        setBadges({
+          "/notifications": j.items?.length ?? 0,
+          "/copilot": j.count ?? 0,
+        });
+      })
+      .catch(() => {});
+  }, [pathname]);
 
   return (
     <aside className="sticky top-0 hidden h-screen w-[248px] flex-col gap-1.5 border-r border-glass-border bg-gradient-to-b from-night-900/70 to-night-950/55 p-4 backdrop-blur-xl lg:flex">
@@ -25,9 +41,9 @@ export function Sidebar() {
         </div>
       </Link>
 
-      <NavGroup label="PILOTAGE" items={NAV_MAIN} pathname={pathname} />
+      <NavGroup label="PILOTAGE" items={NAV_MAIN} pathname={pathname} badges={badges} />
       <div className="my-2 h-px bg-glass-border" />
-      <NavGroup label="COMPTE" items={NAV_SECONDARY} pathname={pathname} />
+      <NavGroup label="COMPTE" items={NAV_SECONDARY} pathname={pathname} badges={badges} />
 
       <div className="flex-1" />
 
@@ -52,10 +68,12 @@ function NavGroup({
   label,
   items,
   pathname,
+  badges,
 }: {
   label: string;
   items: NavItem[];
   pathname: string;
+  badges: Record<string, number>;
 }) {
   return (
     <>
@@ -65,6 +83,7 @@ function NavGroup({
       {items.map((item) => {
         const active = pathname === item.href;
         const Icon = item.icon;
+        const badge = badges[item.href] ?? item.badge ?? 0;
         return (
           <Link
             key={item.href}
@@ -88,9 +107,9 @@ function NavGroup({
               )}
             />
             {item.label}
-            {item.badge ? (
+            {badge > 0 ? (
               <span className="ml-auto rounded-full bg-gradient-to-b from-neon-pink to-neon-violet px-1.5 py-0.5 text-[10px] font-bold text-white shadow-glow-pink">
-                {item.badge}
+                {badge}
               </span>
             ) : null}
           </Link>

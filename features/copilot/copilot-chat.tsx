@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Send, Sparkles } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { askCopilot } from "@/services/copilot.service";
@@ -11,6 +11,22 @@ const SUGGESTIONS = [
   "Où investir mon budget pub ?",
   "Quels produits sont à risque de rupture ?",
 ];
+
+/** Builds questions tied to the user's real store (products + situation). */
+function contextualSuggestions(
+  products: { name: string; sales: number; stock: number }[]
+): string[] {
+  if (!products.length) return SUGGESTIONS;
+  const out: string[] = [];
+  const noSales = products.every((p) => p.sales === 0);
+  const lowStock = products.find((p) => p.stock > 0 && p.stock <= 20);
+  if (noSales) out.push("Pourquoi mes produits ne convertissent pas ?");
+  out.push(`Comment vendre plus de ${products[0].name} ?`);
+  out.push("Quelles sont mes priorités cette semaine ?");
+  if (lowStock) out.push(`Faut-il réapprovisionner le ${lowStock.name} ?`);
+  out.push("Où investir mon budget marketing ?");
+  return out.slice(0, 4);
+}
 
 interface Msg {
   role: "user" | "ai";
@@ -26,6 +42,23 @@ export function CopilotChat({ className }: { className?: string }) {
   ]);
   const [q, setQ] = useState("");
   const [busy, setBusy] = useState(false);
+  const [suggestions, setSuggestions] = useState<string[]>(SUGGESTIONS);
+
+  // Tailor the suggested questions to the user's real products.
+  useEffect(() => {
+    let alive = true;
+    fetch("/api/products")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j: { products?: { name: string; sales: number; stock: number }[] } | null) => {
+        if (alive && j?.products?.length) {
+          setSuggestions(contextualSuggestions(j.products));
+        }
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   const send = async (text: string) => {
     if (!text.trim() || busy) return;
@@ -88,7 +121,7 @@ export function CopilotChat({ className }: { className?: string }) {
 
       <div className="border-t border-glass-border px-4 py-3">
         <div className="mb-2 flex flex-wrap gap-1.5">
-          {SUGGESTIONS.slice(0, 2).map((s) => (
+          {suggestions.slice(0, 3).map((s) => (
             <button
               key={s}
               onClick={() => send(s)}

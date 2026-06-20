@@ -17,7 +17,7 @@ function asWritable(client: NonNullable<ReturnType<typeof createClient>>) {
   return client as unknown as SupabaseClient;
 }
 
-export type NotificationSource = "db" | "mock";
+export type NotificationSource = "db" | "mock" | "live";
 
 type DbRow = Pick<
   NotificationRow,
