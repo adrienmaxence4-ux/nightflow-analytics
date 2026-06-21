@@ -34,7 +34,8 @@ export function GaPropertySelect({ onChange }: { onChange?: () => void }) {
       .catch(() => {});
   }, []);
 
-  if (props.length === 0) return null;
+  // Only worth showing when there's more than one property to choose from.
+  if (props.length < 2) return null;
 
   const select = async (id: string) => {
     if (id === current) return;

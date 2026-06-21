@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { PageTransition } from "@/components/layout/page-transition";
 import { PageHeader } from "@/components/layout/page-header";
@@ -14,65 +13,6 @@ import { GaPropertySelect } from "@/features/integrations/ga-property-select";
 import { useRange } from "@/hooks/use-range";
 import { getRangeDataSync } from "@/services/analytics.service";
 import type { Range } from "@/types";
-
-const GA_REASON_MSG: Record<string, string> = {
-  no_property:
-    "Connecté ✓ mais aucune propriété GA4 trouvée. Vérifie que ton compte Google possède bien une propriété Google Analytics 4 (et que l'API Admin est activée).",
-  no_data:
-    "Connecté ✓ — mais aucune session enregistrée sur les 12 derniers mois pour cette propriété GA4. Les graphiques se rempliront dès qu'elle reçoit du trafic (ou choisis une autre propriété ci-dessus).",
-  auth:
-    "Connecté mais l'accès aux données a échoué. Reconnecte Google Analytics depuis Intégrations.",
-};
-
-/** State for GA-powered sections: connect CTA, or a "connected but empty" note. */
-function ConnectGaCard({
-  title,
-  subtitle,
-  className,
-  connected = false,
-  reason,
-}: {
-  title: string;
-  subtitle: string;
-  className?: string;
-  connected?: boolean;
-  reason?: string;
-}) {
-  const msg = connected
-    ? GA_REASON_MSG[reason ?? ""] ??
-      "Connecté ✓ — en attente de données de trafic."
-    : "Ces données de trafic proviennent de Google Analytics — connectez-le pour les afficher en réel.";
-
-  return (
-    <Card className={`p-5 ${className ?? ""}`}>
-      <h3 className="mb-1 text-[15px] font-bold">{title}</h3>
-      <p className="mb-4 text-xs text-ink-mut">{subtitle}</p>
-      <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-glass-border bg-glass-2 px-4 py-9 text-center">
-        <span
-          className={`grid h-12 w-12 place-items-center rounded-xl bg-gradient-to-br text-xl ${
-            connected ? "from-emerald-400 to-emerald-600" : "from-amber-300 to-orange-500"
-          }`}
-        >
-          {connected ? "✓" : "📈"}
-        </span>
-        <div>
-          <div className="text-[13px] font-bold">
-            {connected ? "Google Analytics connecté" : "Connectez Google Analytics"}
-          </div>
-          <p className="mx-auto mt-1 max-w-sm text-[12px] text-ink-mut">{msg}</p>
-        </div>
-        {!connected && (
-          <Link
-            href="/integrations"
-            className="rounded-xl bg-gradient-to-r from-neon-cyan to-neon-cyansoft px-4 py-2 text-[12px] font-bold text-night-950 shadow-glow transition hover:brightness-110"
-          >
-            Connecter Google Analytics
-          </Link>
-        )}
-      </div>
-    </Card>
-  );
-}
 
 interface GaChannel {
   channel: string;
@@ -191,6 +131,9 @@ export default function AnalyticsPage() {
     load(range);
   }, [range, load]);
 
+  const gaChannels = ga?.connected && ga.channels?.length ? ga.channels : null;
+  const gaDevices = ga?.connected && ga.devices?.length ? ga.devices : null;
+
   return (
     <PageTransition>
       <DemoBanner source={source} onSeeded={() => load(range)} />
@@ -202,36 +145,22 @@ export default function AnalyticsPage() {
 
       <RevenueChart data={data} />
 
-      {ga?.connected && <GaPropertySelect onChange={loadGa} />}
+      {/* GA4 property picker — only when there's a real choice to make. */}
+      <GaPropertySelect onChange={loadGa} />
 
-      <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
-        {ga?.connected && ga.channels?.length ? (
-          <ChannelsCard channels={ga.channels} className="lg:col-span-2" />
-        ) : (
-          <ConnectGaCard
-            title="Trafic par canal"
-            subtitle="Sessions par source d'acquisition"
-            className="lg:col-span-2"
-            connected={ga?.connected}
-            reason={ga?.reason}
-          />
-        )}
-        <Funnel steps={data.funnel} />
-      </div>
-
+      {/* Conversion funnel + top products (always, from store data). */}
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+        <Funnel steps={data.funnel} />
         <ProductBars data={data.bars} />
-        {ga?.connected && ga.devices?.length ? (
-          <DevicesCard devices={ga.devices} />
-        ) : (
-          <ConnectGaCard
-            title="Répartition par appareil"
-            subtitle="Mobile vs Desktop vs Tablette"
-            connected={ga?.connected}
-            reason={ga?.reason}
-          />
-        )}
       </div>
+
+      {/* GA traffic sections appear ONLY when GA4 has real data — no empty box. */}
+      {(gaChannels || gaDevices) && (
+        <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+          {gaChannels && <ChannelsCard channels={gaChannels} />}
+          {gaDevices && <DevicesCard devices={gaDevices} />}
+        </div>
+      )}
     </PageTransition>
   );
 }
