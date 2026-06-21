@@ -87,6 +87,31 @@ function DevicesCard({ devices }: { devices: GaDevice[] }) {
   );
 }
 
+/** Compact waiting state — keeps the card; real analyses fill it once GA4 has data. */
+function GaWaitingCard({
+  title,
+  subtitle,
+  connected,
+  className,
+}: {
+  title: string;
+  subtitle: string;
+  connected?: boolean;
+  className?: string;
+}) {
+  return (
+    <Card className={`p-5 ${className ?? ""}`}>
+      <h3 className="mb-1 text-[15px] font-bold">{title}</h3>
+      <p className="mb-4 text-xs text-ink-mut">{subtitle}</p>
+      <p className="rounded-xl bg-glass-2 px-4 py-6 text-center text-[12px] text-ink-mut">
+        {connected
+          ? "Google Analytics connecté ✓ — tes analyses s'afficheront ici dès les premières visites."
+          : "Connecte Google Analytics pour afficher ces analyses."}
+      </p>
+    </Card>
+  );
+}
+
 export default function AnalyticsPage() {
   const { range, setRange } = useRange("week");
   const [data, setData] = useState(getRangeDataSync("week"));
@@ -148,19 +173,34 @@ export default function AnalyticsPage() {
       {/* GA4 property picker — only when there's a real choice to make. */}
       <GaPropertySelect onChange={loadGa} />
 
-      {/* Conversion funnel + top products (always, from store data). */}
-      <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+      {/* Traffic by channel (real GA4 data, else compact waiting state) + funnel. */}
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
+        {gaChannels ? (
+          <ChannelsCard channels={gaChannels} className="lg:col-span-2" />
+        ) : (
+          <GaWaitingCard
+            title="Trafic par canal"
+            subtitle="Sessions par source d'acquisition"
+            connected={ga?.connected}
+            className="lg:col-span-2"
+          />
+        )}
         <Funnel steps={data.funnel} />
-        <ProductBars data={data.bars} />
       </div>
 
-      {/* GA traffic sections appear ONLY when GA4 has real data — no empty box. */}
-      {(gaChannels || gaDevices) && (
-        <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
-          {gaChannels && <ChannelsCard channels={gaChannels} />}
-          {gaDevices && <DevicesCard devices={gaDevices} />}
-        </div>
-      )}
+      {/* Top products + device breakdown (real GA4, else compact waiting state). */}
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+        <ProductBars data={data.bars} />
+        {gaDevices ? (
+          <DevicesCard devices={gaDevices} />
+        ) : (
+          <GaWaitingCard
+            title="Répartition par appareil"
+            subtitle="Mobile vs Desktop vs Tablette"
+            connected={ga?.connected}
+          />
+        )}
+      </div>
     </PageTransition>
   );
 }

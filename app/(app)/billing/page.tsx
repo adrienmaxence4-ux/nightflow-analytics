@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { Check } from "lucide-react";
 import { PageTransition } from "@/components/layout/page-transition";
 import { PageHeader } from "@/components/layout/page-header";
@@ -10,6 +11,7 @@ import { useAuth } from "@/hooks/use-auth";
 
 const PLANS = [
   {
+    id: "starter",
     name: "Starter",
     price: "€0",
     period: "/mois",
@@ -19,6 +21,7 @@ const PLANS = [
     highlight: false,
   },
   {
+    id: "pro",
     name: "Pro",
     price: "€49",
     period: "/mois",
@@ -34,6 +37,7 @@ const PLANS = [
     highlight: true,
   },
   {
+    id: "scale",
     name: "Scale",
     price: "€149",
     period: "/mois",
@@ -45,7 +49,7 @@ const PLANS = [
       "API & webhooks",
       "Account manager dédié",
     ],
-    cta: "Contacter les ventes",
+    cta: "Passer en Scale",
     highlight: false,
   },
 ];
@@ -53,6 +57,37 @@ const PLANS = [
 export default function BillingPage() {
   const toast = useToast();
   const { user } = useAuth();
+  const [busy, setBusy] = useState<string | null>(null);
+
+  // Toast the result when returning from Stripe Checkout.
+  useEffect(() => {
+    const r = new URLSearchParams(window.location.search).get("checkout");
+    if (r === "success") toast("Paiement réussi — bienvenue 🎉");
+    else if (r === "cancel") toast("Paiement annulé", "info");
+    if (r) window.history.replaceState({}, "", "/billing");
+  }, [toast]);
+
+  const subscribe = async (planId: string) => {
+    if (busy) return;
+    setBusy(planId);
+    try {
+      const res = await fetch("/api/billing/checkout", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ plan: planId }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.url) {
+        window.location.href = data.url; // → Stripe hosted checkout
+      } else {
+        toast(data.error ?? "Paiement indisponible", "info");
+        setBusy(null);
+      }
+    } catch {
+      toast("Paiement indisponible", "info");
+      setBusy(null);
+    }
+  };
 
   return (
     <PageTransition>
@@ -93,23 +128,21 @@ export default function BillingPage() {
               ))}
             </ul>
             <button
+              disabled={busy === plan.id}
               onClick={() => {
-                if (plan.name === user?.plan) {
+                if (plan.id === "starter" || plan.name === user?.plan) {
                   toast("Vous êtes déjà sur ce plan");
-                } else if (plan.cta === "Contacter les ventes") {
-                  window.location.href =
-                    "mailto:sales@nightflow.app?subject=Plan%20Scale%20Nightflow";
                 } else {
-                  toast(`${plan.cta} — paiement bientôt disponible`, "info");
+                  subscribe(plan.id);
                 }
               }}
-              className={`mt-6 w-full rounded-xl py-2.5 text-sm font-bold transition ${
+              className={`mt-6 w-full rounded-xl py-2.5 text-sm font-bold transition disabled:opacity-60 ${
                 plan.highlight
                   ? "bg-gradient-to-r from-neon-cyan to-neon-cyansoft text-night-950 shadow-glow hover:brightness-110"
                   : "border border-glass-border bg-glass text-ink-dim hover:border-glass-hi hover:text-white"
               }`}
             >
-              {plan.cta}
+              {busy === plan.id ? "Redirection…" : plan.cta}
             </button>
           </Card>
         ))}
