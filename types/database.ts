@@ -158,6 +158,17 @@ export type IntegrationRow = {
   updated_at: string;
 }
 
+export type SubscriptionRow = {
+  user_id: string;
+  plan: "free" | "pro" | "scale";
+  billing_interval: "month" | "year";
+  status: string;
+  stripe_customer_id: string | null;
+  stripe_subscription_id: string | null;
+  current_period_end: string | null;
+  updated_at: string;
+}
+
 export type AiConversationRow = {
   id: string;
   user_id: string;
@@ -219,6 +230,7 @@ export interface Database {
       recommendations: Table<RecommendationRow, "store_id" | "title">;
       notifications: Table<NotificationRow, "user_id" | "title">;
       integrations: Table<IntegrationRow, "store_id" | "provider">;
+      subscriptions: Table<SubscriptionRow, "user_id">;
       ai_conversations: Table<AiConversationRow, "user_id">;
       ai_messages: Table<AiMessageRow, "conversation_id" | "role" | "content">;
       ai_analysis_history: Table<AiAnalysisRow, "store_id" | "kind">;
