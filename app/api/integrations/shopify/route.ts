@@ -2,15 +2,22 @@ import crypto from "crypto";
 import { NextResponse } from "next/server";
 import { env, isShopifyConfigured } from "@/lib/env";
 import { buildAuthorizeUrl, isValidShopDomain } from "@/services/integrations/shopify";
+import { getUserSubscription } from "@/services/billing/subscription";
 
 /**
  * GET /api/integrations/shopify?shop=xxx.myshopify.com
  * App URL entry point. Starts the OAuth grant by redirecting to Shopify with a
- * CSRF state stored in a cookie.
+ * CSRF state stored in a cookie. Gated to plans that include integrations (Pro+).
  */
 export async function GET(req: Request) {
   const url = new URL(req.url);
   const shop = url.searchParams.get("shop");
+
+  // Plan gate — connecting a store requires Pro or higher.
+  const { plan } = await getUserSubscription();
+  if (!plan.integrations) {
+    return NextResponse.redirect(`${env.siteUrl}/billing?upgrade=integrations`);
+  }
 
   if (!isShopifyConfigured) {
     return new NextResponse("Shopify non configuré (Client ID/secret manquants)", {

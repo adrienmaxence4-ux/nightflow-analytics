@@ -2,6 +2,7 @@ import crypto from "crypto";
 import { NextResponse } from "next/server";
 import { env } from "@/lib/env";
 import { getOAuthProvider } from "@/services/integrations/oauth-registry";
+import { getUserSubscription } from "@/services/billing/subscription";
 
 /**
  * GET /api/integrations/[provider]/oauth
@@ -27,6 +28,13 @@ export async function GET(
       status: 404,
     });
   }
+
+  // Plan gate — connecting integrations requires Pro or higher.
+  const { plan } = await getUserSubscription();
+  if (!plan.integrations) {
+    return NextResponse.redirect(`${env.siteUrl}/billing?upgrade=integrations`);
+  }
+
   if (!def.isConfigured) {
     return NextResponse.redirect(
       `${env.siteUrl}/integrations?${def.id}=notconfigured`

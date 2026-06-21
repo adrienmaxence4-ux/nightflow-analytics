@@ -7,8 +7,10 @@ import { PageHeader } from "@/components/layout/page-header";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
+import { usePlan } from "@/hooks/use-plan";
 import { ShopifyConnect } from "@/features/integrations/shopify-connect";
 import { OAuthConnect } from "@/features/integrations/oauth-connect";
+import { UpgradeGate } from "@/features/billing/upgrade-gate";
 
 interface Integration {
   id: string;
@@ -45,6 +47,7 @@ const COMING_SOON: Integration[] = [
 
 export default function IntegrationsPage() {
   const toast = useToast();
+  const { plan } = usePlan();
 
   return (
     <PageTransition>
@@ -53,35 +56,42 @@ export default function IntegrationsPage() {
         subtitle="Connectez vos outils — Nightflow centralise toutes vos données en un seul cerveau."
       />
 
-      {/* Connecteurs actifs — chacun connecte SON propre compte (multi-tenant). */}
-      <div className="flex flex-col gap-4">
-        <ShopifyConnect />
-        <OAuthConnect
-          provider="stripe"
-          name="Stripe"
-          logo="💳"
-          accent="from-indigo-400 to-violet-500"
-          description="Connexion en un clic — autorisez votre compte, aucune clé à créer."
-          connectedHint="Revenus & commandes importés depuis Stripe."
+      {/* Connecteurs — réservés au plan Pro et plus (le plan Gratuit = démo). */}
+      {plan.integrations ? (
+        <div className="flex flex-col gap-4">
+          <ShopifyConnect />
+          <OAuthConnect
+            provider="stripe"
+            name="Stripe"
+            logo="💳"
+            accent="from-indigo-400 to-violet-500"
+            description="Connexion en un clic — autorisez votre compte, aucune clé à créer."
+            connectedHint="Revenus & commandes importés depuis Stripe."
+          />
+          <OAuthConnect
+            provider="klaviyo"
+            name="Klaviyo"
+            logo="✉️"
+            accent="from-fuchsia-400 to-pink-500"
+            description="Connexion en un clic — autorisez votre compte, aucune clé à créer."
+            connectedHint="Revenu attribué Klaviyo affiché dans Marketing."
+          />
+          <OAuthConnect
+            provider="google"
+            name="Google Analytics"
+            logo="📈"
+            accent="from-amber-300 to-orange-500"
+            description="Connexion en un clic — trafic, canaux d'acquisition & appareils."
+            connectedHint="Trafic, canaux & appareils affichés dans Analytics."
+            showSync={false}
+          />
+        </div>
+      ) : (
+        <UpgradeGate
+          title="Connectez vos boutiques avec le plan Pro"
+          message="Le plan Gratuit donne accès à la démo. Passez en Pro pour connecter Shopify, Stripe, Klaviyo et Google Analytics et analyser vos vraies données."
         />
-        <OAuthConnect
-          provider="klaviyo"
-          name="Klaviyo"
-          logo="✉️"
-          accent="from-fuchsia-400 to-pink-500"
-          description="Connexion en un clic — autorisez votre compte, aucune clé à créer."
-          connectedHint="Revenu attribué Klaviyo affiché dans Marketing."
-        />
-        <OAuthConnect
-          provider="google"
-          name="Google Analytics"
-          logo="📈"
-          accent="from-amber-300 to-orange-500"
-          description="Connexion en un clic — trafic, canaux d'acquisition & appareils."
-          connectedHint="Trafic, canaux & appareils affichés dans Analytics."
-          showSync={false}
-        />
-      </div>
+      )}
 
       <Card className="p-5 [background:linear-gradient(110deg,rgba(154,107,255,0.14),rgba(61,242,255,0.06))]">
         <div className="flex items-start gap-3">
