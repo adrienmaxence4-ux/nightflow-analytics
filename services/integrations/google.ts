@@ -116,6 +116,48 @@ async function firstGa4Property(accessToken: string): Promise<string | null> {
   }
 }
 
+export interface Ga4Property {
+  id: string;
+  name: string;
+  account: string;
+}
+
+/** Lists every GA4 property the account can read, so the user can pick one. */
+export async function listGa4Properties(
+  refreshToken: string
+): Promise<Ga4Property[]> {
+  const accessToken = await refreshGoogleToken(refreshToken);
+  if (!accessToken) return [];
+  try {
+    const res = await fetch(`${GA_ADMIN}/accountSummaries?pageSize=200`, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+      signal: AbortSignal.timeout(20_000),
+    });
+    if (!res.ok) return [];
+    const data = (await res.json()) as {
+      accountSummaries?: {
+        displayName?: string;
+        propertySummaries?: { property?: string; displayName?: string }[];
+      }[];
+    };
+    const out: Ga4Property[] = [];
+    for (const acc of data.accountSummaries ?? []) {
+      for (const p of acc.propertySummaries ?? []) {
+        if (p.property) {
+          out.push({
+            id: p.property.replace("properties/", ""),
+            name: p.displayName ?? p.property,
+            account: acc.displayName ?? "",
+          });
+        }
+      }
+    }
+    return out;
+  } catch {
+    return [];
+  }
+}
+
 const CHANNEL_COLORS: Record<string, string> = {
   "Organic Search": "#3df2ff",
   "Paid Search": "#9a6bff",

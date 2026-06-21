@@ -10,6 +10,7 @@ import { Card } from "@/components/ui/card";
 import { RevenueChart } from "@/features/dashboard/revenue-chart";
 import { ProductBars } from "@/features/dashboard/product-bars";
 import { Funnel } from "@/features/dashboard/funnel";
+import { GaPropertySelect } from "@/features/integrations/ga-property-select";
 import { useRange } from "@/hooks/use-range";
 import { getRangeDataSync } from "@/services/analytics.service";
 import type { Range } from "@/types";
@@ -157,13 +158,18 @@ export default function AnalyticsPage() {
     reason?: string;
   } | null>(null);
 
-  // Pull real GA4 traffic when Google Analytics is connected.
-  useEffect(() => {
+  // Pull real GA4 traffic when Google Analytics is connected (re-runnable after
+  // switching the GA4 property).
+  const loadGa = useCallback(() => {
     fetch("/api/analytics/ga")
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => setGa(d))
       .catch(() => {});
   }, []);
+
+  useEffect(() => {
+    loadGa();
+  }, [loadGa]);
 
   const load = useCallback(async (r: Range) => {
     try {
@@ -195,6 +201,8 @@ export default function AnalyticsPage() {
       />
 
       <RevenueChart data={data} />
+
+      {ga?.connected && <GaPropertySelect onChange={loadGa} />}
 
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
         {ga?.connected && ga.channels?.length ? (
