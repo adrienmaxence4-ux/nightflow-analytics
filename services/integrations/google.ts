@@ -194,7 +194,8 @@ async function runReport(
     body: JSON.stringify({
       dimensions: [{ name: dimension }],
       metrics: [{ name: "sessions" }],
-      dateRanges: [{ startDate: "30daysAgo", endDate: "today" }],
+      // Wide window so even low-traffic properties surface real data.
+      dateRanges: [{ startDate: "365daysAgo", endDate: "today" }],
       limit: 10,
     }),
     signal: AbortSignal.timeout(25_000),

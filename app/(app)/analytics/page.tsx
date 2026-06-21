@@ -19,7 +19,7 @@ const GA_REASON_MSG: Record<string, string> = {
   no_property:
     "Connecté ✓ mais aucune propriété GA4 trouvée. Vérifie que ton compte Google possède bien une propriété Google Analytics 4 (et que l'API Admin est activée).",
   no_data:
-    "Connecté ✓ — mais aucune session enregistrée sur les 30 derniers jours. Les graphiques se rempliront dès que ta propriété GA4 reçoit du trafic.",
+    "Connecté ✓ — mais aucune session enregistrée sur les 12 derniers mois pour cette propriété GA4. Les graphiques se rempliront dès qu'elle reçoit du trafic (ou choisis une autre propriété ci-dessus).",
   auth:
     "Connecté mais l'accès aux données a échoué. Reconnecte Google Analytics depuis Intégrations.",
 };
