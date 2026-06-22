@@ -11,6 +11,8 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { ShopifyConnect } from "@/features/integrations/shopify-connect";
 import { OAuthConnect } from "@/features/integrations/oauth-connect";
+import { UpgradeGate } from "@/features/billing/upgrade-gate";
+import { usePlan } from "@/hooks/use-plan";
 
 interface Integration {
   id: string;
@@ -35,6 +37,7 @@ const SECTIONS = [
 export default function SettingsPage() {
   const toast = useToast();
   const { user } = useAuth();
+  const { plan } = usePlan();
   const [tab, setTab] = useState("integrations");
   const [storeName, setStoreName] = useState("");
   const [saving, setSaving] = useState(false);
@@ -97,7 +100,15 @@ export default function SettingsPage() {
         </Card>
 
         <div className="flex flex-col gap-5">
-          {tab === "integrations" && (
+          {tab === "integrations" && !plan.integrations && (
+            <UpgradeGate
+              title="Connectez vos boutiques avec Nightflow Pro"
+              message="Le plan Gratuit reste sur la démo. Passez en Pro pour connecter Shopify, Stripe, Klaviyo & Google Analytics et importer vos vraies données."
+              plan="Pro"
+            />
+          )}
+
+          {tab === "integrations" && plan.integrations && (
             <div className="flex flex-col gap-5">
               <div>
                 <h3 className="mb-1 text-[15px] font-bold">
@@ -222,7 +233,15 @@ export default function SettingsPage() {
             </Card>
           )}
 
-          {tab === "api" && (
+          {tab === "api" && !plan.apiAccess && (
+            <UpgradeGate
+              title="Clés API & webhooks avec Nightflow Pro"
+              message="L'accès API et les webhooks sont inclus à partir du plan Pro. Passez en Pro pour intégrer Nightflow à vos propres applications."
+              plan="Pro"
+            />
+          )}
+
+          {tab === "api" && plan.apiAccess && (
             <Card className="p-5">
               <h3 className="mb-1 text-[15px] font-bold">Clés API</h3>
               <p className="mb-4 text-xs text-ink-mut">
