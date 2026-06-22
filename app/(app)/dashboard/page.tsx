@@ -91,11 +91,33 @@ export default function DashboardPage() {
   }, [range, source]);
 
   const [reporting, setReporting] = useState(false);
+  const [seeding, setSeeding] = useState(false);
 
   const refresh = () => {
     loadRange(range);
     loadProducts();
     toast("Données actualisées");
+  };
+
+  const seedSample = async () => {
+    if (seeding) return;
+    setSeeding(true);
+    toast("Génération de données de test…", "info");
+    try {
+      const res = await fetch("/api/demo/sample", { method: "POST" });
+      const d = await res.json().catch(() => ({}));
+      if (res.ok) {
+        toast(`Données de test ajoutées : ${d.orders ?? 0} commandes sur ${d.days ?? 0} jours ✓`);
+        loadRange(range);
+        loadProducts();
+      } else {
+        toast(d.error ?? "Génération impossible", "info");
+      }
+    } catch {
+      toast("Génération impossible", "info");
+    } finally {
+      setSeeding(false);
+    }
   };
 
   const downloadReport = async () => {
@@ -132,6 +154,14 @@ export default function DashboardPage() {
         >
           <RefreshCw className="h-3.5 w-3.5" />
           Actualiser
+        </button>
+        <button
+          onClick={seedSample}
+          disabled={seeding}
+          title="Remplit la boutique avec des ventes/visiteurs de test"
+          className="flex items-center gap-1.5 rounded-xl border border-glass-border bg-glass px-3.5 py-2 text-xs font-semibold text-ink-dim transition hover:border-glass-hi hover:text-white hover:shadow-glow disabled:opacity-60"
+        >
+          🧪 {seeding ? "Génération…" : "Données de test"}
         </button>
         <button
           onClick={downloadReport}

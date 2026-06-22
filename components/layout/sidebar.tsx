@@ -6,10 +6,12 @@ import { useEffect, useState } from "react";
 import { Moon } from "lucide-react";
 import { NAV_MAIN, NAV_SECONDARY, type NavItem } from "@/lib/nav";
 import { getSeenIds, markSeen } from "@/lib/notif-prefs";
+import { usePlan } from "@/hooks/use-plan";
 import { cn } from "@/lib/utils";
 
 export function Sidebar() {
   const pathname = usePathname();
+  const { plan } = usePlan();
   // Live badge counts = UNSEEN notifications; clear once the page is opened.
   const [badges, setBadges] = useState<Record<string, number>>({});
 
@@ -56,19 +58,39 @@ export function Sidebar() {
 
       <div className="flex-1" />
 
-      {/* Upsell */}
-      <div className="relative overflow-hidden rounded-2xl border border-glass-hi p-4 [background:linear-gradient(150deg,rgba(154,107,255,0.22),rgba(255,92,174,0.14))]">
-        <h4 className="text-[13px] font-bold">✦ Nightflow Pro</h4>
-        <p className="mt-1 text-[11px] leading-relaxed text-ink-dim">
-          Prédictions IA, alertes temps réel et détection d&apos;anomalies.
-        </p>
-        <Link
-          href="/billing"
-          className="mt-3 block rounded-lg bg-gradient-to-r from-neon-cyan to-neon-cyansoft py-2 text-center text-[12px] font-bold text-night-950 shadow-glow transition hover:brightness-110"
-        >
-          Passer en Pro
-        </Link>
-      </div>
+      {/* Upsell — adapts to the plan; hidden entirely on Scale (top plan). */}
+      {plan.id !== "scale" && (
+        <div className="relative overflow-hidden rounded-2xl border border-glass-hi p-4 [background:linear-gradient(150deg,rgba(154,107,255,0.22),rgba(255,92,174,0.14))]">
+          {plan.id === "pro" ? (
+            <>
+              <h4 className="text-[13px] font-bold">✦ Nightflow Scale</h4>
+              <p className="mt-1 text-[11px] leading-relaxed text-ink-dim">
+                IA illimitée, détection d&apos;anomalies, alertes temps réel &
+                multi-comptes.
+              </p>
+              <Link
+                href="/billing"
+                className="mt-3 block rounded-lg bg-gradient-to-r from-neon-cyan to-neon-cyansoft py-2 text-center text-[12px] font-bold text-night-950 shadow-glow transition hover:brightness-110"
+              >
+                Passer en Scale
+              </Link>
+            </>
+          ) : (
+            <>
+              <h4 className="text-[13px] font-bold">✦ Nightflow Pro</h4>
+              <p className="mt-1 text-[11px] leading-relaxed text-ink-dim">
+                Connectez vos vraies données, toutes les intégrations & l&apos;IA.
+              </p>
+              <Link
+                href="/billing"
+                className="mt-3 block rounded-lg bg-gradient-to-r from-neon-cyan to-neon-cyansoft py-2 text-center text-[12px] font-bold text-night-950 shadow-glow transition hover:brightness-110"
+              >
+                Passer en Pro
+              </Link>
+            </>
+          )}
+        </div>
+      )}
     </aside>
   );
 }
