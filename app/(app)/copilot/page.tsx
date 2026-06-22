@@ -7,7 +7,6 @@ import { PageTransition } from "@/components/layout/page-transition";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Sheet } from "@/components/ui/sheet";
-import { Skeleton } from "@/components/ui/skeleton";
 import { InsightCard } from "@/features/copilot/insight-card";
 import { AnalysisCard } from "@/features/copilot/analysis-card";
 import { CopilotChat } from "@/features/copilot/copilot-chat";
@@ -21,6 +20,10 @@ import {
 } from "@/services/copilot.service";
 import { generateStoreReport } from "@/services/report.service";
 import type { AnalysisCard as AnalysisCardType, Insight } from "@/types";
+
+// Module-level cache: keeps the last analysis so navigating back to the Copilot
+// (or away and back) shows it INSTANTLY while it silently revalidates.
+let insightsCache: Insight[] | null = null;
 
 function group(insights: Insight[]) {
   return {
@@ -67,10 +70,13 @@ function insightsToCards(insights: Insight[]): AnalysisCardType[] {
 export default function CopilotPage() {
   const toast = useToast();
   const { user } = useAuth();
-  // Start empty + loading so we never flash mock examples while the AI runs.
-  const [analyses, setAnalyses] = useState<AnalysisCardType[]>([]);
-  const [groups, setGroups] = useState(() => group([]));
-  const [loadingInsights, setLoadingInsights] = useState(true);
+  // Hydrate instantly from the cache when available; otherwise show "analyse en
+  // cours" while the first analysis loads (page shell stays instant either way).
+  const [analyses, setAnalyses] = useState<AnalysisCardType[]>(() =>
+    insightsCache ? insightsToCards(insightsCache) : []
+  );
+  const [groups, setGroups] = useState(() => group(insightsCache ?? []));
+  const [loadingInsights, setLoadingInsights] = useState(!insightsCache);
   const [openAnalysis, setOpenAnalysis] = useState<AnalysisCardType | null>(null);
   const [reporting, setReporting] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -87,9 +93,10 @@ export default function CopilotPage() {
         if (!alive) return;
         const items = data?.insights ?? [];
         if (items.length > 0) {
+          insightsCache = items;
           setGroups(group(items));
           setAnalyses(insightsToCards(items));
-        } else {
+        } else if (!insightsCache) {
           setGroups(getGroupedInsights());
           setAnalyses(getAnalysisCards());
         }
@@ -130,6 +137,7 @@ export default function CopilotPage() {
       const data = (await res.json()) as { insights?: Insight[] };
       const items = data.insights ?? [];
       if (items.length) {
+        insightsCache = items;
         setGroups(group(items));
         setAnalyses(insightsToCards(items));
       }
@@ -199,44 +207,50 @@ export default function CopilotPage() {
                 ? "✦ ANALYSE IA EN COURS…"
                 : "ANALYSES — CLIQUEZ POUR EXPLORER"}
             </div>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              {loadingInsights
-                ? Array.from({ length: 4 }).map((_, i) => (
-                    <Skeleton key={i} className="h-[210px]" />
-                  ))
-                : analyses.map((c, i) => (
-                    <AnalysisCard key={c.id} card={c} index={i} onOpen={setOpenAnalysis} />
-                  ))}
-            </div>
+            {loadingInsights ? (
+              <AnalyzingPanel />
+            ) : (
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                {analyses.map((c, i) => (
+                  <AnalysisCard key={c.id} card={c} index={i} onOpen={setOpenAnalysis} />
+                ))}
+              </div>
+            )}
           </div>
 
-          {/* ── Grouped insights ── */}
-          <Section
-            title="Risques détectés"
-            icon={<ShieldAlert className="h-4 w-4 text-neon-pinksoft" />}
-          >
-            {groups.risks.map((ins, i) => (
-              <InsightCard key={ins.id} insight={ins} index={i} />
-            ))}
-          </Section>
+          {/* ── Grouped insights (only the categories that have content) ── */}
+          {groups.risks.length > 0 && (
+            <Section
+              title="Risques détectés"
+              icon={<ShieldAlert className="h-4 w-4 text-neon-pinksoft" />}
+            >
+              {groups.risks.map((ins, i) => (
+                <InsightCard key={ins.id} insight={ins} index={i} />
+              ))}
+            </Section>
+          )}
 
-          <Section
-            title="Alertes importantes"
-            icon={<AlertTriangle className="h-4 w-4 text-neon-amber" />}
-          >
-            {groups.alerts.map((ins, i) => (
-              <InsightCard key={ins.id} insight={ins} index={i} />
-            ))}
-          </Section>
+          {groups.alerts.length > 0 && (
+            <Section
+              title="Alertes importantes"
+              icon={<AlertTriangle className="h-4 w-4 text-neon-amber" />}
+            >
+              {groups.alerts.map((ins, i) => (
+                <InsightCard key={ins.id} insight={ins} index={i} />
+              ))}
+            </Section>
+          )}
 
-          <Section
-            title="Opportunités"
-            icon={<Target className="h-4 w-4 text-neon-lime" />}
-          >
-            {groups.opportunities.map((ins, i) => (
-              <InsightCard key={ins.id} insight={ins} index={i} />
-            ))}
-          </Section>
+          {groups.opportunities.length > 0 && (
+            <Section
+              title="Opportunités"
+              icon={<Target className="h-4 w-4 text-neon-lime" />}
+            >
+              {groups.opportunities.map((ins, i) => (
+                <InsightCard key={ins.id} insight={ins} index={i} />
+              ))}
+            </Section>
+          )}
         </div>
 
         {/* ── Chat ── */}
@@ -317,6 +331,26 @@ export default function CopilotPage() {
         )}
       </Sheet>
     </PageTransition>
+  );
+}
+
+function AnalyzingPanel() {
+  return (
+    <div className="flex items-center gap-4 rounded-2xl border border-glass-border bg-glass-2 p-6">
+      <span className="relative grid h-11 w-11 flex-none animate-spinslow place-items-center rounded-full shadow-glow [background:conic-gradient(from_0deg,#3df2ff,#ff5cae,#9a6bff,#3df2ff)]">
+        <span className="absolute inset-[4px] rounded-full bg-night-900" />
+        <span className="relative z-10 text-[13px] text-white">✦</span>
+      </span>
+      <div>
+        <div className="text-[14px] font-bold">
+          Les données sont en cours d&apos;analyse…
+        </div>
+        <p className="mt-0.5 text-[12px] text-ink-dim">
+          L&apos;IA examine ta boutique — les conseils s&apos;afficheront ici dans
+          un instant. La page reste entièrement utilisable.
+        </p>
+      </div>
+    </div>
   );
 }
 

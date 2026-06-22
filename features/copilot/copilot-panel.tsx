@@ -8,14 +8,18 @@ import { CopilotAnswer, useCopilotAsk } from "@/features/copilot/copilot-answer"
 import { getInsights, getRecommendations } from "@/services/copilot.service";
 import type { Insight, Recommendation } from "@/types";
 
+// Module-level cache so re-opening the dashboard shows the panel instantly
+// (no skeleton flash) while it revalidates in the background.
+let panelCache: { insights: Insight[]; recos: Recommendation[] } | null = null;
+
 /** Compact Copilot side panel: quick insights + actionable recos + chat. */
 export function CopilotPanel() {
   const copilot = useCopilotAsk();
   const [q, setQ] = useState("");
-  // Start empty + loading so we never flash mock examples while the AI runs.
-  const [insights, setInsights] = useState<Insight[]>([]);
-  const [recos, setRecos] = useState<Recommendation[]>([]);
-  const [loading, setLoading] = useState(true);
+  // Hydrate from cache when available; otherwise show "analyse en cours".
+  const [insights, setInsights] = useState<Insight[]>(panelCache?.insights ?? []);
+  const [recos, setRecos] = useState<Recommendation[]>(panelCache?.recos ?? []);
+  const [loading, setLoading] = useState(!panelCache);
 
   // Real AI insights/recommendations; fall back to mock only if AI unavailable.
   useEffect(() => {
@@ -26,14 +30,24 @@ export function CopilotPanel() {
         if (!alive) return;
         const ins = data?.insights ?? [];
         const rec = data?.recommendations ?? [];
-        setInsights(ins.length ? ins.slice(0, 3) : getInsights().slice(0, 3));
-        setRecos(rec.length ? rec : getRecommendations());
+        if (ins.length || rec.length) {
+          const finalIns = ins.length ? ins.slice(0, 3) : panelCache?.insights ?? [];
+          const finalRec = rec.length ? rec : panelCache?.recos ?? [];
+          panelCache = { insights: finalIns, recos: finalRec };
+          setInsights(finalIns);
+          setRecos(finalRec);
+        } else if (!panelCache) {
+          setInsights(getInsights().slice(0, 3));
+          setRecos(getRecommendations());
+        }
         setLoading(false);
       })
       .catch(() => {
         if (!alive) return;
-        setInsights(getInsights().slice(0, 3));
-        setRecos(getRecommendations());
+        if (!panelCache) {
+          setInsights(getInsights().slice(0, 3));
+          setRecos(getRecommendations());
+        }
         setLoading(false);
       });
     return () => {
@@ -67,13 +81,12 @@ export function CopilotPanel() {
         <div className="px-1 text-[10px] font-bold tracking-[1.6px] text-ink-mut">
           {loading ? "✦ ANALYSE IA EN COURS…" : "INSIGHTS PRIORITAIRES"}
         </div>
-        {loading &&
-          Array.from({ length: 3 }).map((_, i) => (
-            <div
-              key={`sk-${i}`}
-              className="h-[68px] animate-pulse rounded-2xl border border-glass-border bg-glass-2"
-            />
-          ))}
+        {loading && (
+          <div className="flex items-center gap-2.5 rounded-2xl border border-glass-border bg-glass-2 p-3.5 text-[12px] text-ink-dim">
+            <span className="h-2 w-2 flex-none animate-pulsedot rounded-full bg-neon-cyan shadow-glow" />
+            Les données sont en cours d&apos;analyse…
+          </div>
+        )}
         {insights.map((ins, i) => (
           <motion.div
             key={ins.id}

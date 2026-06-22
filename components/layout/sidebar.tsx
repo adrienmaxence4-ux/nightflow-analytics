@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Moon } from "lucide-react";
 import { NAV_MAIN, NAV_SECONDARY, type NavItem } from "@/lib/nav";
 import { getSeenIds, markSeen } from "@/lib/notif-prefs";
@@ -15,8 +15,8 @@ export function Sidebar() {
   // Live badge counts = UNSEEN notifications; clear once the page is opened.
   const [badges, setBadges] = useState<Record<string, number>>({});
 
-  useEffect(() => {
-    fetch("/api/notifications")
+  const loadBadges = useCallback(() => {
+    fetch("/api/notifications", { cache: "no-store" })
       .then((r) => (r.ok ? r.json() : null))
       .then((j: { items?: { id: string; severity: string }[] } | null) => {
         if (!j?.items) return;
@@ -35,6 +35,20 @@ export function Sidebar() {
       })
       .catch(() => {});
   }, [pathname]);
+
+  // Refresh on navigation, on a short interval, on tab focus, and immediately
+  // when the app signals a data change ("nightflow:notifs").
+  useEffect(() => {
+    loadBadges();
+    const id = setInterval(loadBadges, 15_000);
+    window.addEventListener("focus", loadBadges);
+    window.addEventListener("nightflow:notifs", loadBadges);
+    return () => {
+      clearInterval(id);
+      window.removeEventListener("focus", loadBadges);
+      window.removeEventListener("nightflow:notifs", loadBadges);
+    };
+  }, [loadBadges]);
 
   return (
     <aside className="sticky top-0 hidden h-screen w-[248px] flex-col gap-1.5 border-r border-glass-border bg-gradient-to-b from-night-900/70 to-night-950/55 p-4 backdrop-blur-xl lg:flex">

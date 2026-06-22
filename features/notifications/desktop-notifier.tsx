@@ -8,9 +8,11 @@ import {
 } from "@/lib/notif-prefs";
 
 /**
- * Polls /api/notifications and fires a real OS (desktop) notification for any
- * NEW alert — only when the user has enabled desktop notifications and granted
- * browser permission. Mounted once in the app layout; runs silently otherwise.
+ * Fires a real OS (desktop) notification for any NEW alert — only when the user
+ * has enabled desktop notifications and granted browser permission. Mounted once
+ * in the app layout. Checks immediately, every 15s, on tab focus / visibility,
+ * and on the in-app "nightflow:notifs" event (dispatched after data changes) so
+ * notifications arrive near-instantly instead of up to a poll-interval later.
  */
 export function DesktopNotifier() {
   useEffect(() => {
@@ -18,11 +20,14 @@ export function DesktopNotifier() {
 
     const check = async () => {
       if (!isDesktopEnabled()) return;
-      if (typeof Notification === "undefined" || Notification.permission !== "granted") {
+      if (
+        typeof Notification === "undefined" ||
+        Notification.permission !== "granted"
+      ) {
         return;
       }
       try {
-        const res = await fetch("/api/notifications");
+        const res = await fetch("/api/notifications", { cache: "no-store" });
         if (!res.ok) return;
         const j = (await res.json()) as {
           items?: { id: string; title: string; body: string; icon?: string }[];
@@ -44,10 +49,20 @@ export function DesktopNotifier() {
     };
 
     check();
-    const id = setInterval(check, 90_000);
+    const id = setInterval(check, 15_000);
+    const onVisible = () => {
+      if (document.visibilityState === "visible") check();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener("focus", check);
+    window.addEventListener("nightflow:notifs", check);
+
     return () => {
       alive = false;
       clearInterval(id);
+      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("focus", check);
+      window.removeEventListener("nightflow:notifs", check);
     };
   }, []);
 

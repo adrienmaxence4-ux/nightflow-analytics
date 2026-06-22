@@ -41,6 +41,8 @@ export function TestPanel({ onApplied }: { onApplied?: () => void }) {
       const d = await res.json().catch(() => ({}));
       if (res.ok) {
         toast(d.message ?? "Scénario appliqué ✓");
+        // Refresh the badge + desktop notifier immediately (don't wait for poll).
+        window.dispatchEvent(new Event("nightflow:notifs"));
         onApplied?.();
       } else {
         toast(d.error ?? "Application impossible", "info");
