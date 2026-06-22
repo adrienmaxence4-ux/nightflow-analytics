@@ -174,7 +174,9 @@ export async function POST(req: Request) {
   await db.from("metrics_daily").upsert(rows, { onConflict: "store_id,date" });
 
   // ── 2) Product snapshots + scenario perturbation ──
-  const weights = products.map(() => rand(0.5, 1.5));
+  // Tight weights keep any single product under ~45% of revenue, so the
+  // concentration-risk rule doesn't accidentally fire on the "healthy" scenario.
+  const weights = products.map(() => rand(0.85, 1.15));
   const wSum = weights.reduce((t, w) => t + w, 0);
   let topIdx = 0;
   for (let i = 1; i < weights.length; i++) if (weights[i] > weights[topIdx]) topIdx = i;
