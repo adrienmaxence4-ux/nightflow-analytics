@@ -98,6 +98,30 @@ export default function BillingPage() {
     }
   };
 
+  // In-place upgrade/downgrade of an existing subscription (proration, no cancel).
+  const changePlan = async (planId: string) => {
+    if (busy) return;
+    setBusy(planId);
+    try {
+      const res = await fetch("/api/billing/change", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ plan: planId, interval }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) {
+        toast(`Abonnement mis à jour → ${getPlan(data.plan ?? planId).name} ✓`);
+        await loadSub();
+      } else {
+        toast(data.error ?? "Changement impossible", "info");
+      }
+    } catch {
+      toast("Changement impossible", "info");
+    } finally {
+      setBusy(null);
+    }
+  };
+
   const currentPlan = getPlan(current);
 
   return (
@@ -137,7 +161,8 @@ export default function BillingPage() {
             interval === "year" && plan.yearlyCents > 0
               ? `soit ${formatEuro(Math.round(plan.yearlyCents / 12))}/mois`
               : null;
-          // CTA logic: new subscribers → checkout; existing → portal; free downgrade → portal.
+          // CTA logic: new subscribers → checkout; existing paid → in-place
+          // upgrade/downgrade (proration, no cancel); downgrade to free → portal.
           let label = `Passer en ${plan.name}`;
           let action: () => void = () => subscribe(plan.id);
           if (isCurrent) {
@@ -145,14 +170,15 @@ export default function BillingPage() {
             action = () =>
               hasCustomer ? openPortal() : toast("Vous êtes sur ce plan");
           } else if (plan.id === "free") {
-            label = hasCustomer ? "Rétrograder" : "Plan gratuit";
+            label = hasCustomer ? "Résilier (repasser gratuit)" : "Plan gratuit";
             action = () =>
               hasCustomer
                 ? openPortal()
                 : toast("Vous êtes déjà sur le plan gratuit");
-          } else if (current !== "free" && PLAN_RANK[plan.id] !== PLAN_RANK[current]) {
-            label = `Changer pour ${plan.name}`;
-            action = openPortal;
+          } else if (current !== "free") {
+            const isUpgrade = PLAN_RANK[plan.id] > PLAN_RANK[current];
+            label = isUpgrade ? `Passer en ${plan.name}` : `Revenir en ${plan.name}`;
+            action = () => changePlan(plan.id);
           }
 
           return (
