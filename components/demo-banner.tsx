@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Database, Sparkles } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useIsAdmin } from "@/hooks/use-admin";
 
 /**
  * Shown when a page is displaying mock data. Lets a logged-in user seed their
@@ -16,9 +17,12 @@ export function DemoBanner({
   onSeeded?: () => void;
 }) {
   const toast = useToast();
+  const isAdmin = useIsAdmin();
   const [busy, setBusy] = useState(false);
 
-  if (source !== "mock") return null;
+  // Only shown to the project owner: loading MoonStore into a real DB is a
+  // test convenience, not something a real customer should ever trigger.
+  if (source !== "mock" || !isAdmin) return null;
 
   const seed = async () => {
     setBusy(true);

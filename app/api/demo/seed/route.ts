@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
+import { isAdminEmail } from "@/lib/admin";
 import { CAMPAIGNS, NOTIFICATIONS, PRODUCTS, STORE } from "@/services/mock/data";
 import { parseMetric } from "@/utils/format";
 
@@ -20,6 +21,12 @@ export async function POST() {
   } = await supabase.auth.getUser();
   if (!user) {
     return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+  }
+  if (!isAdminEmail(user.email)) {
+    return NextResponse.json(
+      { error: "Réservé à l'administrateur" },
+      { status: 403 }
+    );
   }
 
   const db = supabase as unknown as SupabaseClient;

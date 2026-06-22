@@ -15,6 +15,7 @@ import { ProductDrawer } from "@/features/products/product-drawer";
 import { CopilotPanel } from "@/features/copilot/copilot-panel";
 import { useToast } from "@/hooks/use-toast";
 import { useRange } from "@/hooks/use-range";
+import { useIsAdmin } from "@/hooks/use-admin";
 import { getRangeDataSync } from "@/services/analytics.service";
 import { getProducts } from "@/services/products.service";
 import { generateStoreReport } from "@/services/report.service";
@@ -24,6 +25,7 @@ import type { Kpi, Product, Range } from "@/types";
 export default function DashboardPage() {
   const toast = useToast();
   const { range, setRange } = useRange("day");
+  const isAdmin = useIsAdmin();
   const [data, setData] = useState(getRangeDataSync("day"));
   const [source, setSource] = useState<"db" | "mock" | null>(null);
   const [products, setProducts] = useState<Product[]>(getProducts());
@@ -155,14 +157,16 @@ export default function DashboardPage() {
           <RefreshCw className="h-3.5 w-3.5" />
           Actualiser
         </button>
-        <button
-          onClick={seedSample}
-          disabled={seeding}
-          title="Remplit la boutique avec des ventes/visiteurs de test"
-          className="flex items-center gap-1.5 rounded-xl border border-glass-border bg-glass px-3.5 py-2 text-xs font-semibold text-ink-dim transition hover:border-glass-hi hover:text-white hover:shadow-glow disabled:opacity-60"
-        >
-          🧪 {seeding ? "Génération…" : "Données de test"}
-        </button>
+        {isAdmin && (
+          <button
+            onClick={seedSample}
+            disabled={seeding}
+            title="Admin — remplit la boutique avec des ventes/visiteurs de test"
+            className="flex items-center gap-1.5 rounded-xl border border-glass-border bg-glass px-3.5 py-2 text-xs font-semibold text-ink-dim transition hover:border-glass-hi hover:text-white hover:shadow-glow disabled:opacity-60"
+          >
+            🧪 {seeding ? "Génération…" : "Données de test"}
+          </button>
+        )}
         <button
           onClick={downloadReport}
           disabled={reporting}

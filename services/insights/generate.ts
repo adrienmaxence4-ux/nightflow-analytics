@@ -2,7 +2,26 @@ import type { Insight, Priority } from "@/types";
 import { callClaudeJSON } from "@/services/ai/anthropic";
 import { anomaliesSystem, insightsSystem } from "@/services/ai/prompts";
 import { buildStoreContext } from "@/services/ai/store-context";
+import {
+  alertToInsight,
+  detectAlerts,
+  loadStoreSignals,
+  onboardingAlerts,
+} from "@/services/alerts/detect";
 import { INSIGHTS } from "@/services/mock/data";
+
+/**
+ * Rule-based fallback for a REAL store (never the MoonStore demo): derives
+ * insights from the deterministic detection engine, with onboarding guidance
+ * when there's no signal yet. Returns null when there's no real store.
+ */
+async function ruleBasedInsights(): Promise<Insight[] | null> {
+  const signals = await loadStoreSignals();
+  if (!signals) return null;
+  const alerts = detectAlerts(signals);
+  const base = alerts.length ? alerts : onboardingAlerts(signals);
+  return base.map(alertToInsight);
+}
 
 /**
  * SERVER-ONLY. AI-generated business insights from the real store data,
@@ -67,6 +86,10 @@ export async function generateInsights(): Promise<{
   if (Array.isArray(ai) && ai.length > 0) {
     return { source: "ai", items: normalize(ai, "ai-insight") };
   }
+  // Real store → deterministic rule-based insights (real numbers, no demo).
+  const rules = await ruleBasedInsights();
+  if (rules) return { source: "mock", items: rules };
+  // No real store (demo mode) → MoonStore sample.
   return { source: "mock", items: INSIGHTS };
 }
 
@@ -82,6 +105,14 @@ export async function detectAnomalies(): Promise<{
   );
   if (Array.isArray(ai) && ai.length > 0) {
     return { source: "ai", items: normalize(ai, "ai-anomaly") };
+  }
+  // Real store → only the actionable (critical/warning) rule-based detections.
+  const signals = await loadStoreSignals();
+  if (signals) {
+    const items = detectAlerts(signals)
+      .filter((a) => a.severity === "critical" || a.severity === "warning")
+      .map(alertToInsight);
+    return { source: "mock", items };
   }
   return {
     source: "mock",

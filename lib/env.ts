@@ -49,6 +49,15 @@ export const env = {
   // Google OAuth ("Se connecter avec Google" → Google Analytics GA4).
   googleClientId: process.env.GOOGLE_CLIENT_ID ?? "",
   googleClientSecret: process.env.GOOGLE_CLIENT_SECRET ?? "",
+
+  // Admin allowlist — emails that may use the demo/test data tools. These tools
+  // write or delete data, so they're hidden from real customers. Comma-separated.
+  // Defaults to the project owner so the owner can test out of the box; override
+  // with ADMIN_EMAILS in Vercel / .env to add teammates or lock it down.
+  adminEmails: (process.env.ADMIN_EMAILS ?? "adrienmaxence4@gmail.com")
+    .split(",")
+    .map((s) => s.trim().toLowerCase())
+    .filter(Boolean),
 };
 
 /** True when real Supabase credentials are configured. */

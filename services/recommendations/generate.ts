@@ -2,6 +2,12 @@ import type { Priority, Recommendation } from "@/types";
 import { callClaudeJSON } from "@/services/ai/anthropic";
 import { recommendationsSystem } from "@/services/ai/prompts";
 import { buildStoreContext } from "@/services/ai/store-context";
+import {
+  alertToRecommendation,
+  detectAlerts,
+  loadStoreSignals,
+  onboardingAlerts,
+} from "@/services/alerts/detect";
 import { RECOMMENDATIONS } from "@/services/mock/data";
 
 /**
@@ -56,6 +62,16 @@ export async function generateRecommendations(): Promise<{
   );
   if (Array.isArray(ai) && ai.length > 0) {
     return { source: "ai", items: normalize(ai) };
+  }
+  // Real store → rule-based recommendations from the detection engine.
+  const signals = await loadStoreSignals();
+  if (signals) {
+    const alerts = detectAlerts(signals);
+    const base = alerts.length ? alerts : onboardingAlerts(signals);
+    const items = base
+      .filter((a) => a.severity !== "positive")
+      .map(alertToRecommendation);
+    return { source: "mock", items };
   }
   return { source: "mock", items: RECOMMENDATIONS };
 }
