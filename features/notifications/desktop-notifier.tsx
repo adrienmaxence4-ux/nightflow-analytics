@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import {
+  getDismissedIds,
   getNotifiedIds,
   isDesktopEnabled,
   markNotified,
@@ -39,7 +40,10 @@ export function DesktopNotifier() {
         };
         const items = j.items ?? [];
         const notified = getNotifiedIds();
-        const fresh = items.filter((i) => !notified.has(i.id));
+        const dismissed = getDismissedIds();
+        const fresh = items.filter(
+          (i) => !notified.has(i.id) && !dismissed.has(i.id)
+        );
         if (!alive) return;
 
         // Baseline pass: silently remember what's already there.

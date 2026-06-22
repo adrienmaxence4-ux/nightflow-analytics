@@ -5,14 +5,14 @@ import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { Moon } from "lucide-react";
 import { NAV_MAIN, NAV_SECONDARY, type NavItem } from "@/lib/nav";
-import { getSeenIds, markSeen } from "@/lib/notif-prefs";
+import { getDismissedIds, getSeenIds, markSeen } from "@/lib/notif-prefs";
 import { usePlan } from "@/hooks/use-plan";
 import { cn } from "@/lib/utils";
 
 export function Sidebar() {
   const pathname = usePathname();
   const { plan } = usePlan();
-  // Live badge counts = UNSEEN notifications; clear once the page is opened.
+  // Live badge counts = notifications that are neither seen nor dismissed.
   const [badges, setBadges] = useState<Record<string, number>>({});
 
   const loadBadges = useCallback(() => {
@@ -20,12 +20,14 @@ export function Sidebar() {
       .then((r) => (r.ok ? r.json() : null))
       .then((j: { items?: { id: string; severity: string }[] } | null) => {
         if (!j?.items) return;
-        const items = j.items;
+        const dismissed = getDismissedIds();
+        const items = j.items.filter((i) => !dismissed.has(i.id));
         const actionable = items.filter(
           (i) => i.severity === "warning" || i.severity === "critical"
         );
-        // Opening a page marks its notifications as seen → badge disappears.
-        if (pathname === "/notifications") markSeen(items.map((i) => i.id));
+        // Opening the Copilot marks its actionable insights as seen. The
+        // Notifications page manages its own read state per item, so we don't
+        // auto-clear it here — the badge reflects genuinely unread alerts.
         if (pathname === "/copilot") markSeen(actionable.map((i) => i.id));
         const seen = getSeenIds();
         setBadges({

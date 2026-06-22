@@ -7,6 +7,7 @@
 
 const SEEN_KEY = "nf_seen_notif_ids";
 const NOTIFIED_KEY = "nf_desktop_notified_ids";
+const DISMISSED_KEY = "nf_dismissed_notif_ids";
 const ENABLED_KEY = "nf_desktop_enabled";
 
 function read(key: string): Set<string> {
@@ -44,6 +45,22 @@ export function markNotified(ids: string[]): void {
   const s = read(NOTIFIED_KEY);
   for (const id of ids) s.add(id);
   write(NOTIFIED_KEY, s);
+}
+
+export function getDismissedIds(): Set<string> {
+  return read(DISMISSED_KEY);
+}
+
+/** Permanently hides these notifications (by id) — they won't reappear. */
+export function dismiss(ids: string[]): void {
+  const s = read(DISMISSED_KEY);
+  for (const id of ids) s.add(id);
+  write(DISMISSED_KEY, s);
+}
+
+/** Restores all dismissed notifications (used by "tout réafficher"). */
+export function clearDismissed(): void {
+  write(DISMISSED_KEY, new Set());
 }
 
 export function isDesktopEnabled(): boolean {

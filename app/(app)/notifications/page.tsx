@@ -1,11 +1,16 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Bell, Database, Sparkles } from "lucide-react";
+import { Bell, Database, RotateCcw, Sparkles, Trash2 } from "lucide-react";
 import {
+  dismiss,
+  clearDismissed,
+  getDismissedIds,
+  getSeenIds,
   isDesktopEnabled,
   markNotified,
+  markSeen,
   setDesktopEnabled,
 } from "@/lib/notif-prefs";
 import { PageTransition } from "@/components/layout/page-transition";
@@ -41,6 +46,7 @@ export default function NotificationsPage() {
   const [seeding, setSeeding] = useState(false);
   const [filter, setFilter] = useState("Toutes");
   const [desktopOn, setDesktopOn] = useState(false);
+  const [hiddenCount, setHiddenCount] = useState(0);
 
   useEffect(() => setDesktopOn(isDesktopEnabled()), []);
 
@@ -64,16 +70,29 @@ export default function NotificationsPage() {
     toast("Notifications bureau activées ✓");
   };
 
-  const load = async () => {
+  // Applies persisted state: hides dismissed notifications and marks the ones
+  // already seen as read — so on arrival you can tell new from already-viewed.
+  const overlay = useCallback((raw: Notification[]) => {
+    const dismissed = getDismissedIds();
+    const seen = getSeenIds();
+    setHiddenCount(raw.filter((n) => dismissed.has(n.id)).length);
+    setItems(
+      raw
+        .filter((n) => !dismissed.has(n.id))
+        .map((n) => ({ ...n, read: n.read || seen.has(n.id) }))
+    );
+  }, []);
+
+  const load = useCallback(async () => {
     setLoading(true);
     // Primary: live alerts computed from real data (integrations, stock, sales).
     try {
-      const res = await fetch("/api/notifications");
+      const res = await fetch("/api/notifications", { cache: "no-store" });
       if (res.ok) {
         const j = (await res.json()) as { items?: Notification[] };
         if (j.items && j.items.length > 0) {
           setSource("live");
-          setItems(j.items);
+          overlay(j.items);
           setLoading(false);
           return;
         }
@@ -83,13 +102,13 @@ export default function NotificationsPage() {
     }
     const { source, items } = await fetchNotifications();
     setSource(source);
-    setItems(items);
+    overlay(items);
     setLoading(false);
-  };
+  }, [overlay]);
 
   useEffect(() => {
     load();
-  }, []);
+  }, [load]);
 
   const visible = items.filter((n) => {
     if (filter === "Non lues") return !n.read;
@@ -99,14 +118,34 @@ export default function NotificationsPage() {
   const unread = items.filter((n) => !n.read).length;
 
   const handleMarkAllRead = async () => {
+    markSeen(items.map((n) => n.id)); // persist read state for live alerts
     setItems((arr) => arr.map((n) => ({ ...n, read: true })));
     if (source === "db") await markAllRead();
+    window.dispatchEvent(new Event("nightflow:notifs"));
     toast("Toutes les notifications marquées comme lues");
   };
 
   const handleMarkOne = async (id: string) => {
+    markSeen([id]); // persist so it stays read on the next visit
     setItems((arr) => arr.map((n) => (n.id === id ? { ...n, read: true } : n)));
     if (source === "db") await markNotificationRead(id);
+    window.dispatchEvent(new Event("nightflow:notifs"));
+  };
+
+  // Permanently hide a notification — it won't reappear (persisted locally).
+  const handleDismiss = (id: string) => {
+    dismiss([id]);
+    setItems((arr) => arr.filter((n) => n.id !== id));
+    setHiddenCount((c) => c + 1);
+    window.dispatchEvent(new Event("nightflow:notifs"));
+    toast("Notification supprimée");
+  };
+
+  const handleRestore = () => {
+    clearDismissed();
+    setHiddenCount(0);
+    load();
+    toast("Notifications réaffichées");
   };
 
   const handleSeed = async () => {
@@ -146,6 +185,15 @@ export default function NotificationsPage() {
                 className="rounded-xl border border-glass-border bg-glass px-3.5 py-2 text-xs font-semibold text-ink-dim transition hover:border-glass-hi hover:text-white"
               >
                 Tout marquer comme lu
+              </button>
+            )}
+            {hiddenCount > 0 && (
+              <button
+                onClick={handleRestore}
+                className="flex items-center gap-1.5 rounded-xl border border-glass-border bg-glass px-3.5 py-2 text-xs font-semibold text-ink-dim transition hover:border-glass-hi hover:text-white"
+              >
+                <RotateCcw className="h-3.5 w-3.5" />
+                Réafficher ({hiddenCount})
               </button>
             )}
           </div>
@@ -219,6 +267,23 @@ export default function NotificationsPage() {
         </Card>
       )}
 
+      {/* Tout supprimé */}
+      {!loading && items.length === 0 && hiddenCount > 0 && (
+        <Card className="flex flex-col items-center gap-3 p-10 text-center">
+          <span className="text-2xl">🧹</span>
+          <p className="text-sm text-ink-dim">
+            Toutes les notifications ont été supprimées.
+          </p>
+          <button
+            onClick={handleRestore}
+            className="flex items-center gap-1.5 rounded-xl border border-glass-border bg-glass px-4 py-2 text-xs font-semibold text-ink-dim transition hover:border-glass-hi hover:text-white"
+          >
+            <RotateCcw className="h-3.5 w-3.5" />
+            Réafficher ({hiddenCount})
+          </button>
+        </Card>
+      )}
+
       {/* Liste */}
       {!loading && (
         <div className="flex flex-col gap-3">
@@ -230,20 +295,44 @@ export default function NotificationsPage() {
               transition={{ delay: i * 0.04 }}
             >
               <Card
-                className={`cursor-pointer p-4 transition ${n.read ? "opacity-65" : ""}`}
+                className={`cursor-pointer p-4 transition ${
+                  n.read
+                    ? "opacity-60"
+                    : "border-glass-hi shadow-[0_8px_24px_-16px_rgba(61,242,255,0.5)]"
+                }`}
                 onClick={() => !n.read && handleMarkOne(n.id)}
               >
                 <div className="flex gap-4">
                   <span className="grid h-11 w-11 flex-none place-items-center rounded-xl border border-glass-border bg-glass text-xl">
                     {n.icon}
                   </span>
-                  <div className="flex-1">
+                  <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
                       <Badge variant={n.severity}>{SEV_LABEL[n.severity]}</Badge>
-                      <span className="text-[11px] text-ink-mut">{n.time}</span>
-                      {!n.read && (
-                        <span className="ml-auto h-2 w-2 rounded-full bg-neon-cyan shadow-glow" />
+                      {!n.read ? (
+                        <span className="rounded-full bg-neon-cyan/15 px-1.5 py-0.5 text-[9px] font-extrabold uppercase tracking-wide text-neon-cyan">
+                          Nouveau
+                        </span>
+                      ) : (
+                        <span className="text-[10px] font-semibold text-ink-mut">Vu</span>
                       )}
+                      <span className="text-[11px] text-ink-mut">{n.time}</span>
+                      <div className="ml-auto flex items-center gap-2">
+                        {!n.read && (
+                          <span className="h-2 w-2 rounded-full bg-neon-cyan shadow-glow" />
+                        )}
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDismiss(n.id);
+                          }}
+                          title="Supprimer cette notification"
+                          aria-label="Supprimer"
+                          className="grid h-7 w-7 place-items-center rounded-lg border border-glass-border text-ink-mut transition hover:border-neon-pink/50 hover:text-neon-pinksoft"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
                     </div>
                     <h4 className="mt-1.5 text-[14px] font-bold">{n.title}</h4>
                     <p className="mt-1 text-[12px] text-ink-dim">{n.body}</p>
