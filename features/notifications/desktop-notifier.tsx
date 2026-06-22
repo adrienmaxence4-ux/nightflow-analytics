@@ -17,6 +17,11 @@ import {
 export function DesktopNotifier() {
   useEffect(() => {
     let alive = true;
+    // The first check after (re)opening the app only establishes a baseline:
+    // everything that already exists is recorded as "known" WITHOUT firing, so
+    // opening the site never produces a burst. Only alerts that appear AFTERWARD
+    // pop a desktop notification.
+    let baselined = false;
 
     const check = async () => {
       if (!isDesktopEnabled()) return;
@@ -35,14 +40,25 @@ export function DesktopNotifier() {
         const items = j.items ?? [];
         const notified = getNotifiedIds();
         const fresh = items.filter((i) => !notified.has(i.id));
-        if (!alive || fresh.length === 0) return;
-        for (const n of fresh) {
+        if (!alive) return;
+
+        // Baseline pass: silently remember what's already there.
+        if (!baselined) {
+          baselined = true;
+          if (fresh.length) markNotified(fresh.map((i) => i.id));
+          return;
+        }
+
+        if (fresh.length === 0) return;
+        // Safety cap: never pop more than a handful at once, even if several
+        // genuinely-new alerts arrive together.
+        for (const n of fresh.slice(0, 4)) {
           new Notification(`Nightflow · ${n.title}`, {
             body: n.body,
             tag: n.id, // collapse duplicates at the OS level
           });
         }
-        markNotified(fresh.map((i) => i.id));
+        markNotified(fresh.map((i) => i.id)); // mark all as known (even beyond cap)
       } catch {
         /* ignore */
       }
