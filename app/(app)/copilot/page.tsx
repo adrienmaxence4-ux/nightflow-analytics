@@ -12,6 +12,7 @@ import { InsightCard } from "@/features/copilot/insight-card";
 import { AnalysisCard } from "@/features/copilot/analysis-card";
 import { CopilotChat } from "@/features/copilot/copilot-chat";
 import { CopilotAnswer, useCopilotAsk } from "@/features/copilot/copilot-answer";
+import { TestPanel } from "@/features/admin/test-panel";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import {
@@ -186,6 +187,8 @@ export default function CopilotPage() {
           </div>
         </div>
       </Card>
+
+      <TestPanel onApplied={refreshAnalysis} />
 
       <div className="grid grid-cols-1 gap-5 xl:grid-cols-[1fr_400px]">
         <div className="flex min-w-0 flex-col gap-5">

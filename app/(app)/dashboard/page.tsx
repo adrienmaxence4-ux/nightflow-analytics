@@ -13,6 +13,7 @@ import { KpiDrawer } from "@/features/dashboard/kpi-drawer";
 import { ProductTable } from "@/features/products/product-table";
 import { ProductDrawer } from "@/features/products/product-drawer";
 import { CopilotPanel } from "@/features/copilot/copilot-panel";
+import { TestPanel } from "@/features/admin/test-panel";
 import { useToast } from "@/hooks/use-toast";
 import { useRange } from "@/hooks/use-range";
 import { useIsAdmin } from "@/hooks/use-admin";
@@ -140,6 +141,12 @@ export default function DashboardPage() {
       <DemoBanner
         source={source}
         onSeeded={() => {
+          loadRange(range);
+          loadProducts();
+        }}
+      />
+      <TestPanel
+        onApplied={() => {
           loadRange(range);
           loadProducts();
         }}

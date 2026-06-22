@@ -10,6 +10,7 @@ import {
 } from "@/lib/notif-prefs";
 import { PageTransition } from "@/components/layout/page-transition";
 import { PageHeader } from "@/components/layout/page-header";
+import { TestPanel } from "@/features/admin/test-panel";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -150,6 +151,8 @@ export default function NotificationsPage() {
           </div>
         }
       />
+
+      <TestPanel onApplied={load} />
 
       {/* Bandeau source de données */}
       {!loading && (
