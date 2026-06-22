@@ -64,15 +64,6 @@ export default function SettingsPage() {
     }
   };
 
-  const copyKey = async (key: string) => {
-    try {
-      await navigator.clipboard.writeText(key);
-      toast("Clé copiée ✓");
-    } catch {
-      toast("Copie impossible", "info");
-    }
-  };
-
   return (
     <PageTransition>
       <PageHeader
@@ -242,31 +233,35 @@ export default function SettingsPage() {
           )}
 
           {tab === "api" && plan.apiAccess && (
-            <Card className="p-5">
-              <h3 className="mb-1 text-[15px] font-bold">Clés API</h3>
-              <p className="mb-4 text-xs text-ink-mut">
-                Intégrez Nightflow à vos propres applications.
-              </p>
-              {[
-                { name: "Production", key: "pk_live_•••• 2f9a" },
-                { name: "Développement", key: "pk_test_•••• 7b1c" },
-              ].map((k, i) => (
-                <div
-                  key={i}
-                  className="mb-2 flex items-center justify-between rounded-xl border border-glass-border bg-night-950 px-4 py-3 font-mono text-[12px]"
-                >
-                  <span className="text-ink-dim">
-                    <b className="mr-3 not-italic text-white">{k.name}</b>
-                    {k.key}
-                  </span>
-                  <button
-                    onClick={() => copyKey(k.key)}
-                    className="rounded-lg border border-glass-border bg-glass px-3 py-1 text-[11px] font-semibold text-ink-dim hover:text-white"
-                  >
-                    Copier
-                  </button>
+            <Card className="p-6">
+              <div className="flex items-center gap-3">
+                <span className="grid h-11 w-11 flex-none place-items-center rounded-xl border border-glass-hi bg-gradient-to-br from-neon-cyan/20 to-neon-violet/20 text-xl">
+                  🔑
+                </span>
+                <div>
+                  <h3 className="text-[15px] font-bold">API & Webhooks</h3>
+                  <p className="text-xs text-ink-mut">
+                    Inclus dans votre plan — intégrez Nightflow à vos outils.
+                  </p>
                 </div>
-              ))}
+              </div>
+
+              <div className="mt-5 rounded-2xl border border-glass-border bg-glass-2 p-4">
+                <Badge variant="violet">En préparation</Badge>
+                <p className="mt-2.5 text-[13px] leading-relaxed text-ink-dim">
+                  L&apos;API REST et les webhooks arrivent. Plutôt que d&apos;afficher
+                  des clés factices, nous activerons ici la génération de vraies
+                  clés sécurisées dès que l&apos;API publique sera prête et auditée.
+                </p>
+                <ul className="mt-3 flex flex-col gap-1.5 text-[12px] text-ink-mut">
+                  <li>• Lecture de vos KPI, produits et commandes en JSON</li>
+                  <li>
+                    • Webhooks temps réel sur les alertes (rupture de stock, chute
+                    de CA, anomalies)
+                  </li>
+                  <li>• Clés révocables, limitées à votre boutique</li>
+                </ul>
+              </div>
             </Card>
           )}
         </div>
