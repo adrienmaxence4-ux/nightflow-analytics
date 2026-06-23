@@ -150,10 +150,41 @@ export type IntegrationRow = {
   id: string;
   store_id: string;
   provider: string;
-  status: "connected" | "disconnected" | "error" | "pending";
+  status: "connected" | "disconnected" | "error" | "pending" | "syncing" | "expired";
   access_token: string | null;
+  refresh_token: string | null;
+  token_expires_at: string | null;
+  last_synced_at: string | null;
+  last_error: string | null;
   metadata: Record<string, unknown>;
   connected_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export type IntegrationEventRow = {
+  id: string;
+  store_id: string;
+  source: string;
+  event_type: string;
+  occurred_at: string;
+  metrics: Record<string, number>;
+  metadata: Record<string, string>;
+  dedupe_key: string | null;
+  created_at: string;
+}
+
+export type IntegrationJobRow = {
+  id: string;
+  store_id: string;
+  provider: string;
+  kind: "webhook" | "sync";
+  payload: Record<string, unknown>;
+  status: "pending" | "processing" | "done" | "failed";
+  attempts: number;
+  max_attempts: number;
+  last_error: string | null;
+  run_after: string;
   created_at: string;
   updated_at: string;
 }
@@ -230,6 +261,8 @@ export interface Database {
       recommendations: Table<RecommendationRow, "store_id" | "title">;
       notifications: Table<NotificationRow, "user_id" | "title">;
       integrations: Table<IntegrationRow, "store_id" | "provider">;
+      integration_events: Table<IntegrationEventRow, "store_id" | "source" | "event_type" | "occurred_at">;
+      integration_jobs: Table<IntegrationJobRow, "store_id" | "provider" | "kind">;
       subscriptions: Table<SubscriptionRow, "user_id">;
       ai_conversations: Table<AiConversationRow, "user_id">;
       ai_messages: Table<AiMessageRow, "conversation_id" | "role" | "content">;

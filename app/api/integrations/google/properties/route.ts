@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
+import { decryptToken } from "@/lib/integrations/crypto";
 import { listGa4Properties } from "@/services/integrations/google";
 
 /**
@@ -36,7 +37,9 @@ export async function GET() {
   if (!ctx?.row || ctx.row.status !== "connected" || !ctx.row.access_token) {
     return NextResponse.json({ properties: [], current: null });
   }
-  const properties = await listGa4Properties(ctx.row.access_token);
+  const refreshToken = decryptToken(ctx.row.access_token);
+  if (!refreshToken) return NextResponse.json({ properties: [], current: null });
+  const properties = await listGa4Properties(refreshToken);
   return NextResponse.json({
     properties,
     current: ctx.row.metadata?.property_id ?? null,

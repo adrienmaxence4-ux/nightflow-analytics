@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { env } from "@/lib/env";
 import { createClient } from "@/lib/supabase/server";
+import { encryptToken } from "@/lib/integrations/crypto";
 import {
   exchangeCodeForToken,
   isValidShopDomain,
@@ -72,14 +73,15 @@ export async function GET(req: Request) {
   }
   if (!storeId) return err("store");
 
-  // Persist the integration (encrypt access_token via Vault in production).
+  // Persist the integration with the token encrypted at rest.
   await db.from("integrations").upsert(
     {
       store_id: storeId,
       provider: "shopify",
       status: "connected",
-      access_token: token,
+      access_token: encryptToken(token),
       connected_at: new Date().toISOString(),
+      last_error: null,
       metadata: { shop },
     },
     { onConflict: "store_id,provider" }

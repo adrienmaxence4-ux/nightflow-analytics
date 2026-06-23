@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { decryptToken } from "@/lib/integrations/crypto";
 import { fetchGa4Traffic } from "@/services/integrations/google";
 
 /**
@@ -49,8 +50,13 @@ export async function GET() {
     });
   }
 
+  const refreshToken = decryptToken(row.access_token);
+  if (!refreshToken) {
+    return NextResponse.json({ connected: false, reason: "auth" });
+  }
+
   try {
-    const traffic = await fetchGa4Traffic(row.access_token, propertyId);
+    const traffic = await fetchGa4Traffic(refreshToken, propertyId);
     if (!traffic) {
       return NextResponse.json({
         connected: true,

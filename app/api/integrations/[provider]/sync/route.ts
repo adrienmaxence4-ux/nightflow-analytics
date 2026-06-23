@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
+import { decryptToken } from "@/lib/integrations/crypto";
 import { getKeyedProvider } from "@/services/integrations/registry";
 
 /**
@@ -50,9 +51,17 @@ export async function POST(
     );
   }
 
+  const token = decryptToken(row.access_token);
+  if (!token) {
+    return NextResponse.json(
+      { error: `${def.label} : jeton illisible, reconnecte le compte` },
+      { status: 400 }
+    );
+  }
+
   try {
     const db = supabase as unknown as SupabaseClient;
-    const summary = await def.sync(row.access_token, storeId, db);
+    const summary = await def.sync(token, storeId, db);
     return NextResponse.json({ ok: true, ...summary });
   } catch (e) {
     console.error(`[${def.id}] sync failed`, e);

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
+import { decryptToken } from "@/lib/integrations/crypto";
 import { syncShopify } from "@/services/integrations/shopify";
 
 /**
@@ -44,9 +45,17 @@ export async function POST() {
     return NextResponse.json({ error: "Domaine boutique manquant" }, { status: 400 });
   }
 
+  const token = decryptToken(row.access_token);
+  if (!token) {
+    return NextResponse.json(
+      { error: "Jeton Shopify illisible, reconnecte la boutique" },
+      { status: 400 }
+    );
+  }
+
   try {
     const db = supabase as unknown as SupabaseClient;
-    const summary = await syncShopify(shop, row.access_token, storeId, db);
+    const summary = await syncShopify(shop, token, storeId, db);
     return NextResponse.json({ ok: true, ...summary });
   } catch (e) {
     console.error("[shopify] sync failed", e);

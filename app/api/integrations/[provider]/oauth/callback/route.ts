@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { env } from "@/lib/env";
 import { createClient } from "@/lib/supabase/server";
+import { encryptToken } from "@/lib/integrations/crypto";
 import { getOAuthProvider } from "@/services/integrations/oauth-registry";
 
 /**
@@ -67,8 +68,9 @@ export async function GET(
       store_id: storeId,
       provider: def.id,
       status: "connected",
-      access_token: result.accessToken,
+      access_token: encryptToken(result.accessToken),
       connected_at: new Date().toISOString(),
+      last_error: null,
       metadata: result.metadata ?? {},
     },
     { onConflict: "store_id,provider" }

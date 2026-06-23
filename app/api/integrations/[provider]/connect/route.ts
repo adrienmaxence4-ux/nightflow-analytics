@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
+import { encryptToken } from "@/lib/integrations/crypto";
 import { getKeyedProvider } from "@/services/integrations/registry";
 
 /**
@@ -55,7 +56,7 @@ export async function POST(
       store_id: storeId,
       provider: def.id,
       status: "connected",
-      access_token: key,
+      access_token: encryptToken(key),
       metadata: {},
       connected_at: new Date().toISOString(),
     },
