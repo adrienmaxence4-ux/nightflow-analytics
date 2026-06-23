@@ -1,30 +1,33 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Check, RefreshCw, Store } from "lucide-react";
+import { RefreshCw, Store } from "lucide-react";
 import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
+import { timeAgo } from "@/utils/format";
+import {
+  DEFAULT_STATUS,
+  StatusPill,
+  type IntegrationStatus,
+} from "@/features/integrations/status-pill";
 
 /**
  * In-app Shopify connection: each logged-in user enters THEIR own store domain
  * and authorizes it via OAuth — the data synced is theirs, isolated by RLS.
- * Shows the real connection status (connected shop, sync, disconnect).
+ * Shows the full connection lifecycle (connected/syncing/error/expired).
  */
 export function ShopifyConnect() {
   const toast = useToast();
   const [domain, setDomain] = useState("");
-  const [status, setStatus] = useState<{ connected: boolean; shop: string | null }>(
-    { connected: false, shop: null }
-  );
+  const [status, setStatus] = useState<IntegrationStatus>(DEFAULT_STATUS);
   const [busy, setBusy] = useState(false);
 
   const loadStatus = useCallback(async () => {
     try {
-      const res = await fetch("/api/integrations/status");
+      const res = await fetch("/api/integrations/status", { cache: "no-store" });
       if (res.ok) {
         const j = await res.json();
-        if (j.shopify) setStatus(j.shopify);
+        if (j.shopify) setStatus({ ...DEFAULT_STATUS, ...j.shopify });
       }
     } catch {
       /* ignore */
@@ -35,13 +38,18 @@ export function ShopifyConnect() {
     loadStatus();
   }, [loadStatus]);
 
-  const connect = () => {
-    let shop = domain
+  const normalizeShop = (raw: string): string => {
+    let shop = raw
       .trim()
       .toLowerCase()
       .replace(/^https?:\/\//, "")
       .replace(/\/.*$/, "");
     if (shop && !shop.includes(".")) shop = `${shop}.myshopify.com`;
+    return shop;
+  };
+
+  const connect = (preset?: string) => {
+    const shop = normalizeShop(preset ?? domain);
     if (!/^[a-z0-9][a-z0-9-]*\.myshopify\.com$/.test(shop)) {
       toast("Entrez un domaine valide, ex. ma-boutique.myshopify.com", "info");
       return;
@@ -51,6 +59,7 @@ export function ShopifyConnect() {
 
   const sync = async () => {
     setBusy(true);
+    setStatus((s) => ({ ...s, state: "syncing" }));
     try {
       const res = await fetch("/api/integrations/shopify/sync", { method: "POST" });
       const data = await res.json().catch(() => ({}));
@@ -65,6 +74,7 @@ export function ShopifyConnect() {
       toast("Synchronisation impossible", "info");
     } finally {
       setBusy(false);
+      loadStatus();
     }
   };
 
@@ -73,13 +83,15 @@ export function ShopifyConnect() {
     try {
       await fetch("/api/integrations/shopify/disconnect", { method: "POST" });
       toast("Boutique Shopify déconnectée");
-      setStatus({ connected: false, shop: null });
+      setStatus(DEFAULT_STATUS);
     } catch {
       toast("Impossible de déconnecter", "info");
     } finally {
       setBusy(false);
     }
   };
+
+  const needsReconnect = status.state === "error" || status.state === "expired";
 
   return (
     <Card className="p-5">
@@ -90,40 +102,29 @@ export function ShopifyConnect() {
         <div className="min-w-[180px] flex-1">
           <div className="flex items-center gap-2">
             <h3 className="text-[16px] font-extrabold">Shopify</h3>
-            {status.connected ? (
-              <Badge variant="lime">
-                <Check className="h-3 w-3" strokeWidth={3} /> Connecté
-              </Badge>
-            ) : (
-              <Badge variant="cyan">Disponible</Badge>
-            )}
+            <StatusPill state={status.state} />
           </div>
           <p className="text-[12px] text-ink-mut">
             {status.connected && status.shop
               ? `Connecté à ${status.shop}`
               : "Connectez votre boutique pour importer produits, commandes & ventes."}
           </p>
+          {status.connected && status.lastSync && (
+            <p className="mt-0.5 text-[11px] text-ink-mut">
+              Dernière synchro : il y a {timeAgo(status.lastSync)}
+            </p>
+          )}
+          {status.state === "error" && status.error && (
+            <p className="mt-0.5 text-[11px] text-neon-pinksoft">{status.error}</p>
+          )}
+          {status.state === "expired" && (
+            <p className="mt-0.5 text-[11px] text-neon-amber">
+              Jeton expiré — reconnecte ta boutique.
+            </p>
+          )}
         </div>
 
-        {status.connected ? (
-          <div className="flex flex-wrap items-center gap-2">
-            <button
-              onClick={sync}
-              disabled={busy}
-              className="flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-neon-cyan to-neon-cyansoft px-4 py-2.5 text-[13px] font-bold text-night-950 shadow-glow transition hover:brightness-110 disabled:opacity-60"
-            >
-              <RefreshCw className="h-3.5 w-3.5" />
-              {busy ? "Synchro…" : "Synchroniser"}
-            </button>
-            <button
-              onClick={disconnect}
-              disabled={busy}
-              className="rounded-xl border border-glass-border bg-glass px-3.5 py-2.5 text-[13px] font-semibold text-ink-dim transition hover:border-neon-pink hover:text-white disabled:opacity-60"
-            >
-              Déconnecter
-            </button>
-          </div>
-        ) : (
+        {status.state === "not_connected" ? (
           <div className="flex flex-1 flex-wrap items-center gap-2">
             <div className="relative min-w-[220px] flex-1">
               <Store className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-mut" />
@@ -136,10 +137,36 @@ export function ShopifyConnect() {
               />
             </div>
             <button
-              onClick={connect}
+              onClick={() => connect()}
               className="rounded-xl bg-gradient-to-r from-neon-cyan to-neon-cyansoft px-4 py-2.5 text-[13px] font-bold text-night-950 shadow-glow transition hover:brightness-110"
             >
               Connecter
+            </button>
+          </div>
+        ) : (
+          <div className="flex flex-wrap items-center gap-2">
+            {needsReconnect && (
+              <button
+                onClick={() => connect(status.shop ?? undefined)}
+                className="rounded-xl bg-gradient-to-r from-neon-cyan to-neon-cyansoft px-4 py-2.5 text-[13px] font-bold text-night-950 shadow-glow transition hover:brightness-110"
+              >
+                Reconnecter
+              </button>
+            )}
+            <button
+              onClick={sync}
+              disabled={busy}
+              className="flex items-center gap-1.5 rounded-xl border border-glass-border bg-glass px-4 py-2.5 text-[13px] font-semibold text-ink-dim transition hover:border-glass-hi hover:text-white disabled:opacity-60"
+            >
+              <RefreshCw className={`h-3.5 w-3.5 ${busy ? "animate-spin" : ""}`} />
+              {busy ? "Synchro…" : "Synchroniser"}
+            </button>
+            <button
+              onClick={disconnect}
+              disabled={busy}
+              className="rounded-xl border border-glass-border bg-glass px-3.5 py-2.5 text-[13px] font-semibold text-ink-dim transition hover:border-neon-pink hover:text-white disabled:opacity-60"
+            >
+              Déconnecter
             </button>
           </div>
         )}

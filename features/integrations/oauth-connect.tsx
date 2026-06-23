@@ -1,10 +1,15 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Check, RefreshCw } from "lucide-react";
+import { RefreshCw } from "lucide-react";
 import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
+import { timeAgo } from "@/utils/format";
+import {
+  DEFAULT_STATUS,
+  StatusPill,
+  type IntegrationStatus,
+} from "@/features/integrations/status-pill";
 
 /**
  * One-click OAuth connector ("Se connecter avec Stripe"). No API key: the user
@@ -32,15 +37,15 @@ export function OAuthConnect({
   showSync = true,
 }: OAuthConnectProps) {
   const toast = useToast();
-  const [connected, setConnected] = useState(false);
+  const [status, setStatus] = useState<IntegrationStatus>(DEFAULT_STATUS);
   const [busy, setBusy] = useState(false);
 
   const loadStatus = useCallback(async () => {
     try {
-      const res = await fetch("/api/integrations/status");
+      const res = await fetch("/api/integrations/status", { cache: "no-store" });
       if (res.ok) {
         const j = await res.json();
-        if (j[provider]) setConnected(!!j[provider].connected);
+        if (j[provider]) setStatus({ ...DEFAULT_STATUS, ...j[provider] });
       }
     } catch {
       /* ignore */
@@ -69,6 +74,7 @@ export function OAuthConnect({
 
   const sync = async () => {
     setBusy(true);
+    setStatus((s) => ({ ...s, state: "syncing" }));
     try {
       const res = await fetch(`/api/integrations/${provider}/sync`, {
         method: "POST",
@@ -87,6 +93,7 @@ export function OAuthConnect({
       toast("Synchronisation impossible", "info");
     } finally {
       setBusy(false);
+      loadStatus();
     }
   };
 
@@ -95,7 +102,7 @@ export function OAuthConnect({
     try {
       await fetch(`/api/integrations/${provider}/disconnect`, { method: "POST" });
       toast(`${name} déconnecté`);
-      setConnected(false);
+      setStatus(DEFAULT_STATUS);
     } catch {
       toast("Impossible de déconnecter", "info");
     } finally {
@@ -114,28 +121,50 @@ export function OAuthConnect({
         <div className="min-w-[180px] flex-1">
           <div className="flex items-center gap-2">
             <h3 className="text-[16px] font-extrabold">{name}</h3>
-            {connected ? (
-              <Badge variant="lime">
-                <Check className="h-3 w-3" strokeWidth={3} /> Connecté
-              </Badge>
-            ) : (
-              <Badge variant="cyan">Disponible</Badge>
-            )}
+            <StatusPill state={status.state} />
           </div>
           <p className="text-[12px] text-ink-mut">
-            {connected ? connectedHint : description}
+            {status.connected ? connectedHint : description}
           </p>
+          {status.connected && status.lastSync && (
+            <p className="mt-0.5 text-[11px] text-ink-mut">
+              Dernière synchro : il y a {timeAgo(status.lastSync)}
+            </p>
+          )}
+          {status.state === "error" && status.error && (
+            <p className="mt-0.5 text-[11px] text-neon-pinksoft">{status.error}</p>
+          )}
+          {status.state === "expired" && (
+            <p className="mt-0.5 text-[11px] text-neon-amber">
+              Jeton expiré — reconnecte ton compte.
+            </p>
+          )}
         </div>
 
-        {connected ? (
+        {status.state === "not_connected" ? (
+          <button
+            onClick={connect}
+            className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-neon-cyan to-neon-cyansoft px-5 py-2.5 text-[13px] font-bold text-night-950 shadow-glow transition hover:brightness-110"
+          >
+            Se connecter avec {name}
+          </button>
+        ) : (
           <div className="flex flex-wrap items-center gap-2">
+            {(status.state === "error" || status.state === "expired") && (
+              <button
+                onClick={connect}
+                className="rounded-xl bg-gradient-to-r from-neon-cyan to-neon-cyansoft px-4 py-2.5 text-[13px] font-bold text-night-950 shadow-glow transition hover:brightness-110"
+              >
+                Reconnecter
+              </button>
+            )}
             {showSync && (
               <button
                 onClick={sync}
                 disabled={busy}
-                className="flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-neon-cyan to-neon-cyansoft px-4 py-2.5 text-[13px] font-bold text-night-950 shadow-glow transition hover:brightness-110 disabled:opacity-60"
+                className="flex items-center gap-1.5 rounded-xl border border-glass-border bg-glass px-4 py-2.5 text-[13px] font-semibold text-ink-dim transition hover:border-glass-hi hover:text-white disabled:opacity-60"
               >
-                <RefreshCw className="h-3.5 w-3.5" />
+                <RefreshCw className={`h-3.5 w-3.5 ${busy ? "animate-spin" : ""}`} />
                 {busy ? "Synchro…" : "Synchroniser"}
               </button>
             )}
@@ -147,13 +176,6 @@ export function OAuthConnect({
               Déconnecter
             </button>
           </div>
-        ) : (
-          <button
-            onClick={connect}
-            className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-neon-cyan to-neon-cyansoft px-5 py-2.5 text-[13px] font-bold text-night-950 shadow-glow transition hover:brightness-110"
-          >
-            Se connecter avec {name}
-          </button>
         )}
       </div>
     </Card>
