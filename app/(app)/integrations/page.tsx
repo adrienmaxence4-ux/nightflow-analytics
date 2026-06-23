@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { motion } from "framer-motion";
 import { Check } from "lucide-react";
 import { PageTransition } from "@/components/layout/page-transition";
@@ -56,35 +57,52 @@ export default function IntegrationsPage() {
         subtitle="Connectez vos outils — Nightflow centralise toutes vos données en un seul cerveau."
       />
 
-      {/* Connecteurs — réservés au plan Pro et plus (le plan Gratuit = démo). */}
+      {/* Connecteurs — groupés par usage (le plan Gratuit = démo). */}
       {plan.integrations ? (
-        <div className="flex flex-col gap-4">
-          <ShopifyConnect />
-          <OAuthConnect
-            provider="stripe"
-            name="Stripe"
-            logo="💳"
-            accent="from-indigo-400 to-violet-500"
-            description="Connexion en un clic — autorisez votre compte, aucune clé à créer."
-            connectedHint="Revenus & commandes importés depuis Stripe."
-          />
-          <OAuthConnect
-            provider="klaviyo"
-            name="Klaviyo"
-            logo="✉️"
-            accent="from-fuchsia-400 to-pink-500"
-            description="Connexion en un clic — autorisez votre compte, aucune clé à créer."
-            connectedHint="Revenu attribué Klaviyo affiché dans Marketing."
-          />
-          <OAuthConnect
-            provider="google"
-            name="Google Analytics"
-            logo="📈"
-            accent="from-amber-300 to-orange-500"
-            description="Connexion en un clic — trafic, canaux d'acquisition & appareils."
-            connectedHint="Trafic, canaux & appareils affichés dans Analytics."
-            showSync={false}
-          />
+        <div className="flex flex-col gap-6">
+          <CategorySection
+            label="Boutique & paiements"
+            hint="Vos ventes réelles : produits, commandes, revenus."
+          >
+            <ShopifyConnect />
+            <OAuthConnect
+              provider="stripe"
+              name="Stripe"
+              logo="💳"
+              accent="from-indigo-400 to-violet-500"
+              description="Connexion en un clic — autorisez votre compte, aucune clé à créer."
+              connectedHint="Revenus & commandes importés depuis Stripe."
+            />
+          </CategorySection>
+
+          <CategorySection
+            label="Email & CRM"
+            hint="Revenu attribué à vos campagnes email."
+          >
+            <OAuthConnect
+              provider="klaviyo"
+              name="Klaviyo"
+              logo="✉️"
+              accent="from-fuchsia-400 to-pink-500"
+              description="Connexion en un clic — autorisez votre compte, aucune clé à créer."
+              connectedHint="Revenu attribué Klaviyo affiché dans Marketing."
+            />
+          </CategorySection>
+
+          <CategorySection
+            label="Analyse d'audience"
+            hint="Pour analyser le trafic — ce n'est pas une campagne (aucune dépense / ROAS)."
+          >
+            <OAuthConnect
+              provider="google"
+              name="Google Analytics"
+              logo="📈"
+              accent="from-amber-300 to-orange-500"
+              description="Connexion en un clic — trafic, canaux d'acquisition & appareils."
+              connectedHint="Trafic, canaux & appareils affichés dans Analytics."
+              showSync={false}
+            />
+          </CategorySection>
         </div>
       ) : (
         <UpgradeGate
@@ -182,5 +200,27 @@ export default function IntegrationsPage() {
         </Card>
       </div>
     </PageTransition>
+  );
+}
+
+function CategorySection({
+  label,
+  hint,
+  children,
+}: {
+  label: string;
+  hint: string;
+  children: ReactNode;
+}) {
+  return (
+    <div className="flex flex-col gap-3">
+      <div>
+        <div className="text-[11px] font-bold uppercase tracking-[1.5px] text-neon-cyansoft">
+          {label}
+        </div>
+        <p className="mt-0.5 text-[11px] text-ink-mut">{hint}</p>
+      </div>
+      {children}
+    </div>
   );
 }

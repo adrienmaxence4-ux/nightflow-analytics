@@ -62,6 +62,7 @@ async function oauthExchange(
 const shopify: IntegrationConnector = {
   source: "shopify",
   name: "Shopify",
+  category: "commerce",
   usesPkce: false,
   isConfigured: isShopifyConfigured,
   supportsWebhooks: true,
@@ -145,6 +146,7 @@ const shopify: IntegrationConnector = {
 const stripe: IntegrationConnector = {
   source: "stripe",
   name: "Stripe",
+  category: "commerce",
   usesPkce: false,
   isConfigured: isStripeOAuthConfigured,
   supportsWebhooks: true,
@@ -201,6 +203,7 @@ const stripe: IntegrationConnector = {
 const klaviyo: IntegrationConnector = {
   source: "klaviyo",
   name: "Klaviyo",
+  category: "email",
   usesPkce: true,
   isConfigured: isKlaviyoOAuthConfigured,
   supportsWebhooks: false,
@@ -226,6 +229,7 @@ const klaviyo: IntegrationConnector = {
 const ga4: IntegrationConnector = {
   source: "ga4",
   name: "Google Analytics",
+  category: "analytics",
   usesPkce: false,
   isConfigured: isGoogleOAuthConfigured,
   supportsWebhooks: false,
@@ -261,6 +265,7 @@ function adStub(
   return {
     source,
     name,
+    category: "advertising",
     usesPkce: false,
     isConfigured: false, // pending each platform's app review
     supportsWebhooks: true,

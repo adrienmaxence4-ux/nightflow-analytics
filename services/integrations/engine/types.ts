@@ -39,6 +39,16 @@ export type ConnectionState =
   | "expired"
   | "not_connected";
 
+/**
+ * What a connected tool is FOR — so the app never treats an analytics source
+ * (GA4: traffic analysis, no spend/ROAS) like a paid advertising campaign.
+ *   commerce    → store + payments (Shopify, Stripe): orders, revenue
+ *   advertising → paid ad platforms (Meta, TikTok, Google Ads): spend, ROAS
+ *   email       → email/CRM marketing (Klaviyo): attributed revenue
+ *   analytics   → audience analysis (Google Analytics): traffic, sessions
+ */
+export type ConnectorCategory = "commerce" | "advertising" | "email" | "analytics";
+
 export interface NormalizedMetrics {
   /** Revenue in cents. */
   revenue?: number;
@@ -123,6 +133,8 @@ export interface WebhookInput {
 export interface IntegrationConnector {
   readonly source: IntegrationSource;
   readonly name: string;
+  /** What the tool is for (commerce / advertising / email / analytics). */
+  readonly category: ConnectorCategory;
   readonly usesPkce: boolean;
   readonly isConfigured: boolean;
   /** Whether this provider pushes webhooks we can ingest. */

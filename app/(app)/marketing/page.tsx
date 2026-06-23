@@ -9,7 +9,19 @@ import { Badge } from "@/components/ui/badge";
 import { useCopilotAsk } from "@/features/copilot/copilot-answer";
 import { CAMPAIGNS } from "@/services/mock/data";
 import { parseMetric } from "@/utils/format";
+import {
+  CATEGORY_SHORT,
+  channelCategory,
+} from "@/services/integrations/engine/categories";
+import type { ConnectorCategory } from "@/services/integrations/engine/types";
 import type { Campaign } from "@/types";
+
+const TYPE_VARIANT: Record<ConnectorCategory, "cyan" | "violet" | "info" | "lime"> = {
+  advertising: "cyan",
+  email: "violet",
+  analytics: "info",
+  commerce: "lime",
+};
 
 export default function MarketingPage() {
   const [campaigns, setCampaigns] = useState<Campaign[]>(CAMPAIGNS);
@@ -48,12 +60,12 @@ export default function MarketingPage() {
       <DemoBanner source={source} onSeeded={load} />
       <PageHeader
         title="Marketing"
-        subtitle="Résumé de vos campagnes publicitaires — tous canaux"
+        subtitle="Vos canaux marketing payants & email. L'analyse d'audience (Google Analytics) est dans Analytics."
       />
 
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-3">
         {[
-          { l: "Dépenses pub (7j)", v: totalSpend, d: "tous canaux" },
+          { l: "Dépenses marketing (7j)", v: totalSpend, d: "pub + email" },
           { l: "Revenu attribué", v: totalRev, d: "+19% vs sem. -1" },
           { l: "ROAS global", v: blendedRoas, d: "objectif : 3.5", tone: "lime" },
         ].map((s, i) => (
@@ -72,15 +84,16 @@ export default function MarketingPage() {
       </div>
 
       <Card className="p-5">
-        <h3 className="mb-1 text-[15px] font-bold">Performance des campagnes</h3>
+        <h3 className="mb-1 text-[15px] font-bold">Performance des canaux marketing</h3>
         <p className="mb-4 text-xs text-ink-mut">
-          Le Copilot recommande de réallouer le budget vers les canaux à fort ROAS.
+          Régies publicitaires & email. Le Copilot recommande de réallouer le
+          budget vers les canaux à fort ROAS.
         </p>
         <div className="overflow-x-auto">
           <table className="w-full border-collapse">
             <thead>
               <tr>
-                {["CANAL", "STATUT", "DÉPENSES", "REVENU", "ROAS", "TENDANCE", ""].map(
+                {["CANAL", "TYPE", "STATUT", "DÉPENSES", "REVENU", "ROAS", "TENDANCE", ""].map(
                   (h) => (
                     <th
                       key={h}
@@ -105,6 +118,11 @@ export default function MarketingPage() {
                       </span>
                       {c.channel}
                     </div>
+                  </td>
+                  <td className="px-3 py-3.5">
+                    <Badge variant={TYPE_VARIANT[channelCategory(c.channel)]}>
+                      {CATEGORY_SHORT[channelCategory(c.channel)]}
+                    </Badge>
                   </td>
                   <td className="px-3 py-3.5">
                     <Badge variant={c.status === "active" ? "positive" : "warning"}>
