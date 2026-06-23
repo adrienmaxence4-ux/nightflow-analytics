@@ -2,24 +2,56 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { KEYED_PROVIDER_IDS } from "@/services/integrations/registry";
 import { OAUTH_PROVIDERS } from "@/services/integrations/oauth-registry";
+import type { ConnectionState } from "@/services/integrations/engine/types";
 
 /**
  * GET /api/integrations/status
- * Returns which providers are connected for the logged-in user's store.
- * Shopify carries its connected shop domain; the rest just report {connected}.
+ * Per-provider connection lifecycle for the logged-in user's store:
+ *   state: connected | syncing | error | expired | not_connected
+ * plus `connected` (back-compat boolean), last sync time and last error.
  */
-type ProviderStatus = { connected: boolean; shop?: string | null };
+type ProviderStatus = {
+  connected: boolean;
+  state: ConnectionState;
+  lastSync: string | null;
+  error: string | null;
+  shop?: string | null;
+};
 type StatusMap = Record<string, ProviderStatus>;
 
-// Every provider the UI may ask about (keyed + OAuth), deduped.
 const PROVIDER_IDS = Array.from(
-  new Set([...KEYED_PROVIDER_IDS, ...Object.keys(OAUTH_PROVIDERS)])
+  new Set([
+    "shopify",
+    ...KEYED_PROVIDER_IDS,
+    ...Object.keys(OAUTH_PROVIDERS),
+    "meta",
+    "tiktok",
+  ])
 );
 
+function blank(): ProviderStatus {
+  return { connected: false, state: "not_connected", lastSync: null, error: null };
+}
 function emptyResponse(): StatusMap {
-  const out: StatusMap = { shopify: { connected: false, shop: null } };
-  for (const id of PROVIDER_IDS) out[id] = { connected: false };
+  const out: StatusMap = {};
+  for (const id of PROVIDER_IDS) out[id] = blank();
+  out.shopify = { ...blank(), shop: null };
   return out;
+}
+
+function toState(dbStatus: string | undefined): ConnectionState {
+  switch (dbStatus) {
+    case "connected":
+      return "connected";
+    case "syncing":
+      return "syncing";
+    case "error":
+      return "error";
+    case "expired":
+      return "expired";
+    default:
+      return "not_connected";
+  }
 }
 
 export async function GET() {
@@ -37,24 +69,30 @@ export async function GET() {
 
   const { data } = await supabase
     .from("integrations")
-    .select("provider, status, metadata")
+    .select("provider, status, metadata, last_synced_at, last_error")
     .eq("store_id", storeId);
   const rows =
     (data as
-      | { provider: string; status: string; metadata: { shop?: string } }[]
+      | {
+          provider: string;
+          status: string;
+          metadata: { shop?: string };
+          last_synced_at: string | null;
+          last_error: string | null;
+        }[]
       | null) ?? [];
 
-  const connected = (p: string) =>
-    rows.find((r) => r.provider === p && r.status === "connected");
-
   const result = emptyResponse();
-  const shopify = connected("shopify");
-  result.shopify = {
-    connected: !!shopify,
-    shop: shopify?.metadata?.shop ?? null,
-  };
   for (const id of PROVIDER_IDS) {
-    result[id] = { connected: !!connected(id) };
+    const row = rows.find((r) => r.provider === id);
+    const state = toState(row?.status);
+    result[id] = {
+      connected: state === "connected",
+      state,
+      lastSync: row?.last_synced_at ?? null,
+      error: row?.last_error ?? null,
+      ...(id === "shopify" ? { shop: row?.metadata?.shop ?? null } : {}),
+    };
   }
 
   return NextResponse.json(result);

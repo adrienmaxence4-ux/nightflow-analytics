@@ -40,6 +40,9 @@ export const env = {
     process.env.SHOPIFY_SCOPES ??
     "read_products,read_orders,read_customers,read_inventory",
 
+  // Stripe webhook signing secret (whsec_…) for /api/webhooks/stripe.
+  stripeWebhookSecret: process.env.STRIPE_WEBHOOK_SECRET ?? "",
+
   // Stripe Connect OAuth ("Se connecter avec Stripe" — one-click, no API key).
   // STRIPE_CONNECT_CLIENT_ID = ca_… ; STRIPE_SECRET_KEY = platform sk_… (used to
   // exchange the OAuth code for the connected account's token).
