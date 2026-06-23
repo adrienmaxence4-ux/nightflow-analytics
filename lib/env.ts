@@ -50,6 +50,18 @@ export const env = {
   googleClientId: process.env.GOOGLE_CLIENT_ID ?? "",
   googleClientSecret: process.env.GOOGLE_CLIENT_SECRET ?? "",
 
+  // Integration token encryption (AES-256-GCM, key derived via scrypt). Set in
+  // production to encrypt OAuth tokens at rest; unset = plaintext (dev only).
+  integrationsEncKey: process.env.INTEGRATIONS_ENC_KEY ?? "",
+
+  // Shared secret guarding cron / background-worker endpoints (sync, webhook
+  // retry). Vercel Cron sends it as a Bearer token.
+  cronSecret: process.env.CRON_SECRET ?? "",
+
+  // Meta Ads / TikTok Ads (future-ready — pending each platform's app review).
+  metaAppSecret: process.env.META_APP_SECRET ?? "",
+  tiktokAppSecret: process.env.TIKTOK_APP_SECRET ?? "",
+
   // Admin allowlist — emails that may use the demo/test data tools. These tools
   // write or delete data, so they're hidden from real customers. Comma-separated.
   // Defaults to the project owner so the owner can test out of the box; override
