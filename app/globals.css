@@ -67,3 +67,46 @@
       linear-gradient(160deg, #070b1a, #0b1026 40%, #111827 100%);
   }
 }
+
+@layer components {
+  /* Readable long-form prose for legal pages */
+  .legal-prose h1 {
+    font-size: 28px;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    margin-bottom: 6px;
+  }
+  .legal-prose .updated {
+    font-size: 12px;
+    color: rgba(190, 200, 235, 0.55);
+    margin-bottom: 28px;
+  }
+  .legal-prose h2 {
+    font-size: 17px;
+    font-weight: 700;
+    margin: 28px 0 8px;
+  }
+  .legal-prose p,
+  .legal-prose li {
+    font-size: 14px;
+    line-height: 1.75;
+    color: rgba(214, 222, 248, 0.86);
+  }
+  .legal-prose p + p {
+    margin-top: 10px;
+  }
+  .legal-prose ul {
+    list-style: disc;
+    padding-left: 22px;
+    margin: 8px 0;
+  }
+  .legal-prose a {
+    color: #7dd8ff;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+  .legal-prose b,
+  .legal-prose strong {
+    color: #fff;
+  }
+}

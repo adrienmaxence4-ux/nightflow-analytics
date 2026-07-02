@@ -226,7 +226,32 @@ export default function SettingsPage() {
             </Card>
           )}
 
-          {tab === "app" && <InstallApp />}
+          {tab === "app" && (
+            <div className="flex flex-col gap-5">
+              <InstallApp />
+              <Card className="p-5">
+                <h3 className="mb-1 text-[15px] font-bold">À propos</h3>
+                <p className="mb-3 text-xs text-ink-mut">
+                  Vos données sont isolées par compte, chiffrées au repos et
+                  jamais revendues.
+                </p>
+                <div className="flex flex-wrap gap-x-5 gap-y-2 text-[12px]">
+                  <a href="/confidentialite" target="_blank" className="text-ink-dim underline underline-offset-2 hover:text-white">
+                    Politique de confidentialité
+                  </a>
+                  <a href="/conditions" target="_blank" className="text-ink-dim underline underline-offset-2 hover:text-white">
+                    Conditions d&apos;utilisation
+                  </a>
+                  <a href="/mentions-legales" target="_blank" className="text-ink-dim underline underline-offset-2 hover:text-white">
+                    Mentions légales
+                  </a>
+                  <a href="mailto:adrienmaxence4@gmail.com" className="text-ink-dim underline underline-offset-2 hover:text-white">
+                    Contacter le support
+                  </a>
+                </div>
+              </Card>
+            </div>
+          )}
 
           {tab === "api" && !plan.apiAccess && (
             <UpgradeGate
