@@ -10,6 +10,7 @@ import { syncShopify } from "@/services/integrations/shopify";
 import { syncStripe } from "@/services/integrations/stripe";
 import { syncKlaviyo } from "@/services/integrations/klaviyo";
 import { syncWix } from "@/services/integrations/wix";
+import { syncWoo } from "@/services/integrations/woocommerce";
 import { refreshGoogleToken } from "@/services/integrations/google";
 import {
   normalizeShopifyOrder,
@@ -169,6 +170,33 @@ const wix: IntegrationConnector = {
   normalizeWebhook: () => [],
 };
 
+// ── WooCommerce (key-based: composite `url::ck::cs` credential) ──────────────
+const woocommerce: IntegrationConnector = {
+  source: "woocommerce",
+  name: "WooCommerce",
+  category: "commerce",
+  usesPkce: false,
+  isConfigured: true, // per-customer REST keys — nothing to configure app-side
+  supportsWebhooks: false,
+
+  buildAuthorizeUrl: () => "",
+  exchangeCode: async () => null,
+  refresh: async () => null, // WooCommerce REST keys don't expire.
+
+  fetchData: async () => [],
+  async sync(ctx) {
+    const token = ctx.tokens?.accessToken;
+    if (!token) {
+      return { source: "woocommerce", events: 0, ok: false, error: "missing token" };
+    }
+    const s = await syncWoo(token, ctx.storeId, ctx.db);
+    return { source: "woocommerce", events: s.orders, ok: true };
+  },
+  registerWebhooks: async () => {},
+  verifyWebhook: () => false,
+  normalizeWebhook: () => [],
+};
+
 // ── Stripe ───────────────────────────────────────────────────────────────────
 const stripe: IntegrationConnector = {
   source: "stripe",
@@ -311,6 +339,7 @@ function adStub(
 export const CONNECTORS: Record<IntegrationSource, IntegrationConnector> = {
   shopify,
   wix,
+  woocommerce,
   stripe,
   klaviyo,
   ga4,
@@ -322,6 +351,7 @@ export const CONNECTORS: Record<IntegrationSource, IntegrationConnector> = {
 const PROVIDER_TO_SOURCE: Record<string, IntegrationSource> = {
   shopify: "shopify",
   wix: "wix",
+  woocommerce: "woocommerce",
   stripe: "stripe",
   klaviyo: "klaviyo",
   google: "ga4",

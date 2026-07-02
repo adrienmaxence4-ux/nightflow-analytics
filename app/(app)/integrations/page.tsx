@@ -11,6 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import { usePlan } from "@/hooks/use-plan";
 import { ShopifyConnect } from "@/features/integrations/shopify-connect";
 import { WixConnect } from "@/features/integrations/wix-connect";
+import { WooConnect } from "@/features/integrations/woo-connect";
 import { OAuthConnect } from "@/features/integrations/oauth-connect";
 import { UpgradeGate } from "@/features/billing/upgrade-gate";
 
@@ -67,6 +68,7 @@ export default function IntegrationsPage() {
           >
             <ShopifyConnect />
             <WixConnect />
+            <WooConnect />
             <OAuthConnect
               provider="stripe"
               name="Stripe"

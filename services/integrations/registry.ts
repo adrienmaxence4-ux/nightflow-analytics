@@ -2,6 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { validateStripeKey, syncStripe } from "@/services/integrations/stripe";
 import { validateKlaviyoKey, syncKlaviyo } from "@/services/integrations/klaviyo";
 import { validateWixKey, syncWix } from "@/services/integrations/wix";
+import { validateWooKey, syncWoo } from "@/services/integrations/woocommerce";
 
 /**
  * SERVER-ONLY. Registry of API-KEY based integrations (multi-tenant).
@@ -47,6 +48,14 @@ export const KEYED_PROVIDERS: Record<string, KeyedProviderDef> = {
     label: "Wix",
     validate: validateWixKey,
     sync: syncWix,
+  },
+  // Credential is the composite `url::consumer_key::consumer_secret` (see
+  // woocommerce.ts) — standard WooCommerce REST v3, read-only keys.
+  woocommerce: {
+    id: "woocommerce",
+    label: "WooCommerce",
+    validate: validateWooKey,
+    sync: syncWoo,
   },
 };
 
