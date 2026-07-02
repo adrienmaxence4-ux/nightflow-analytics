@@ -17,6 +17,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 export type IntegrationSource =
   | "shopify"
+  | "wix"
   | "stripe"
   | "klaviyo"
   | "ga4"

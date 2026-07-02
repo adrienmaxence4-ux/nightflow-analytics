@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 import { encryptToken } from "@/lib/integrations/crypto";
+import { getUserSubscription } from "@/services/billing/subscription";
 import { getKeyedProvider } from "@/services/integrations/registry";
 
 /**
@@ -34,6 +35,15 @@ export async function POST(
   } = await supabase.auth.getUser();
   if (!user) {
     return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+  }
+
+  // Integrations are a Pro+ feature (same gate as the OAuth routes).
+  const { plan } = await getUserSubscription();
+  if (!plan.integrations) {
+    return NextResponse.json(
+      { error: "Les intégrations nécessitent le plan Pro" },
+      { status: 403 }
+    );
   }
 
   const { data: store } = await supabase.from("stores").select("id").limit(1);

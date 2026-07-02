@@ -9,6 +9,7 @@ import { getOAuthProvider } from "@/services/integrations/oauth-registry";
 import { syncShopify } from "@/services/integrations/shopify";
 import { syncStripe } from "@/services/integrations/stripe";
 import { syncKlaviyo } from "@/services/integrations/klaviyo";
+import { syncWix } from "@/services/integrations/wix";
 import { refreshGoogleToken } from "@/services/integrations/google";
 import {
   normalizeShopifyOrder,
@@ -140,6 +141,32 @@ const shopify: IntegrationConnector = {
     if (p.variants != null) return [normalizeShopifyProduct(p, storeId)];
     return [];
   },
+};
+
+// ── Wix Stores (BÊTA, key-based: composite `siteId::apiKey` credential) ──────
+const wix: IntegrationConnector = {
+  source: "wix",
+  name: "Wix Stores",
+  category: "commerce",
+  usesPkce: false,
+  isConfigured: true, // per-customer API key — nothing to configure app-side
+  supportsWebhooks: false,
+
+  // Key-based: no OAuth flow.
+  buildAuthorizeUrl: () => "",
+  exchangeCode: async () => null,
+  refresh: async () => null, // Wix API keys don't expire on a schedule.
+
+  fetchData: async () => [], // sync writes directly into the store tables
+  async sync(ctx) {
+    const token = ctx.tokens?.accessToken;
+    if (!token) return { source: "wix", events: 0, ok: false, error: "missing token" };
+    const s = await syncWix(token, ctx.storeId, ctx.db);
+    return { source: "wix", events: s.orders, ok: true };
+  },
+  registerWebhooks: async () => {},
+  verifyWebhook: () => false,
+  normalizeWebhook: () => [],
 };
 
 // ── Stripe ───────────────────────────────────────────────────────────────────
@@ -283,6 +310,7 @@ function adStub(
 
 export const CONNECTORS: Record<IntegrationSource, IntegrationConnector> = {
   shopify,
+  wix,
   stripe,
   klaviyo,
   ga4,
@@ -293,6 +321,7 @@ export const CONNECTORS: Record<IntegrationSource, IntegrationConnector> = {
 /** Provider id (DB) → connector. Note: GA4 is stored under provider "google". */
 const PROVIDER_TO_SOURCE: Record<string, IntegrationSource> = {
   shopify: "shopify",
+  wix: "wix",
   stripe: "stripe",
   klaviyo: "klaviyo",
   google: "ga4",

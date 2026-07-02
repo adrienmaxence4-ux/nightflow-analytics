@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { usePlan } from "@/hooks/use-plan";
 import { ShopifyConnect } from "@/features/integrations/shopify-connect";
+import { WixConnect } from "@/features/integrations/wix-connect";
 import { OAuthConnect } from "@/features/integrations/oauth-connect";
 import { UpgradeGate } from "@/features/billing/upgrade-gate";
 
@@ -65,6 +66,7 @@ export default function IntegrationsPage() {
             hint="Vos ventes réelles : produits, commandes, revenus."
           >
             <ShopifyConnect />
+            <WixConnect />
             <OAuthConnect
               provider="stripe"
               name="Stripe"

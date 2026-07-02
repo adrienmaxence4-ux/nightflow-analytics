@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { validateStripeKey, syncStripe } from "@/services/integrations/stripe";
 import { validateKlaviyoKey, syncKlaviyo } from "@/services/integrations/klaviyo";
+import { validateWixKey, syncWix } from "@/services/integrations/wix";
 
 /**
  * SERVER-ONLY. Registry of API-KEY based integrations (multi-tenant).
@@ -39,6 +40,13 @@ export const KEYED_PROVIDERS: Record<string, KeyedProviderDef> = {
     label: "Klaviyo",
     validate: validateKlaviyoKey,
     sync: syncKlaviyo,
+  },
+  // BÊTA — credential is the composite `siteId::apiKey` (see wix.ts).
+  wix: {
+    id: "wix",
+    label: "Wix",
+    validate: validateWixKey,
+    sync: syncWix,
   },
 };
 
