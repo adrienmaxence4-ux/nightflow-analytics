@@ -12,6 +12,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { ShopifyConnect } from "@/features/integrations/shopify-connect";
 import { OAuthConnect } from "@/features/integrations/oauth-connect";
 import { UpgradeGate } from "@/features/billing/upgrade-gate";
+import { InstallApp } from "@/features/pwa/install-app";
 import { usePlan } from "@/hooks/use-plan";
 
 interface Integration {
@@ -32,6 +33,7 @@ const SECTIONS = [
   { id: "profile", label: "Profil" },
   { id: "integrations", label: "Intégrations" },
   { id: "api", label: "Clés API" },
+  { id: "app", label: "Application" },
 ];
 
 export default function SettingsPage() {
@@ -223,6 +225,8 @@ export default function SettingsPage() {
               </Button>
             </Card>
           )}
+
+          {tab === "app" && <InstallApp />}
 
           {tab === "api" && !plan.apiAccess && (
             <UpgradeGate

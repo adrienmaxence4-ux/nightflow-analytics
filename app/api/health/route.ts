@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { isSupabaseConfigured } from "@/lib/env";
 import { resolveProvider } from "@/services/ai/anthropic";
+import { AI_MODEL } from "@/services/ai/client";
 
 /** GET /api/health — quick status probe for monitoring & Vercel checks. */
 export async function GET() {
@@ -11,6 +12,7 @@ export async function GET() {
     mode: isSupabaseConfigured ? "live" : "demo",
     ai: provider === "none" ? "mock" : "live",
     aiProvider: provider,
+    aiModel: provider === "anthropic" ? AI_MODEL : provider === "github" ? "github-models" : null,
     timestamp: new Date().toISOString(),
   });
 }
