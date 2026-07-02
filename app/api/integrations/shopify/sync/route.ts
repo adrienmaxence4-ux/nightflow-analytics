@@ -56,6 +56,12 @@ export async function POST() {
   try {
     const db = supabase as unknown as SupabaseClient;
     const summary = await syncShopify(shop, token, storeId, db);
+    // Record the successful sync so the UI shows "Dernière synchro".
+    await db
+      .from("integrations")
+      .update({ last_synced_at: new Date().toISOString(), last_error: null })
+      .eq("store_id", storeId)
+      .eq("provider", "shopify");
     return NextResponse.json({ ok: true, ...summary });
   } catch (e) {
     console.error("[shopify] sync failed", e);
