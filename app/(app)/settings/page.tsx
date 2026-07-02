@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { ShopifyConnect } from "@/features/integrations/shopify-connect";
+import { WixConnect } from "@/features/integrations/wix-connect";
 import { OAuthConnect } from "@/features/integrations/oauth-connect";
 import { UpgradeGate } from "@/features/billing/upgrade-gate";
 import { InstallApp } from "@/features/pwa/install-app";
@@ -116,6 +117,7 @@ export default function SettingsPage() {
               </div>
 
               <div className="flex flex-col gap-3">
+                <WixConnect />
                 <OAuthConnect
                   provider="stripe"
                   name="Stripe"
