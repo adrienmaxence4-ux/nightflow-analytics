@@ -23,11 +23,16 @@ jobs:
     steps:
       - name: Process retry queue
         run: |
-          curl -sS -X POST "$SITE_URL/api/integrations/jobs/process" \
-            -H "Authorization: Bearer $CRON_SECRET" -w "\n%{http_code}\n"
+          code=$(curl -sS -o /tmp/out -w "%{http_code}" -X POST "$SITE_URL/api/integrations/jobs/process" \
+            -H "Authorization: Bearer $CRON_SECRET")
+          cat /tmp/out; echo " → HTTP $code"
+          # Fail loudly on auth/config errors so problems are visible in Actions.
+          [ "$code" = "200" ]
 
       - name: Hourly sync
         if: github.event.schedule == '0 * * * *' || github.event_name == 'workflow_dispatch'
         run: |
-          curl -sS -X POST "$SITE_URL/api/integrations/sync" \
-            -H "Authorization: Bearer $CRON_SECRET" -w "\n%{http_code}\n"
+          code=$(curl -sS -o /tmp/out -w "%{http_code}" -X POST "$SITE_URL/api/integrations/sync" \
+            -H "Authorization: Bearer $CRON_SECRET")
+          cat /tmp/out; echo " → HTTP $code"
+          [ "$code" = "200" ]
