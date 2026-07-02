@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { AlertTriangle, FileText, Sparkles, Target, ShieldAlert, TrendingUp } from "lucide-react";
+import { AlertTriangle, Sparkles, Target, ShieldAlert, TrendingUp } from "lucide-react";
 import { PageTransition } from "@/components/layout/page-transition";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,7 @@ import { InsightCard } from "@/features/copilot/insight-card";
 import { AnalysisCard } from "@/features/copilot/analysis-card";
 import { CopilotChat } from "@/features/copilot/copilot-chat";
 import { CopilotAnswer, useCopilotAsk } from "@/features/copilot/copilot-answer";
+import { ReportMenu } from "@/features/reports/report-menu";
 import { TestPanel } from "@/features/admin/test-panel";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
@@ -180,11 +181,8 @@ export default function CopilotPage() {
               </Chip>
             </div>
           </div>
-          <div className="flex flex-none gap-2.5">
-            <Button onClick={downloadReport} disabled={reporting}>
-              <FileText className="h-4 w-4" />
-              {reporting ? "Génération…" : "Générer un rapport"}
-            </Button>
+          <div className="flex flex-none items-center gap-2.5">
+            <ReportMenu />
             <Button
               variant="ghost"
               onClick={refreshAnalysis}

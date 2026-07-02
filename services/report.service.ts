@@ -256,6 +256,220 @@ export async function generateStoreReport(): Promise<{ source: "db" | "mock" }> 
   return { source: data.source };
 }
 
+// ─────────────────────────────────────────────────────────────
+// Excel (.xlsx) report — same data, one sheet per section.
+// ─────────────────────────────────────────────────────────────
+export async function generateStoreReportExcel(): Promise<{ source: "db" | "mock" }> {
+  const data = await collect();
+  const XLSX = await import("xlsx");
+
+  const wb = XLSX.utils.book_new();
+  const sheet = (name: string, rows: (string | number)[][]) => {
+    const ws = XLSX.utils.aoa_to_sheet(rows);
+    // Reasonable column widths from the longest cell per column.
+    ws["!cols"] = rows[0].map((_, c) => ({
+      wch: Math.min(
+        60,
+        Math.max(...rows.map((r) => String(r[c] ?? "").length), 10) + 2
+      ),
+    }));
+    XLSX.utils.book_append_sheet(wb, ws, name);
+  };
+
+  sheet("Synthèse", [
+    ["Nightflow Analytics — Rapport de performance"],
+    [`Généré le ${new Date().toLocaleDateString("fr-FR")}`],
+    data.source === "mock" ? ["⚠ Données de démonstration"] : [""],
+    [""],
+    ["Synthèse du Copilot"],
+    [data.summary || "—"],
+  ]);
+
+  sheet("KPIs", [
+    ["Indicateur", "Valeur", "Évolution"],
+    ...data.range.kpis.map((k): (string | number)[] => [
+      k.label,
+      k.value,
+      `${k.delta} ${k.sub}`,
+    ]),
+  ]);
+
+  sheet("Produits", [
+    ["Produit", "Ventes", "Revenu", "Conversion", "Part du CA", "Stock", "Tendance"],
+    ...data.products.map((p): (string | number)[] => [
+      p.name,
+      p.sales,
+      p.revenue,
+      p.conversion,
+      `${p.revenueShare}%`,
+      p.stock,
+      p.delta || "—",
+    ]),
+  ]);
+
+  sheet("Marketing", [
+    ["Canal", "Statut", "Dépenses", "Revenu", "ROAS"],
+    ...data.campaigns.map((c): (string | number)[] => [
+      c.channel,
+      c.status,
+      c.spend,
+      c.revenue,
+      `${c.roas.toFixed(2)}x`,
+    ]),
+  ]);
+
+  sheet("Insights", [
+    ["Constat", "Pourquoi", "Action recommandée", "Impact"],
+    ...data.insights.map((i): (string | number)[] => [
+      i.what,
+      i.why,
+      i.action,
+      i.impact || "—",
+    ]),
+  ]);
+
+  XLSX.writeFile(wb, `nightflow-rapport-${dateStamp()}.xlsx`);
+  return { source: data.source };
+}
+
+// ─────────────────────────────────────────────────────────────
+// Word (.docx) report — same data, print-friendly document.
+// ─────────────────────────────────────────────────────────────
+export async function generateStoreReportWord(): Promise<{ source: "db" | "mock" }> {
+  const data = await collect();
+  const {
+    Document,
+    Packer,
+    Paragraph,
+    TextRun,
+    HeadingLevel,
+    Table,
+    TableRow,
+    TableCell,
+    WidthType,
+  } = await import("docx");
+
+  const store = (data.range.sub || "Votre boutique").split(" · ")[0];
+  const today = new Date().toLocaleDateString("fr-FR", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+
+  const h = (text: string) =>
+    new Paragraph({ text, heading: HeadingLevel.HEADING_1, spacing: { before: 300, after: 120 } });
+  const p = (text: string, opts?: { bold?: boolean; color?: string }) =>
+    new Paragraph({
+      children: [new TextRun({ text, bold: opts?.bold, color: opts?.color })],
+      spacing: { after: 80 },
+    });
+  const table = (head: string[], rows: string[][]) =>
+    new Table({
+      width: { size: 100, type: WidthType.PERCENTAGE },
+      rows: [
+        new TableRow({
+          children: head.map(
+            (t) =>
+              new TableCell({
+                shading: { fill: "1A1440" },
+                children: [
+                  new Paragraph({
+                    children: [new TextRun({ text: t, bold: true, color: "FFFFFF" })],
+                  }),
+                ],
+              })
+          ),
+        }),
+        ...rows.map(
+          (r) =>
+            new TableRow({
+              children: r.map(
+                (t) => new TableCell({ children: [new Paragraph(String(t))] })
+              ),
+            })
+        ),
+      ],
+    });
+
+  const children: (InstanceType<typeof Paragraph> | InstanceType<typeof Table>)[] = [
+    new Paragraph({
+      children: [
+        new TextRun({ text: "NIGHTFLOW ANALYTICS", bold: true, color: "3D8FD2" }),
+      ],
+    }),
+    new Paragraph({
+      children: [new TextRun({ text: "Rapport de performance", bold: true, size: 48 })],
+      spacing: { after: 60 },
+    }),
+    p(`${store} — généré le ${today}`, { color: "666688" }),
+  ];
+
+  if (data.source === "mock") {
+    children.push(p("⚠ Données de démonstration (aucune boutique connectée avec des ventes réelles).", { color: "7A5B00" }));
+  }
+
+  if (data.summary) {
+    children.push(h("Synthèse du Copilot"), p(data.summary));
+  }
+
+  children.push(
+    h("Indicateurs clés (30 derniers jours)"),
+    table(
+      ["Indicateur", "Valeur", "Évolution"],
+      data.range.kpis.length
+        ? data.range.kpis.map((k) => [k.label, k.value, `${k.delta} ${k.sub}`])
+        : [["Aucune donnée", "—", "—"]]
+    ),
+    h("Produits"),
+    table(
+      ["Produit", "Ventes", "Revenu", "Conv.", "Stock"],
+      data.products.length
+        ? data.products.map((pr) => [pr.name, String(pr.sales), pr.revenue, pr.conversion, String(pr.stock)])
+        : [["Aucun produit synchronisé", "—", "—", "—", "—"]]
+    ),
+    h("Canaux marketing"),
+    table(
+      ["Canal", "Dépenses", "Revenu", "ROAS"],
+      data.campaigns.length
+        ? data.campaigns.map((c) => [c.channel, c.spend, c.revenue, `${c.roas.toFixed(1)}x`])
+        : [["Aucune campagne", "—", "—", "—"]]
+    ),
+    h("Insights & recommandations")
+  );
+
+  if (data.insights.length) {
+    for (const ins of data.insights) {
+      children.push(
+        p(`• ${ins.what}`, { bold: true }),
+        p(`Pourquoi : ${ins.why}`, { color: "555577" }),
+        p(`→ ${ins.action}`)
+      );
+    }
+  } else {
+    children.push(p("Aucun insight pour l'instant."));
+  }
+
+  const doc = new Document({ sections: [{ children }] });
+  const blob = await Packer.toBlob(doc);
+  downloadBlob(
+    `nightflow-rapport-${dateStamp()}.docx`,
+    blob,
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+  );
+  return { source: data.source };
+}
+
+export type ReportFormat = "pdf" | "xlsx" | "docx";
+
+/** Generates + downloads the report in the chosen format. */
+export async function generateStoreReportFile(
+  format: ReportFormat
+): Promise<{ source: "db" | "mock" }> {
+  if (format === "xlsx") return generateStoreReportExcel();
+  if (format === "docx") return generateStoreReportWord();
+  return generateStoreReport();
+}
+
 /** Exports the given products as a CSV file. */
 export function exportProductsCsv(products: Product[]): void {
   const rows = products.map((p) => [

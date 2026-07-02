@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { FileText, RefreshCw } from "lucide-react";
+import { RefreshCw } from "lucide-react";
 import { PageTransition } from "@/components/layout/page-transition";
 import { DemoBanner } from "@/components/demo-banner";
 import { RangeToggle } from "@/components/ui/range-toggle";
@@ -13,13 +13,13 @@ import { KpiDrawer } from "@/features/dashboard/kpi-drawer";
 import { ProductTable } from "@/features/products/product-table";
 import { ProductDrawer } from "@/features/products/product-drawer";
 import { CopilotPanel } from "@/features/copilot/copilot-panel";
+import { ReportMenu } from "@/features/reports/report-menu";
 import { TestPanel } from "@/features/admin/test-panel";
 import { useToast } from "@/hooks/use-toast";
 import { useRange } from "@/hooks/use-range";
 import { useIsAdmin } from "@/hooks/use-admin";
 import { getRangeDataSync } from "@/services/analytics.service";
 import { getProducts } from "@/services/products.service";
-import { generateStoreReport } from "@/services/report.service";
 import { parseMetric } from "@/utils/format";
 import type { Kpi, Product, Range } from "@/types";
 
@@ -93,7 +93,6 @@ export default function DashboardPage() {
     return () => clearInterval(id);
   }, [range, source]);
 
-  const [reporting, setReporting] = useState(false);
   const [seeding, setSeeding] = useState(false);
 
   const refresh = () => {
@@ -121,19 +120,6 @@ export default function DashboardPage() {
     } finally {
       setSeeding(false);
     }
-  };
-
-  const downloadReport = async () => {
-    if (reporting) return;
-    setReporting(true);
-    toast("Génération du rapport…", "info");
-    const { source } = await generateStoreReport();
-    toast(
-      source === "db"
-        ? "Rapport téléchargé ✓"
-        : "Rapport (démo) téléchargé ✓"
-    );
-    setReporting(false);
   };
 
   return (
@@ -174,14 +160,7 @@ export default function DashboardPage() {
             🧪 {seeding ? "Génération…" : "Données de test"}
           </button>
         )}
-        <button
-          onClick={downloadReport}
-          disabled={reporting}
-          className="flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-neon-cyan to-neon-cyansoft px-3.5 py-2 text-xs font-bold text-night-950 shadow-glow transition hover:brightness-110 disabled:opacity-60"
-        >
-          <FileText className="h-3.5 w-3.5" />
-          {reporting ? "Génération…" : "Générer un rapport"}
-        </button>
+        <ReportMenu />
       </div>
 
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
