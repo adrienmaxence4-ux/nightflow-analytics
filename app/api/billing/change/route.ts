@@ -89,8 +89,25 @@ export async function POST(req: Request) {
     };
     const itemId = sub.items?.data?.[0]?.id;
     if (!subRes.ok || !itemId) {
+      const msg = sub.error?.message ?? "";
+      // Test→live switch: the stored subscription belongs to the OLD mode —
+      // clear the stale ids so the user can simply re-subscribe for real.
+      if (/no such subscription/i.test(msg)) {
+        const dbClean = supabase as unknown as SupabaseClient;
+        await dbClean
+          .from("subscriptions")
+          .update({ stripe_customer_id: null, stripe_subscription_id: null })
+          .eq("user_id", user.id);
+        return NextResponse.json(
+          {
+            error:
+              "Ton ancien abonnement datait du mode test — choisis un plan pour t'abonner en réel.",
+          },
+          { status: 409 }
+        );
+      }
       return NextResponse.json(
-        { error: sub.error?.message ?? "Abonnement introuvable" },
+        { error: msg || "Abonnement introuvable" },
         { status: 502 }
       );
     }
