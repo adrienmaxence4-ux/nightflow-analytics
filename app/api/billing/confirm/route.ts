@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { env } from "@/lib/env";
 import { createClient } from "@/lib/supabase/server";
+import { rateLimit, RATE_LIMITED } from "@/lib/rate-limit";
 import { PLANS, type PlanId } from "@/lib/plans";
 
 /**
@@ -24,11 +25,15 @@ export async function POST(req: Request) {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+  if (!rateLimit(`confirm:${user.id}`, 10, 60_000)) {
+    return NextResponse.json(RATE_LIMITED, { status: 429 });
+  }
 
   // Retrieve the session (+ expanded subscription) from Stripe.
   let session: {
     client_reference_id?: string;
     customer?: string;
+    payment_status?: string;
     subscription?: {
       id?: string;
       status?: string;
@@ -51,15 +56,33 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Stripe injoignable" }, { status: 502 });
   }
 
-  // Ownership check — the session must have been started by this user.
+  // Ownership check — FAIL CLOSED: a session without a verifiable owner is
+  // rejected (an ownerless session could otherwise be replayed by anyone).
   const owner = session.client_reference_id ?? session.subscription?.metadata?.user_id;
-  if (owner && owner !== user.id) {
+  if (owner !== user.id) {
     return NextResponse.json({ error: "Session non autorisée" }, { status: 403 });
   }
 
+  // Payment check — the plan is only granted once Stripe confirms payment and
+  // an active/trialing subscription exists. No permissive defaults: starting a
+  // checkout and calling /confirm without paying must never grant a plan.
   const sub = session.subscription;
-  const planId = (sub?.metadata?.plan as PlanId) ?? "pro";
-  const plan = PLANS[planId] ? planId : "pro";
+  const subStatus = sub?.status ?? "";
+  if (
+    session.payment_status !== "paid" ||
+    !sub?.id ||
+    !["active", "trialing"].includes(subStatus)
+  ) {
+    return NextResponse.json(
+      { error: "Paiement non confirmé par Stripe" },
+      { status: 402 }
+    );
+  }
+  const planId = sub.metadata?.plan as PlanId | undefined;
+  if (!planId || !PLANS[planId] || planId === "free") {
+    return NextResponse.json({ error: "Plan de session invalide" }, { status: 400 });
+  }
+  const plan = planId;
   const interval =
     sub?.items?.data?.[0]?.price?.recurring?.interval === "year" ? "year" : "month";
   const periodEnd = sub?.current_period_end

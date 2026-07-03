@@ -251,8 +251,16 @@ export async function getRangeDataForStore(
     { label: "Achat", value: purchases, pct: buyPct },
   ];
 
+  // Honesty: if the latest data point is older than today, say so instead of
+  // implying the "Aujourd'hui" numbers are current.
+  const latestDate = metrics[0]?.date ?? null;
+  const isStale = latestDate !== null && latestDate < new Date().toISOString().slice(0, 10);
+  const freshness = isStale
+    ? `données au ${new Date(latestDate!).toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit" })}`
+    : "données réelles";
+
   return {
-    sub: `${ctx.store.name} · ${subLabel} · données réelles`,
+    sub: `${ctx.store.name} · ${subLabel} · ${freshness}`,
     kpis,
     series,
     funnel,

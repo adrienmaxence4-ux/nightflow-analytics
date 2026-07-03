@@ -16,9 +16,10 @@ export function resolveProvider(): Provider {
   const p = env.aiProvider;
   if (p === "github") return isGithubConfigured ? "github" : "none";
   if (p === "anthropic") return isAiConfigured ? "anthropic" : "none";
-  // auto: prefer the explicitly-configured paid provider, else free GitHub.
-  if (isAiConfigured) return "anthropic";
+  // auto: prefer the FREE GitHub Models tier when its token is configured;
+  // the paid Anthropic key is the fallback (cost control by default).
   if (isGithubConfigured) return "github";
+  if (isAiConfigured) return "anthropic";
   return "none";
 }
 

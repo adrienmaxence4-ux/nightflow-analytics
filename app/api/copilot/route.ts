@@ -3,6 +3,8 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { answerCopilotQuestion } from "@/services/ai/copilot";
 import { buildStoreContext } from "@/services/ai/store-context";
 import { createClient } from "@/lib/supabase/server";
+import { rateLimit, RATE_LIMITED } from "@/lib/rate-limit";
+import { getUserSubscription } from "@/services/billing/subscription";
 
 /**
  * POST /api/copilot
@@ -23,6 +25,40 @@ export async function POST(req: Request) {
   if (!question || !question.trim()) {
     return NextResponse.json({ error: "Missing question" }, { status: 400 });
   }
+  // Cap the prompt size — giant questions are an AI-cost attack, not a use case.
+  if (question.length > 2_000) {
+    return NextResponse.json({ error: "Question trop longue" }, { status: 413 });
+  }
+
+  // Burst protection + plan-based daily AI quota (cost control).
+  const supabaseForQuota = createClient();
+  if (supabaseForQuota) {
+    const {
+      data: { user },
+    } = await supabaseForQuota.auth.getUser();
+    if (user) {
+      if (!rateLimit(`copilot:${user.id}`, 8, 60_000)) {
+        return NextResponse.json(RATE_LIMITED, { status: 429 });
+      }
+      const { plan } = await getUserSubscription();
+      if (!plan.aiUnlimited) {
+        const quota = Math.max(plan.aiPerDay, 3); // free keeps a small taste (3/day)
+        const used = await countTodayQuestions(supabaseForQuota, user.id);
+        if (used >= quota) {
+          return NextResponse.json({
+            answer:
+              plan.id === "scale"
+                ? "Quota atteint — réessaie demain."
+                : `Tu as utilisé tes ${quota} questions IA du jour. Passe en ${
+                    plan.id === "pro" ? "Scale pour l'IA illimitée" : "Pro pour 20 questions/jour"
+                  } — ou reviens demain 🌙`,
+            source: "quota",
+            conversationId: null,
+          });
+        }
+      }
+    }
+  }
 
   const ctx = await buildStoreContext();
   const { answer, source } = await answerCopilotQuestion(question, ctx);
@@ -36,6 +72,32 @@ export async function POST(req: Request) {
   }
 
   return NextResponse.json({ answer, source, conversationId: convId });
+}
+
+/** Counts the user's questions asked since local midnight (DB = exact across instances). */
+async function countTodayQuestions(
+  supabase: NonNullable<ReturnType<typeof createClient>>,
+  userId: string
+): Promise<number> {
+  try {
+    const midnight = new Date();
+    midnight.setHours(0, 0, 0, 0);
+    const { data: convs } = await supabase
+      .from("ai_conversations")
+      .select("id")
+      .eq("user_id", userId);
+    const ids = ((convs as { id: string }[] | null) ?? []).map((c) => c.id);
+    if (ids.length === 0) return 0;
+    const { count } = await supabase
+      .from("ai_messages")
+      .select("id", { count: "exact", head: true })
+      .in("conversation_id", ids)
+      .eq("role", "user")
+      .gte("created_at", midnight.toISOString());
+    return count ?? 0;
+  } catch {
+    return 0; // fail open on counting — never block a paying user on a hiccup
+  }
 }
 
 async function persist(

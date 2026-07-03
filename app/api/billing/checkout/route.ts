@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { env } from "@/lib/env";
 import { createClient } from "@/lib/supabase/server";
+import { rateLimit, RATE_LIMITED } from "@/lib/rate-limit";
 import {
   PLANS,
   priceCents,
@@ -33,17 +34,23 @@ export async function POST(req: Request) {
     );
   }
 
-  // Best-effort: prefill the customer's email + tag the user for the webhook.
-  let email: string | undefined;
-  let userId: string | undefined;
+  // Authentication REQUIRED: every session must be tied to its owner —
+  // ownerless sessions can't be verified by /confirm and invite abuse.
   const supabase = createClient();
-  if (supabase) {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    email = user?.email ?? undefined;
-    userId = user?.id;
+  if (!supabase) {
+    return NextResponse.json({ error: "Supabase non configuré" }, { status: 400 });
   }
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+  }
+  if (!rateLimit(`checkout:${user.id}`, 5, 60_000)) {
+    return NextResponse.json(RATE_LIMITED, { status: 429 });
+  }
+  const email = user.email ?? undefined;
+  const userId = user.id;
 
   const params = new URLSearchParams();
   params.set("mode", "subscription");

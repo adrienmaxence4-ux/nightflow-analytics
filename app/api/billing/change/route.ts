@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { env } from "@/lib/env";
 import { createClient } from "@/lib/supabase/server";
+import { rateLimit, RATE_LIMITED } from "@/lib/rate-limit";
 import {
   PLANS,
   priceCents,
@@ -45,6 +46,9 @@ export async function POST(req: Request) {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+  if (!rateLimit(`bill-change:${user.id}`, 5, 60_000)) {
+    return NextResponse.json(RATE_LIMITED, { status: 429 });
+  }
 
   const { data } = await supabase
     .from("subscriptions")
