@@ -55,8 +55,8 @@ export const PLANS: Record<PlanId, Plan> = {
     id: "pro",
     name: "Pro",
     tag: "Populaire",
-    monthlyCents: 4900,
-    yearlyCents: 49000,
+    monthlyCents: 900,
+    yearlyCents: 9000,
     highlight: true,
     features: [
       "Vos vraies données de boutique",
@@ -76,8 +76,8 @@ export const PLANS: Record<PlanId, Plan> = {
     id: "scale",
     name: "Scale",
     tag: "Agences",
-    monthlyCents: 14900,
-    yearlyCents: 149000,
+    monthlyCents: 1900,
+    yearlyCents: 19000,
     highlight: false,
     features: [
       "Tout le plan Pro, plus :",
