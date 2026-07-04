@@ -236,10 +236,19 @@ export default function BillingPage() {
           <h3 className="text-[15px] font-bold">Méthode de paiement & abonnement</h3>
           <button
             onClick={openPortal}
-            disabled={busy === "portal"}
-            className="rounded-xl border border-glass-border bg-glass px-3.5 py-2 text-xs font-semibold text-ink-dim transition hover:border-glass-hi hover:text-white disabled:opacity-60"
+            disabled={busy === "portal" || !hasCustomer}
+            title={
+              hasCustomer
+                ? "Ouvrir le portail sécurisé Stripe"
+                : "Aucune carte enregistrée — abonnez-vous d'abord à un plan payant"
+            }
+            className="rounded-xl border border-glass-border bg-glass px-3.5 py-2 text-xs font-semibold text-ink-dim transition hover:border-glass-hi hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
           >
-            {busy === "portal" ? "Ouverture…" : "Gérer (carte, plan, factures)"}
+            {busy === "portal"
+              ? "Ouverture…"
+              : hasCustomer
+                ? "Gérer (carte, plan, factures)"
+                : "Aucune carte enregistrée"}
           </button>
         </div>
         <p className="mt-2 text-xs text-ink-mut">

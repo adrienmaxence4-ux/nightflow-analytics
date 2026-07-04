@@ -47,23 +47,23 @@ export default function LandingPage() {
       {/* ── Hero ── */}
       <section className="grid items-center gap-10 py-14 lg:grid-cols-2 lg:py-20">
         <div>
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-glass-hi bg-glass px-3 py-1 text-[11px] font-bold tracking-wide text-neon-cyansoft">
+          <span className="fade-up inline-flex items-center gap-1.5 rounded-full border border-glass-hi bg-glass px-3 py-1 text-[11px] font-bold tracking-wide text-neon-cyansoft">
             <Sparkles className="h-3 w-3" /> VOTRE DIRECTEUR E-COMMERCE IA
           </span>
-          <h1 className="mt-4 text-[38px] font-extrabold leading-[1.1] tracking-tight sm:text-[48px]">
+          <h1 className="fade-up-1 mt-4 text-[38px] font-extrabold leading-[1.1] tracking-tight sm:text-[48px]">
             Arrêtez de fixer des chiffres.{" "}
             <span className="bg-gradient-to-r from-neon-cyan via-neon-violet to-neon-pink bg-clip-text text-transparent">
               Sachez quoi faire.
             </span>
           </h1>
-          <p className="mt-4 max-w-lg text-[16px] leading-relaxed text-ink-dim">
+          <p className="fade-up-2 mt-4 max-w-lg text-[16px] leading-relaxed text-ink-dim">
             Nightflow connecte votre boutique et vous dit en français clair{" "}
             <b className="text-white">ce qui se passe</b>,{" "}
             <b className="text-white">pourquoi</b>, et{" "}
             <b className="text-white">quoi faire</b> — en moins de 30 secondes
             par jour.
           </p>
-          <div className="mt-7 flex flex-wrap items-center gap-3">
+          <div className="fade-up-3 mt-7 flex flex-wrap items-center gap-3">
             <Link
               href="/signup"
               className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-neon-cyan to-neon-cyansoft px-6 py-3 text-[15px] font-bold text-night-950 shadow-glow transition hover:brightness-110"
@@ -77,14 +77,23 @@ export default function LandingPage() {
               Voir la démo
             </Link>
           </div>
-          <p className="mt-4 text-[12px] text-ink-mut">
-            Sans carte bancaire · Connexion boutique en 1 clic · Données
-            chiffrées, jamais revendues
-          </p>
+          <div className="fade-up-3 mt-5 flex flex-wrap gap-2">
+            {["Gratuit, sans carte bancaire", "Prêt en 2 minutes", "Données chiffrées, jamais revendues"].map(
+              (t) => (
+                <span
+                  key={t}
+                  className="inline-flex items-center gap-1.5 rounded-full border border-glass-border bg-glass px-3 py-1 text-[11px] font-semibold text-ink-dim"
+                >
+                  <Check className="h-3 w-3 text-neon-lime" strokeWidth={3} />
+                  {t}
+                </span>
+              )
+            )}
+          </div>
         </div>
 
         {/* Product taste: a real insight, as the app renders it */}
-        <div className="rounded-2xl border border-glass-hi bg-night-900/70 p-5 shadow-[0_24px_80px_-24px_rgba(61,242,255,0.25)] backdrop-blur-xl">
+        <div className="fade-up-2 rounded-2xl border border-glass-hi bg-night-900/70 p-5 shadow-[0_24px_80px_-24px_rgba(61,242,255,0.25)] backdrop-blur-xl">
           <div className="mb-4 grid grid-cols-3 gap-3">
             {[
               ["Revenu (7j)", "€4 820", "+12,4 %", "text-neon-lime"],
@@ -131,8 +140,48 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* ── How it works — 3 real, simple steps ── */}
+      <section className="py-16">
+        <h2 className="text-center text-[28px] font-extrabold tracking-tight">
+          Lancé en 2 minutes, sans rien installer
+        </h2>
+        <p className="mx-auto mt-2 max-w-md text-center text-[14px] text-ink-dim">
+          Pas de code, pas de configuration, pas de tableur à remplir.
+        </p>
+        <div className="mt-10 grid gap-5 md:grid-cols-3">
+          {[
+            {
+              n: "1",
+              t: "Créez votre compte",
+              d: "Gratuit, sans carte bancaire. Vous explorez d'abord avec une boutique de démonstration complète.",
+            },
+            {
+              n: "2",
+              t: "Connectez votre boutique",
+              d: "Un clic sur « Se connecter avec Shopify, Wix, WooCommerce ou Stripe » — vos produits, commandes et revenus arrivent en quelques secondes.",
+            },
+            {
+              n: "3",
+              t: "Laissez le copilote veiller",
+              d: "Analyses, alertes et rapports arrivent tout seuls — sur le site, sur votre ordinateur et sur votre téléphone.",
+            },
+          ].map((s, i) => (
+            <div key={s.n} className="relative rounded-2xl border border-glass-border bg-glass p-6 text-center">
+              <span className="mx-auto grid h-11 w-11 place-items-center rounded-full bg-gradient-to-br from-neon-cyan to-neon-violet text-[17px] font-extrabold text-night-950 shadow-glow">
+                {s.n}
+              </span>
+              <h3 className="mt-4 text-[16px] font-extrabold">{s.t}</h3>
+              <p className="mt-2 text-[13px] leading-relaxed text-ink-dim">{s.d}</p>
+              {i < 2 && (
+                <ArrowRight className="absolute -right-4 top-1/2 hidden h-5 w-5 -translate-y-1/2 text-ink-mut md:block" />
+              )}
+            </div>
+          ))}
+        </div>
+      </section>
+
       {/* ── The 3 pillars ── */}
-      <section id="fonctionnalites" className="py-16">
+      <section id="fonctionnalites" className="border-t border-glass-border py-16">
         <h2 className="text-center text-[28px] font-extrabold tracking-tight">
           Un copilote, pas un tableau de plus
         </h2>

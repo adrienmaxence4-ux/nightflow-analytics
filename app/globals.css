@@ -110,3 +110,15 @@
     color: #fff;
   }
 }
+
+@layer components {
+  /* Soft entrance for the landing hero — pure CSS, zero JS */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(16px); }
+    to { opacity: 1; transform: none; }
+  }
+  .fade-up { animation: fadeUp 0.7s ease-out both; }
+  .fade-up-1 { animation: fadeUp 0.7s ease-out 0.12s both; }
+  .fade-up-2 { animation: fadeUp 0.7s ease-out 0.24s both; }
+  .fade-up-3 { animation: fadeUp 0.7s ease-out 0.38s both; }
+}
