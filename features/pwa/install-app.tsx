@@ -100,6 +100,7 @@ export function InstallApp() {
             ou menu ⋮ → «&nbsp;Installer Nightflow&nbsp;».
           </p>
         )}
+
       </div>
     </Card>
   );

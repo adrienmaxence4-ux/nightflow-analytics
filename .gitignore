@@ -32,3 +32,9 @@ yarn-error.log*
 *.tsbuildinfo
 
 .vercel
+
+# desktop app build artifacts
+desktop/node_modules
+desktop/dist
+desktop/build
+desktop/
