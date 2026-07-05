@@ -3,15 +3,21 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
-import { Moon } from "lucide-react";
+import { BarChart3, Moon } from "lucide-react";
 import { NAV_MAIN, NAV_SECONDARY, type NavItem } from "@/lib/nav";
 import { getDismissedIds, getSeenIds, markSeen } from "@/lib/notif-prefs";
 import { usePlan } from "@/hooks/use-plan";
+import { useIsAdmin } from "@/hooks/use-admin";
 import { cn } from "@/lib/utils";
 
 export function Sidebar() {
   const pathname = usePathname();
   const { plan } = usePlan();
+  const isAdmin = useIsAdmin();
+  // Founder-only stats page, appended for admins without touching lib/nav.
+  const secondaryItems: NavItem[] = isAdmin
+    ? [...NAV_SECONDARY, { href: "/admin", label: "Stats du site", icon: BarChart3 }]
+    : NAV_SECONDARY;
   // Live badge counts = notifications that are neither seen nor dismissed.
   const [badges, setBadges] = useState<Record<string, number>>({});
 
@@ -70,7 +76,7 @@ export function Sidebar() {
 
       <NavGroup label="PILOTAGE" items={NAV_MAIN} pathname={pathname} badges={badges} />
       <div className="my-2 h-px bg-glass-border" />
-      <NavGroup label="COMPTE" items={NAV_SECONDARY} pathname={pathname} badges={badges} />
+      <NavGroup label="COMPTE" items={secondaryItems} pathname={pathname} badges={badges} />
 
       <div className="flex-1" />
 

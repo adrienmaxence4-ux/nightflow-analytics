@@ -174,6 +174,12 @@ export type IntegrationEventRow = {
   created_at: string;
 }
 
+export type SiteVisitRow = {
+  date: string;
+  vid: string;
+  created_at: string;
+}
+
 export type IntegrationJobRow = {
   id: string;
   store_id: string;
@@ -261,6 +267,7 @@ export interface Database {
       recommendations: Table<RecommendationRow, "store_id" | "title">;
       notifications: Table<NotificationRow, "user_id" | "title">;
       integrations: Table<IntegrationRow, "store_id" | "provider">;
+      site_visits: Table<SiteVisitRow, "vid">;
       integration_events: Table<IntegrationEventRow, "store_id" | "source" | "event_type" | "occurred_at">;
       integration_jobs: Table<IntegrationJobRow, "store_id" | "provider" | "kind">;
       subscriptions: Table<SubscriptionRow, "user_id">;

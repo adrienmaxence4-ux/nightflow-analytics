@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { Providers } from "@/components/providers";
 import { Starfield } from "@/components/layout/starfield";
+import { VisitTracker } from "@/components/visit-tracker";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -53,6 +54,7 @@ export default function RootLayout({
     <html lang="fr" className={inter.variable}>
       <body className="min-h-screen">
         <Starfield />
+        <VisitTracker />
         <Providers>{children}</Providers>
       </body>
     </html>
