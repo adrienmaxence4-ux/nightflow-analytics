@@ -49,6 +49,37 @@ export default function AdminStatsPage() {
   const isAdmin = useIsAdmin();
   const [stats, setStats] = useState<Stats | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [vipEmail, setVipEmail] = useState("");
+  const [vipMsg, setVipMsg] = useState<string | null>(null);
+  const [vipBusy, setVipBusy] = useState(false);
+
+  const grantVip = async () => {
+    if (vipBusy || !vipEmail.trim()) return;
+    setVipBusy(true);
+    setVipMsg(null);
+    try {
+      const res = await fetch("/api/admin/grant", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ email: vipEmail }),
+      });
+      const d = await res.json().catch(() => ({}));
+      if (res.ok) {
+        setVipMsg(
+          d.applied === "now"
+            ? `✅ ${vipEmail.trim()} est passé en Scale immédiatement.`
+            : `✅ Accès Scale réservé — il s'activera tout seul quand ${vipEmail.trim()} créera son compte.`
+        );
+        setVipEmail("");
+      } else {
+        setVipMsg(`❌ ${d.error ?? "Échec"}`);
+      }
+    } catch {
+      setVipMsg("❌ Échec réseau");
+    } finally {
+      setVipBusy(false);
+    }
+  };
 
   useEffect(() => {
     fetch("/api/admin/stats", { cache: "no-store" })
@@ -97,6 +128,33 @@ export default function AdminStatsPage() {
               </Card>
             ))}
           </div>
+
+          {/* VIP access grant (influenceurs / testeurs) */}
+          <Card className="p-5">
+            <h3 className="text-[15px] font-bold">🎁 Offrir l&apos;accès Scale (VIP)</h3>
+            <p className="mt-1 text-xs text-ink-mut">
+              Entre l&apos;email d&apos;un testeur/influenceur : s&apos;il a un
+              compte, il passe Scale immédiatement ; sinon l&apos;accès
+              s&apos;activera automatiquement à son inscription.
+            </p>
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <input
+                value={vipEmail}
+                onChange={(e) => setVipEmail(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && grantVip()}
+                placeholder="email@dutesteur.com"
+                className="glass-input min-w-[260px] flex-1 rounded-xl px-3 py-2.5 text-[13px] sm:max-w-[360px]"
+              />
+              <button
+                onClick={grantVip}
+                disabled={vipBusy}
+                className="rounded-xl bg-gradient-to-r from-neon-cyan to-neon-cyansoft px-4 py-2.5 text-[13px] font-bold text-night-950 shadow-glow transition hover:brightness-110 disabled:opacity-60"
+              >
+                {vipBusy ? "Activation…" : "Offrir Scale à vie"}
+              </button>
+            </div>
+            {vipMsg && <p className="mt-2 text-[12px] text-ink-dim">{vipMsg}</p>}
+          </Card>
 
           {/* Visitors + signups */}
           <Card className="p-5">

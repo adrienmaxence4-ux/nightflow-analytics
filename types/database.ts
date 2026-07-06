@@ -180,6 +180,13 @@ export type SiteVisitRow = {
   created_at: string;
 }
 
+export type VipGrantRow = {
+  email: string;
+  plan: "pro" | "scale";
+  note: string | null;
+  created_at: string;
+}
+
 export type IntegrationJobRow = {
   id: string;
   store_id: string;
@@ -268,6 +275,7 @@ export interface Database {
       notifications: Table<NotificationRow, "user_id" | "title">;
       integrations: Table<IntegrationRow, "store_id" | "provider">;
       site_visits: Table<SiteVisitRow, "vid">;
+      vip_grants: Table<VipGrantRow, "email">;
       integration_events: Table<IntegrationEventRow, "store_id" | "source" | "event_type" | "occurred_at">;
       integration_jobs: Table<IntegrationJobRow, "store_id" | "provider" | "kind">;
       subscriptions: Table<SubscriptionRow, "user_id">;
