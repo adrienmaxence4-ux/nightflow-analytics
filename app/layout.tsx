@@ -4,6 +4,7 @@ import "./globals.css";
 import { Providers } from "@/components/providers";
 import { Starfield } from "@/components/layout/starfield";
 import { VisitTracker } from "@/components/visit-tracker";
+import { VipCapture } from "@/components/vip-capture";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -55,6 +56,7 @@ export default function RootLayout({
       <body className="min-h-screen">
         <Starfield />
         <VisitTracker />
+        <VipCapture />
         <Providers>{children}</Providers>
       </body>
     </html>
