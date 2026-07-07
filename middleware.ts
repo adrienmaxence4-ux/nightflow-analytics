@@ -1,11 +1,30 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
+import { isMaintenanceOn } from "@/lib/maintenance";
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
 const SUPABASE_ANON = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "";
 
 /** Session refresh must NEVER take the site down: hard cap on the auth call. */
 const AUTH_TIMEOUT_MS = 5_000;
+
+/** Admins bypass maintenance mode so the owner can keep working / turn it off. */
+const ADMIN_EMAILS = (process.env.ADMIN_EMAILS ?? "adrienmaxence4@gmail.com")
+  .split(",")
+  .map((s) => s.trim().toLowerCase())
+  .filter(Boolean);
+
+/** Paths that stay reachable during maintenance (login, auth, APIs, the page
+ * itself) — otherwise the admin could lock themselves out. */
+function bypassesMaintenance(pathname: string): boolean {
+  return (
+    pathname.startsWith("/api") ||
+    pathname.startsWith("/login") ||
+    pathname.startsWith("/signup") ||
+    pathname.startsWith("/auth") ||
+    pathname.startsWith("/maintenance")
+  );
+}
 
 /**
  * Refreshes the Supabase auth session on every request when configured.
@@ -21,6 +40,7 @@ export async function middleware(request: NextRequest) {
   }
 
   let response = NextResponse.next({ request });
+  let userEmail: string | null = null;
 
   try {
     const supabase = createServerClient(SUPABASE_URL, SUPABASE_ANON, {
@@ -48,13 +68,26 @@ export async function middleware(request: NextRequest) {
       },
     });
 
-    await Promise.race([
+    const raced = (await Promise.race([
       supabase.auth.getUser(),
-      new Promise((resolve) => setTimeout(resolve, AUTH_TIMEOUT_MS + 500)),
-    ]);
+      new Promise((resolve) => setTimeout(() => resolve(null), AUTH_TIMEOUT_MS + 500)),
+    ])) as { data?: { user?: { email?: string | null } | null } } | null;
+    userEmail = raced?.data?.user?.email ?? null;
   } catch (e) {
     // Fail open: log and serve the request without a session refresh.
     console.error("[middleware] session refresh skipped:", e);
+  }
+
+  // ── Maintenance mode ── block everyone except admins; login/API stay open so
+  // the owner can always get back in and switch it off. Fail-open (see helper).
+  const pathname = request.nextUrl.pathname;
+  if (!bypassesMaintenance(pathname)) {
+    const isAdmin = !!userEmail && ADMIN_EMAILS.includes(userEmail.toLowerCase());
+    if (!isAdmin && (await isMaintenanceOn())) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/maintenance";
+      return NextResponse.rewrite(url);
+    }
   }
 
   return response;

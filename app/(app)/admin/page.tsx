@@ -52,6 +52,30 @@ export default function AdminStatsPage() {
   const [vipEmail, setVipEmail] = useState("");
   const [vipMsg, setVipMsg] = useState<string | null>(null);
   const [vipBusy, setVipBusy] = useState(false);
+  const [maintenance, setMaintenance] = useState<boolean | null>(null);
+  const [maintBusy, setMaintBusy] = useState(false);
+
+  const toggleMaintenance = async () => {
+    if (maintBusy || maintenance === null) return;
+    const next = !maintenance;
+    if (next && !window.confirm("Bloquer TOUT le site pour les visiteurs ? Toi seul garderas l'accès.")) {
+      return;
+    }
+    setMaintBusy(true);
+    try {
+      const res = await fetch("/api/admin/maintenance", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ on: next }),
+      });
+      const d = await res.json().catch(() => ({}));
+      if (res.ok) setMaintenance(!!d.maintenance);
+    } catch {
+      /* ignore — state unchanged */
+    } finally {
+      setMaintBusy(false);
+    }
+  };
 
   const grantVip = async () => {
     if (vipBusy || !vipEmail.trim()) return;
@@ -89,6 +113,10 @@ export default function AdminStatsPage() {
         else setError(j.error ?? "Accès refusé");
       })
       .catch(() => setError("Chargement impossible"));
+    fetch("/api/admin/maintenance", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j) => j && setMaintenance(!!j.maintenance))
+      .catch(() => {});
   }, []);
 
   return (
@@ -100,6 +128,54 @@ export default function AdminStatsPage() {
 
       {error && (
         <Card className="p-6 text-sm text-neon-pinksoft">{error}</Card>
+      )}
+
+      {/* Interrupteur de maintenance — réservé à l'admin */}
+      {maintenance !== null && (
+        <Card
+          className={`p-5 ${
+            maintenance
+              ? "border-neon-pinksoft/50 [background:linear-gradient(160deg,rgba(255,92,174,0.14),rgba(255,92,174,0.03))]"
+              : ""
+          }`}
+        >
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h3 className="text-[15px] font-bold">🛠️ Mode maintenance</h3>
+              <p className="mt-1 text-xs text-ink-mut">
+                {maintenance
+                  ? "Le site est ACTUELLEMENT bloqué pour tous les visiteurs. Toi seul y as accès."
+                  : "Bloque tout le site (page « maintenance ») pour les visiteurs. Toi, tu gardes l'accès complet."}
+              </p>
+            </div>
+            <div className="flex items-center gap-3">
+              <span
+                className={`rounded-full px-2.5 py-1 text-[10px] font-extrabold ${
+                  maintenance
+                    ? "bg-neon-pinksoft/20 text-neon-pinksoft"
+                    : "bg-neon-lime/15 text-neon-lime"
+                }`}
+              >
+                {maintenance ? "● ACTIVÉ" : "● SITE EN LIGNE"}
+              </span>
+              <button
+                onClick={toggleMaintenance}
+                disabled={maintBusy}
+                className={`rounded-xl px-4 py-2.5 text-[13px] font-bold transition disabled:opacity-60 ${
+                  maintenance
+                    ? "bg-gradient-to-r from-neon-cyan to-neon-cyansoft text-night-950 shadow-glow hover:brightness-110"
+                    : "border border-neon-pinksoft/40 bg-neon-pinksoft/10 text-neon-pinksoft hover:bg-neon-pinksoft/20"
+                }`}
+              >
+                {maintBusy
+                  ? "…"
+                  : maintenance
+                    ? "Réactiver le site"
+                    : "Activer la maintenance"}
+              </button>
+            </div>
+          </div>
+        </Card>
       )}
 
       {!stats && !error && (

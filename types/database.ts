@@ -180,6 +180,12 @@ export type SiteVisitRow = {
   created_at: string;
 }
 
+export type SiteSettingsRow = {
+  id: string;
+  maintenance: boolean;
+  updated_at: string;
+}
+
 export type VipGrantRow = {
   email: string;
   plan: "pro" | "scale";
@@ -285,6 +291,7 @@ export interface Database {
       notifications: Table<NotificationRow, "user_id" | "title">;
       integrations: Table<IntegrationRow, "store_id" | "provider">;
       site_visits: Table<SiteVisitRow, "vid">;
+      site_settings: Table<SiteSettingsRow, "id">;
       vip_grants: Table<VipGrantRow, "email">;
       vip_codes: Table<VipCodeRow, "code">;
       integration_events: Table<IntegrationEventRow, "store_id" | "source" | "event_type" | "occurred_at">;
