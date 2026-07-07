@@ -10,6 +10,8 @@ import { useEffect } from "react";
 export function VisitTracker() {
   useEffect(() => {
     try {
+      // Skip the admin's own visits (flag set by useIsAdmin).
+      if (localStorage.getItem("nf_no_track") === "1") return;
       let vid = localStorage.getItem("nf_vid");
       if (!vid) {
         vid = crypto.randomUUID();

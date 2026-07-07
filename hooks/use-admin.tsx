@@ -13,7 +13,30 @@ export function useIsAdmin(): boolean {
     fetch("/api/me")
       .then((r) => (r.ok ? r.json() : null))
       .then((j: { admin?: boolean } | null) => {
-        if (alive && j) setAdmin(!!j.admin);
+        if (!alive || !j) return;
+        setAdmin(!!j.admin);
+        // Admin's own browsing must NOT inflate the site's visitor stats.
+        try {
+          if (j.admin) {
+            localStorage.setItem("nf_no_track", "1");
+            // One-time purge of any visits already counted from this browser.
+            if (!localStorage.getItem("nf_purged")) {
+              const vid = localStorage.getItem("nf_vid");
+              if (vid) {
+                fetch("/api/track", {
+                  method: "POST",
+                  headers: { "content-type": "application/json" },
+                  body: JSON.stringify({ vid, forget: true }),
+                }).catch(() => {});
+              }
+              localStorage.setItem("nf_purged", "1");
+            }
+          } else {
+            localStorage.removeItem("nf_no_track");
+          }
+        } catch {
+          /* storage blocked — ignore */
+        }
       })
       .catch(() => {});
     return () => {

@@ -14,9 +14,24 @@ export const dynamic = "force-dynamic";
 const VID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export async function POST(req: Request) {
-  const { vid } = (await req.json().catch(() => ({}))) as { vid?: string };
+  const { vid, forget } = (await req.json().catch(() => ({}))) as {
+    vid?: string;
+    forget?: boolean;
+  };
   if (!vid || !VID_RE.test(vid)) {
     return NextResponse.json({ ok: false }, { status: 400 });
+  }
+
+  // "forget" — the admin's browser purges its own past visits from the stats.
+  if (forget) {
+    const admin = createAdminClient();
+    if (admin) {
+      await (admin as unknown as SupabaseClient)
+        .from("site_visits")
+        .delete()
+        .eq("vid", vid);
+    }
+    return NextResponse.json({ ok: true, forgotten: true });
   }
   // Light abuse guard (per instance) — one vid can't spam inserts.
   if (!rateLimit(`track:${vid}`, 5, 60_000)) {
