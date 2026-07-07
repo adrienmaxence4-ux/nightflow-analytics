@@ -23,6 +23,9 @@ export default function BillingPage() {
   const [current, setCurrent] = useState<PlanId>("free");
   const [hasCustomer, setHasCustomer] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
+  const [trialAvailable, setTrialAvailable] = useState(false);
+  const [isTrialing, setIsTrialing] = useState(false);
+  const [trialEndsAt, setTrialEndsAt] = useState<string | null>(null);
 
   const loadSub = useCallback(async () => {
     try {
@@ -31,6 +34,9 @@ export default function BillingPage() {
         const j = await res.json();
         setCurrent((j.plan ?? "free") as PlanId);
         setHasCustomer(!!j.hasStripeCustomer);
+        setTrialAvailable(!!j.trialAvailable);
+        setIsTrialing(!!j.isTrialing);
+        setTrialEndsAt(j.trialEndsAt ?? null);
         if (j.interval) setBillingInterval(j.interval);
       }
     } catch {
@@ -81,6 +87,26 @@ export default function BillingPage() {
     }
   };
 
+  // Start the one-time 30-day Pro trial (no card).
+  const startTrial = async () => {
+    if (busy) return;
+    setBusy("trial");
+    try {
+      const res = await fetch("/api/billing/trial", { method: "POST" });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) {
+        toast("Essai Pro activé — 30 jours offerts 🎉");
+        await loadSub();
+      } else {
+        toast(data.error ?? "Activation impossible", "info");
+      }
+    } catch {
+      toast("Activation impossible", "info");
+    } finally {
+      setBusy(null);
+    }
+  };
+
   const openPortal = async () => {
     if (busy) return;
     setBusy("portal");
@@ -123,6 +149,10 @@ export default function BillingPage() {
   };
 
   const currentPlan = getPlan(current);
+  const trialDaysLeft =
+    isTrialing && trialEndsAt
+      ? Math.max(0, Math.ceil((new Date(trialEndsAt).getTime() - Date.now()) / 86_400_000))
+      : null;
 
   return (
     <PageTransition>
@@ -130,6 +160,43 @@ export default function BillingPage() {
         title="Facturation"
         subtitle={`Votre plan actuel : ${currentPlan.name}`}
       />
+
+      {/* Essai Pro — offre (compte neuf) ou statut (essai en cours) */}
+      {trialAvailable && (
+        <Card className="flex flex-wrap items-center justify-between gap-4 border-glass-hi p-5 [background:linear-gradient(160deg,rgba(61,242,255,0.14),rgba(154,107,255,0.06))]">
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="text-[15px] font-extrabold">
+                Essaie Pro gratuitement pendant 30 jours
+              </span>
+              <Badge variant="cyan">Sans carte</Badge>
+            </div>
+            <p className="mt-1 text-xs text-ink-dim">
+              Toutes tes vraies données + toutes les intégrations. Aucun paiement,
+              annulable à tout moment.
+            </p>
+          </div>
+          <button
+            onClick={startTrial}
+            disabled={busy === "trial"}
+            className="rounded-xl bg-gradient-to-r from-neon-cyan to-neon-cyansoft px-5 py-2.5 text-sm font-bold text-night-950 shadow-glow transition hover:brightness-110 disabled:opacity-60"
+          >
+            {busy === "trial" ? "Activation…" : "Démarrer l'essai 30 jours"}
+          </button>
+        </Card>
+      )}
+      {isTrialing && trialDaysLeft !== null && (
+        <Card className="flex flex-wrap items-center justify-between gap-3 border-glass-hi p-4">
+          <p className="text-[13px] text-ink-dim">
+            🎁 <span className="font-bold text-white">Essai Pro actif</span> — il te
+            reste{" "}
+            <span className="font-bold text-neon-cyan">
+              {trialDaysLeft} jour{trialDaysLeft > 1 ? "s" : ""}
+            </span>
+            . Passe en payant quand tu veux pour ne pas perdre l'accès.
+          </p>
+        </Card>
+      )}
 
       {/* Monthly / annual toggle */}
       <div className="flex w-fit items-center gap-1 rounded-xl border border-glass-border bg-glass p-1">
@@ -165,7 +232,16 @@ export default function BillingPage() {
           // upgrade/downgrade (proration, no cancel); downgrade to free → portal.
           let label = `Passer en ${plan.name}`;
           let action: () => void = () => subscribe(plan.id);
-          if (isCurrent) {
+          // Fresh account + Pro card → offer the 30-day free trial instead of
+          // sending straight to checkout.
+          if (trialAvailable && plan.id === "pro") {
+            label = "Essai 30 jours gratuit";
+            action = startTrial;
+          } else if (isTrialing && plan.id === "pro") {
+            // Convert the free (card-less) trial into a paid Pro subscription.
+            label = "Passer en Pro payant";
+            action = () => subscribe("pro");
+          } else if (isCurrent) {
             label = "Plan actuel";
             action = () =>
               hasCustomer ? openPortal() : toast("Vous êtes sur ce plan");
@@ -175,7 +251,8 @@ export default function BillingPage() {
               hasCustomer
                 ? openPortal()
                 : toast("Vous êtes déjà sur le plan gratuit");
-          } else if (current !== "free") {
+          } else if (current !== "free" && hasCustomer) {
+            // In-place proration only works on a real Stripe subscription.
             const isUpgrade = PLAN_RANK[plan.id] > PLAN_RANK[current];
             label = isUpgrade ? `Passer en ${plan.name}` : `Revenir en ${plan.name}`;
             action = () => changePlan(plan.id);

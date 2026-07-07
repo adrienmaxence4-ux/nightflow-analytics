@@ -59,6 +59,7 @@ export const PLANS: Record<PlanId, Plan> = {
     yearlyCents: 9000,
     highlight: true,
     features: [
+      "Essai 30 jours gratuit — sans carte",
       "Vos vraies données de boutique",
       "Toutes les intégrations (Shopify, Stripe, Klaviyo, GA4)",
       "API & webhooks",

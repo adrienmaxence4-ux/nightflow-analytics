@@ -219,6 +219,7 @@ export type SubscriptionRow = {
   stripe_customer_id: string | null;
   stripe_subscription_id: string | null;
   current_period_end: string | null;
+  trial_ends_at: string | null;
   updated_at: string;
 }
 
@@ -298,6 +299,14 @@ export interface Database {
     Functions: {
       owns_store: {
         Args: { p_store: string };
+        Returns: boolean;
+      };
+      claim_pro_trial: {
+        Args: Record<string, never>;
+        Returns: boolean;
+      };
+      has_used_trial: {
+        Args: Record<string, never>;
         Returns: boolean;
       };
     };
