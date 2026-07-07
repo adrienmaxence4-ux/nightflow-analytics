@@ -193,7 +193,7 @@ export default function BillingPage() {
             <span className="font-bold text-neon-cyan">
               {trialDaysLeft} jour{trialDaysLeft > 1 ? "s" : ""}
             </span>
-            . Passe en payant quand tu veux pour ne pas perdre l'accès.
+            . Passe en payant quand tu veux pour ne pas perdre l&apos;accès.
           </p>
         </Card>
       )}
