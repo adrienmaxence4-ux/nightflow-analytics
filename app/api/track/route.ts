@@ -12,11 +12,13 @@ import { rateLimit } from "@/lib/rate-limit";
 export const dynamic = "force-dynamic";
 
 const VID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const AD_RE = /^[A-Za-z0-9_-]{2,32}$/;
 
 export async function POST(req: Request) {
-  const { vid, forget } = (await req.json().catch(() => ({}))) as {
+  const { vid, forget, ad } = (await req.json().catch(() => ({}))) as {
     vid?: string;
     forget?: boolean;
+    ad?: string;
   };
   if (!vid || !VID_RE.test(vid)) {
     return NextResponse.json({ ok: false }, { status: 400 });
@@ -42,11 +44,19 @@ export async function POST(req: Request) {
   if (!admin) return NextResponse.json({ ok: true }); // engine offline → no-op
 
   const db = admin as unknown as SupabaseClient;
+  const today = new Date().toISOString().slice(0, 10);
   await db
     .from("site_visits")
-    .upsert(
-      { date: new Date().toISOString().slice(0, 10), vid },
-      { onConflict: "date,vid", ignoreDuplicates: true }
-    );
+    .upsert({ date: today, vid }, { onConflict: "date,vid", ignoreDuplicates: true });
+
+  // Ad attribution — which published ad sent this visitor (no PII, deduped).
+  if (ad && AD_RE.test(ad)) {
+    await db
+      .from("ad_visits")
+      .upsert(
+        { date: today, code: ad, vid },
+        { onConflict: "date,code,vid", ignoreDuplicates: true }
+      );
+  }
   return NextResponse.json({ ok: true });
 }

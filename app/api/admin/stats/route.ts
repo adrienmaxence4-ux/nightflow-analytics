@@ -130,6 +130,20 @@ export async function GET() {
     });
   }
 
+  // ── Which ad works: visitors per published ad code (30d) ──
+  const { data: adRows } = await admin
+    .from("ad_visits")
+    .select("code")
+    .gte("date", day(since30));
+  const byCode = new Map<string, number>();
+  for (const r of (adRows as { code: string }[] | null) ?? []) {
+    byCode.set(r.code, (byCode.get(r.code) ?? 0) + 1);
+  }
+  const adPerformance = [...byCode.entries()]
+    .map(([code, visits]) => ({ code, visits }))
+    .sort((a, b) => b.visits - a.visits)
+    .slice(0, 10);
+
   const visitors30 = [...visitsByDay.values()].reduce((t, n) => t + n, 0);
   // Monthly recurring revenue estimate from active plans (cents).
   const mrrCents = subsByPlan.pro * 900 + subsByPlan.scale * 1900;
@@ -144,5 +158,6 @@ export async function GET() {
     },
     subsByPlan,
     series,
+    adPerformance,
   });
 }

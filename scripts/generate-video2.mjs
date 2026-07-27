@@ -13,7 +13,9 @@ import { execFile } from "node:child_process";
 import { mkdirSync, rmSync } from "node:fs";
 import { promisify } from "node:util";
 
-const OUT = "C:/Users/adrie/Downloads/nightflow-video-2.mp4";
+const OUT_DIR = process.env.ADS_OUT_DIR ?? "C:/Users/adrie/Downloads";
+mkdirSync(OUT_DIR, { recursive: true });
+const OUT = `${OUT_DIR}/nightflow-video-2.mp4`;
 const TMP = "scripts/.frames2";
 const W = 1080, H = 1920, FPS = 30, DUR = 15;
 const F = "'Segoe UI', Arial, sans-serif";

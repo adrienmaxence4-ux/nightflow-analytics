@@ -1,0 +1,59 @@
+name: Pubs hebdomadaires
+
+# Génère automatiquement la campagne de pubs (4 vidéos + PLAN.md avec légendes,
+# musiques et liens de suivi) chaque dimanche soir. Aucun secret requis :
+# tout est produit par du code (sharp + ffmpeg), aucune API payante.
+#
+# Récupérer les pubs : onglet Actions → dernier run → "Artifacts" → télécharger.
+# En local, la même commande donne le même résultat : `npm run ads`.
+
+on:
+  schedule:
+    - cron: "0 18 * * 0" # dimanche 18:00 UTC
+  workflow_dispatch:
+
+jobs:
+  generate:
+    name: Générer la campagne
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Générer les pubs
+        env:
+          ADS_OUT_DIR: ${{ github.workspace }}/campagne
+          ADS_SITE_URL: https://nightflow-analytics.vercel.app
+          # Angle prioritaire (voir /admin → "Quelle pub marche"), ex: fondateur
+          ADS_FOCUS: ${{ vars.ADS_FOCUS }}
+        run: npm run ads
+
+      - name: Vérifier la sortie
+        run: |
+          DIR=$(find "${{ github.workspace }}/campagne" -maxdepth 1 -type d -name 'nightflow-pubs-*' | head -1)
+          if [ -z "$DIR" ] || [ ! -f "$DIR/PLAN.md" ]; then
+            echo "::error::Aucune campagne générée"
+            exit 1
+          fi
+          COUNT=$(find "$DIR" -name '*.mp4' | wc -l)
+          echo "✅ $COUNT vidéo(s) générée(s) dans $DIR"
+          if [ "$COUNT" -eq 0 ]; then
+            echo "::error::Aucune vidéo produite"
+            exit 1
+          fi
+
+      - name: Publier la campagne (artifact)
+        uses: actions/upload-artifact@v4
+        with:
+          name: pubs-nightflow
+          path: ${{ github.workspace }}/campagne/
+          retention-days: 90

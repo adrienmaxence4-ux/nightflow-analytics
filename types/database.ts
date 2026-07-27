@@ -186,6 +186,13 @@ export type SiteSettingsRow = {
   updated_at: string;
 }
 
+export type AdVisitRow = {
+  date: string;
+  code: string;
+  vid: string;
+  created_at: string;
+}
+
 export type VipGrantRow = {
   email: string;
   plan: "pro" | "scale";
@@ -292,6 +299,7 @@ export interface Database {
       integrations: Table<IntegrationRow, "store_id" | "provider">;
       site_visits: Table<SiteVisitRow, "vid">;
       site_settings: Table<SiteSettingsRow, "id">;
+      ad_visits: Table<AdVisitRow, "code" | "vid">;
       vip_grants: Table<VipGrantRow, "email">;
       vip_codes: Table<VipCodeRow, "code">;
       integration_events: Table<IntegrationEventRow, "store_id" | "source" | "event_type" | "occurred_at">;

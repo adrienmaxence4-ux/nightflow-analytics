@@ -32,6 +32,7 @@ interface Stats {
   };
   subsByPlan: { pro: number; scale: number };
   series: { label: string; visiteurs: number; inscrits: number; revenus: number }[];
+  adPerformance?: { code: string; visits: number }[];
 }
 
 const euros = (cents: number) =>
@@ -230,6 +231,46 @@ export default function AdminStatsPage() {
               </button>
             </div>
             {vipMsg && <p className="mt-2 text-[12px] text-ink-dim">{vipMsg}</p>}
+          </Card>
+
+          {/* Quelle pub marche (attribution ?a=CODE) */}
+          <Card className="p-5">
+            <h3 className="text-[15px] font-bold">🏆 Quelle pub marche</h3>
+            <p className="mt-1 text-xs text-ink-mut">
+              Visiteurs amenés par chaque publicité (30 j) — le lien de chaque pub
+              contient son code. Le générateur privilégie les gagnantes.
+            </p>
+            {stats.adPerformance && stats.adPerformance.length > 0 ? (
+              <div className="mt-4 flex flex-col gap-2">
+                {stats.adPerformance.map((a, i) => {
+                  const max = stats.adPerformance![0].visits || 1;
+                  return (
+                    <div key={a.code} className="flex items-center gap-3">
+                      <span className="w-6 text-[12px] font-bold text-ink-mut">
+                        {i + 1}.
+                      </span>
+                      <span className="w-32 flex-none truncate text-[13px] font-semibold text-white">
+                        {a.code}
+                      </span>
+                      <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-white/5">
+                        <div
+                          className="h-full rounded-full bg-gradient-to-r from-neon-cyan to-neon-violet"
+                          style={{ width: `${Math.round((a.visits / max) * 100)}%` }}
+                        />
+                      </div>
+                      <span className="w-16 text-right text-[13px] font-bold text-neon-cyan">
+                        {a.visits}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <p className="mt-3 text-[12px] text-ink-mut">
+                Aucune visite attribuée pour l&apos;instant — publie une pub avec
+                son lien de suivi et les résultats apparaîtront ici 📈
+              </p>
+            )}
           </Card>
 
           {/* Visitors + signups */}
