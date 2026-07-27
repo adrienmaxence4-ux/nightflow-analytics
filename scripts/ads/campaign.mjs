@@ -19,8 +19,10 @@ import ffmpegPath from "ffmpeg-static";
 import { synthesize, hasVoiceSupport } from "./voice.mjs";
 
 const run = promisify(execFile);
-/** ADS_VOICE=1 adds a local French voice-over (Windows only — see voice.mjs). */
-const WANT_VOICE = process.env.ADS_VOICE === "1";
+/** `--voice` (or ADS_VOICE=1) adds a local French voice-over — see voice.mjs.
+ *  The flag exists so the command works identically in PowerShell and bash. */
+const WANT_VOICE =
+  process.argv.includes("--voice") || process.env.ADS_VOICE === "1";
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const SITE = process.env.ADS_SITE_URL ?? "https://nightflow-analytics.vercel.app";
 const TODAY = new Date().toISOString().slice(0, 10);
