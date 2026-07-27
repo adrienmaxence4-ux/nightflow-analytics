@@ -188,6 +188,21 @@ function appScreen(t) {
   return g;
 }
 
+/** Fin de pub : pas de faux bouton — on dit où aller (cf. generate-video.mjs). */
+const ctaBio = (t, inT, y) => {
+  const op = env(t, inT);
+  if (op <= 0.001) return "";
+  const bounce = Math.sin(t * 4) * 8;
+  return `<g opacity="${op.toFixed(3)}">
+    <text x="540" y="${y}" text-anchor="middle" font-family="${F}" font-size="34" font-weight="700" fill="#c9d2f0">Essai 30 jours — sans carte</text>
+    <g transform="translate(540 ${(y + 78 + bounce).toFixed(1)})">
+      <path d="M0,-30 L26,6 L13,6 L13,30 L-13,30 L-13,6 L-26,6 Z" fill="url(#cta)"/>
+    </g>
+    <text x="540" y="${y + 188}" text-anchor="middle" font-family="${F}" font-size="48" font-weight="800" letter-spacing="3" fill="url(#neon)">LIEN EN BIO</text>
+    <text x="540" y="${y + 238}" text-anchor="middle" font-family="${F}" font-size="26" font-weight="600" fill="#8fd8ff">nightflow-analytics.vercel.app</text>
+  </g>`;
+};
+
 function frameSvg(t) {
   let g = "";
   // top caption (above phone)
@@ -205,12 +220,7 @@ function frameSvg(t) {
     g += txt(W / 2, 720, 30, 800, "#8fd8ff", "NIGHTFLOW ANALYTICS", env(t, dIn + 0.15));
     g += txt(W / 2, 860, 52, 800, "#ffffff", "Connecte ta boutique.", env(t, dIn + 0.25));
     g += txt(W / 2, 928, 44, 700, "#c9d2f0", "L'IA fait le reste.", env(t, dIn + 0.45));
-    const pulse = 1 + 0.03 * Math.sin(t * 6), cw = 700 * pulse, cyB = 1030;
-    const dop = env(t, dIn + 0.6);
-    if (dop > 0.001)
-      g += `<g opacity="${dop.toFixed(3)}"><rect x="${540 - cw / 2}" y="${cyB}" width="${cw}" height="98" rx="49" fill="url(#cta)"/>
-        <text x="540" y="${cyB + 63}" text-anchor="middle" font-family="${F}" font-size="34" font-weight="800" fill="#0a0f22">Essai 30 jours — sans carte</text></g>`;
-    g += txt(W / 2, 1200, 30, 700, "#8fd8ff", "nightflow-analytics.vercel.app", env(t, dIn + 0.8));
+    g += ctaBio(t, dIn + 0.6, 1010);
   }
 
   return `<svg width="${W}" height="${H}" xmlns="http://www.w3.org/2000/svg">${defs}

@@ -62,6 +62,24 @@ const txt = (x, y, size, weight, fill, str, op, anchor = "middle", dy = 0) =>
   op <= 0.001 ? "" :
   `<text x="${x}" y="${y + dy}" text-anchor="${anchor}" font-family="${F}" font-size="${size}" font-weight="${weight}" fill="${fill}" opacity="${op.toFixed(3)}">${str}</text>`;
 
+/**
+ * Fin de pub. Pas de bouton : rien n'est cliquable dans une vidéo, et un faux
+ * bouton fait perdre le spectateur. On indique où aller pour de vrai.
+ */
+const ctaBio = (t, inT, y) => {
+  const op = env(t, inT);
+  if (op <= 0.001) return "";
+  const bounce = Math.sin(t * 4) * 8; // la flèche respire vers le haut
+  return `<g opacity="${op.toFixed(3)}">
+    <text x="540" y="${y}" text-anchor="middle" font-family="${F}" font-size="34" font-weight="700" fill="#c9d2f0">Essai 30 jours — sans carte</text>
+    <g transform="translate(540 ${(y + 78 + bounce).toFixed(1)})">
+      <path d="M0,-30 L26,6 L13,6 L13,30 L-13,30 L-13,6 L-26,6 Z" fill="url(#cta)"/>
+    </g>
+    <text x="540" y="${y + 188}" text-anchor="middle" font-family="${F}" font-size="48" font-weight="800" letter-spacing="3" fill="url(#neon)">LIEN EN BIO</text>
+    <text x="540" y="${y + 238}" text-anchor="middle" font-family="${F}" font-size="26" font-weight="600" fill="#8fd8ff">nightflow-analytics.vercel.app</text>
+  </g>`;
+};
+
 const card = (y, op, slide, tone, tag, title, action) => {
   if (op <= 0.001) return "";
   const x = 90 + slide;
@@ -104,13 +122,7 @@ function frameSvg(t) {
   const dIn = 12.1;
   g += `<g transform="translate(540,560) scale(${(0.9 + 0.1 * prog(t, dIn, 0.6)).toFixed(3)}) translate(-540,-560)">${logo(540, 560, 82, env(t, dIn))}</g>`;
   g += txt(540, 760, 52, 800, "#ffffff", "Ta boutique te parle enfin.", env(t, dIn + 0.2));
-  const pulse = 1 + 0.03 * Math.sin(t * 6);
-  const cx = 540, cw = 640 * pulse, cyB = 900;
-  const dop = env(t, dIn + 0.4);
-  if (dop > 0.001)
-    g += `<g opacity="${dop.toFixed(3)}"><rect x="${cx - cw / 2}" y="${cyB}" width="${cw}" height="96" rx="48" fill="url(#cta)"/>
-      <text x="${cx}" y="${cyB + 62}" text-anchor="middle" font-family="${F}" font-size="36" font-weight="800" fill="#0a0f22">Essai gratuit, sans carte</text></g>`;
-  g += txt(540, 1080, 30, 700, "#8fd8ff", "nightflow-analytics.vercel.app", env(t, dIn + 0.6));
+  g += ctaBio(t, dIn + 0.4, 880);
 
   return `<svg width="${W}" height="${H}" xmlns="http://www.w3.org/2000/svg">${defs}
     <rect width="${W}" height="${H}" fill="url(#bg1)"/><rect width="${W}" height="${H}" fill="url(#bg2)"/>

@@ -75,6 +75,21 @@ const PAINS = [
   { in: 5.2, y: 1160, s: "« Bon… je fais quoi maintenant ? »" },
 ];
 
+/** Fin de pub : pas de faux bouton — on dit où aller (cf. generate-video.mjs). */
+const ctaBio = (t, inT, y) => {
+  const op = env(t, inT);
+  if (op <= 0.001) return "";
+  const bounce = Math.sin(t * 4) * 8;
+  return `<g opacity="${op.toFixed(3)}">
+    <text x="540" y="${y}" text-anchor="middle" font-family="${F}" font-size="34" font-weight="700" fill="#c9d2f0">Essai 30 jours — sans carte</text>
+    <g transform="translate(540 ${(y + 78 + bounce).toFixed(1)})">
+      <path d="M0,-30 L26,6 L13,6 L13,30 L-13,30 L-13,6 L-26,6 Z" fill="url(#cta)"/>
+    </g>
+    <text x="540" y="${y + 188}" text-anchor="middle" font-family="${F}" font-size="48" font-weight="800" letter-spacing="3" fill="url(#neon)">LIEN EN BIO</text>
+    <text x="540" y="${y + 238}" text-anchor="middle" font-family="${F}" font-size="26" font-weight="600" fill="#8fd8ff">nightflow-analytics.vercel.app</text>
+  </g>`;
+};
+
 function frameSvg(t) {
   let g = "";
 
@@ -135,12 +150,7 @@ function frameSvg(t) {
       <text x="320" y="720" font-family="${F}" font-size="27" fill="#c9d2f0">moins de pertes, plus de ventes</text></g>`;
   }
   // CTA
-  const pulse = 1 + 0.03 * Math.sin(t * 6), cw = 700 * pulse, cyB = 880;
-  const dop = env(t, dIn + 0.9);
-  if (dop > 0.001)
-    g += `<g opacity="${dop.toFixed(3)}"><rect x="${540 - cw / 2}" y="${cyB}" width="${cw}" height="98" rx="49" fill="url(#cta)"/>
-      <text x="540" y="${cyB + 63}" text-anchor="middle" font-family="${F}" font-size="34" font-weight="800" fill="#0a0f22">Essai 30 jours — sans carte</text></g>`;
-  g += txt(540, 1050, 30, 700, "#8fd8ff", "nightflow-analytics.vercel.app", env(t, dIn + 1.1));
+  g += ctaBio(t, dIn + 0.9, 860);
 
   return `<svg width="${W}" height="${H}" xmlns="http://www.w3.org/2000/svg">${defs}
     <rect width="${W}" height="${H}" fill="url(#bg1)"/><rect width="${W}" height="${H}" fill="url(#bg2)"/>

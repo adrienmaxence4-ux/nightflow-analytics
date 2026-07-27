@@ -58,6 +58,21 @@ const txt = (x, y, size, weight, fill, str, op) =>
   op <= 0.001 ? "" :
   `<text x="${x}" y="${y}" text-anchor="middle" font-family="${F}" font-size="${size}" font-weight="${weight}" fill="${fill}" opacity="${op.toFixed(3)}">${str}</text>`;
 
+/** Fin de pub : pas de faux bouton — on dit où aller (cf. generate-video.mjs). */
+const ctaBio = (t, inT, y) => {
+  const op = env(t, inT);
+  if (op <= 0.001) return "";
+  const bounce = Math.sin(t * 4) * 8;
+  return `<g opacity="${op.toFixed(3)}">
+    <text x="540" y="${y}" text-anchor="middle" font-family="${F}" font-size="34" font-weight="700" fill="#c9d2f0">Essai 30 jours — sans carte</text>
+    <g transform="translate(540 ${(y + 78 + bounce).toFixed(1)})">
+      <path d="M0,-30 L26,6 L13,6 L13,30 L-13,30 L-13,6 L-26,6 Z" fill="url(#cta)"/>
+    </g>
+    <text x="540" y="${y + 188}" text-anchor="middle" font-family="${F}" font-size="48" font-weight="800" letter-spacing="3" fill="url(#neon)">LIEN EN BIO</text>
+    <text x="540" y="${y + 238}" text-anchor="middle" font-family="${F}" font-size="26" font-weight="600" fill="#8fd8ff">nightflow-analytics.vercel.app</text>
+  </g>`;
+};
+
 function frameSvg(t) {
   let g = "";
   // ── Scene A : staccato identity hook (0–3.4s) ──
@@ -96,12 +111,7 @@ function frameSvg(t) {
   g += `<g transform="translate(540,540) scale(${(0.9 + 0.1 * prog(t, dIn, 0.6)).toFixed(3)}) translate(-540,-540)">${logo(540, 540, 84, env(t, dIn))}</g>`;
   g += txt(540, 750, 48, 800, "#ffffff", "Celle qui m'aurait aidé.", env(t, dIn + 0.2));
   g += txt(540, 820, 40, 600, "#aeb8dd", "Elle peut t'aider, toi.", env(t, dIn + 0.35));
-  const pulse = 1 + 0.03 * Math.sin(t * 6);
-  const cw = 660 * pulse, cyB = 930, dop = env(t, dIn + 0.5);
-  if (dop > 0.001)
-    g += `<g opacity="${dop.toFixed(3)}"><rect x="${540 - cw / 2}" y="${cyB}" width="${cw}" height="96" rx="48" fill="url(#cta)"/>
-      <text x="540" y="${cyB + 62}" text-anchor="middle" font-family="${F}" font-size="36" font-weight="800" fill="#0a0f22">Teste-la gratuitement</text></g>`;
-  g += txt(540, 1110, 30, 700, "#8fd8ff", "nightflow-analytics.vercel.app", env(t, dIn + 0.7));
+  g += ctaBio(t, dIn + 0.5, 910);
 
   return `<svg width="${W}" height="${H}" xmlns="http://www.w3.org/2000/svg">${defs}
     <rect width="${W}" height="${H}" fill="url(#bg1)"/><rect width="${W}" height="${H}" fill="url(#bg2)"/>

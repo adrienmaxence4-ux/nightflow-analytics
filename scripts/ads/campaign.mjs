@@ -116,6 +116,26 @@ Résultat chaque jour :
 
 Essai gratuit 30 jours, sans carte 👉 lien en bio`,
   },
+  {
+    code: "v5-notif",
+    angle: "notification",
+    script: "scripts/generate-video5.mjs",
+    file: "nightflow-video-5.mp4",
+    titre: "Notification du matin — écran de verrouillage",
+    musique: "Ambient / chill matinal doux — pas de drop, l'effet vient du réalisme",
+    voix: "Huit heures du matin. Ton téléphone vibre. Stock bas sur ton produit phare, publicité qui te fait perdre quarante euros par jour. Tout est déjà analysé. Tu lis, tu décides, en trente secondes.",
+    legende: `8:00. Ton téléphone vibre. 📱
+
+« Ton point du matin est prêt ☕ »
+⚠ Stock bas — rupture dans 4 jours, recommande 60 unités
+⚠ Meta Ads — tu perds 40 €/jour, bascule sur Google
+
+Pas un tableau de bord à décrypter. Une notification, lue en 30 secondes, et tu sais exactement quoi faire de ta journée.
+
+C'est ça, Nightflow Analytics.
+
+Essai gratuit 30 jours, sans carte 👉 lien en bio`,
+  },
 ];
 
 /**
