@@ -20,6 +20,8 @@ import { promisify } from "node:util";
 
 const run = promisify(execFile);
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
+/** The paid-plan notice is printed once per run, not once per ad. */
+let warnedPaid = false;
 
 /** Minimal .env.local reader — plain node scripts don't get Next.js's loader. */
 function envLocal(key) {
@@ -43,13 +45,20 @@ function envLocal(key) {
  * (402 paid_plan_required).
  */
 export const VOICES = {
+  // Choix d'Adrien : « Eric - Dynamic and Energetic », voix FR conçue pour la
+  // publicité. C'est une voix de BIBLIOTHÈQUE → refusée tant que le compte
+  // ElevenLabs est gratuit ; on bascule alors automatiquement sur FALLBACK.
+  ericfr: "qlfxsYlCv09qu8y6PkmY",
+  // Voix natives ElevenLabs — toujours autorisées, même en gratuit.
   liam: "TX3LPaxmHKxFdv7VOQHJ", // jeune, énergique, "créateur réseaux sociaux"
   chris: "iP95p4xoKVk53GoZ742B", // naturel, décontracté
   will: "bIHbv24MWmeRgasZH58o", // posé, optimiste
   george: "JBFqnCBsd6RMkjVDRZzb", // grave, conteur captivant
   eric: "cjVigY5qzO86Huf0OWal", // doux, rassurant
 };
-export const DEFAULT_VOICE = "liam";
+export const DEFAULT_VOICE = "ericfr";
+/** Utilisée quand la voix demandée exige un abonnement payant. */
+export const FALLBACK_VOICE = "liam";
 
 export function voiceProvider() {
   if (envLocal("ELEVENLABS_API_KEY")) return "elevenlabs";
@@ -81,11 +90,14 @@ async function viaElevenLabs(text, outBase, voiceId) {
     );
     if (!res.ok) {
       const detail = await res.text().catch(() => "");
+      // 402 = library voice on a free plan. Signal it so the caller can retry
+      // with a premade voice instead of silently producing a mute ad.
+      if (res.status === 402) return { needsPaidPlan: true };
       console.warn(`    ⚠ ElevenLabs ${res.status} : ${detail.slice(0, 160)}`);
       return null;
     }
     writeFileSync(out, Buffer.from(await res.arrayBuffer()));
-    return existsSync(out) ? out : null;
+    return existsSync(out) ? { file: out } : null;
   } catch (e) {
     console.warn(`    ⚠ ElevenLabs injoignable : ${e.message}`);
     return null;
@@ -136,11 +148,24 @@ $s.Dispose()
 export async function synthesize(text, outBase, { rate = 1, voice } = {}) {
   const provider = voiceProvider();
   if (provider === "elevenlabs") {
-    const picked = voice ?? envLocal("ADS_VOICE_NAME") ?? DEFAULT_VOICE;
-    const id = VOICES[picked] ?? VOICES[DEFAULT_VOICE];
-    const file = await viaElevenLabs(text, outBase, id);
-    if (file) return file;
-    // ElevenLabs failed (quota, network…) → keep the ad usable on Windows.
+    const picked = voice || envLocal("ADS_VOICE_NAME") || DEFAULT_VOICE;
+    let res = await viaElevenLabs(text, outBase, VOICES[picked] ?? VOICES[DEFAULT_VOICE]);
+
+    // The chosen voice needs a paid plan → use a premade one rather than
+    // shipping a silent ad. Announced once so the reason is never a mystery.
+    if (res?.needsPaidPlan) {
+      if (!warnedPaid) {
+        console.warn(
+          `    ⚠ La voix « ${picked} » exige un abonnement ElevenLabs payant —\n` +
+          `      repli automatique sur « ${FALLBACK_VOICE} » (voix native, gratuite).`
+        );
+        warnedPaid = true;
+      }
+      res = await viaElevenLabs(text, outBase, VOICES[FALLBACK_VOICE]);
+    }
+    if (res?.file) return res.file;
+
+    // Network/quota failure → keep the ad usable on Windows.
     if (process.platform === "win32") return viaWindows(text, outBase, rate);
     return null;
   }
