@@ -11,7 +11,7 @@
  * Le cron GitHub Actions lance exactement la même commande chaque semaine.
  */
 import { execFile } from "node:child_process";
-import { mkdirSync, writeFileSync, rmSync, renameSync } from "node:fs";
+import { mkdirSync, writeFileSync, rmSync } from "node:fs";
 import { promisify } from "node:util";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
@@ -125,9 +125,12 @@ Essai gratuit 30 jours, sans carte 👉 lien en bio`,
  */
 async function addVoice(dir, file, text) {
   const wav = join(dir, ".voice.wav");
-  if (!(await synthesize(text, wav, { rate: 1 }))) return false;
+  if (!(await synthesize(text, wav, { rate: 1 }))) return null;
   const src = join(dir, file);
-  const tmp = join(dir, `.voiced-${file}`);
+  // Voiced files get their own name: opening the wrong (silent) file by
+  // mistake is otherwise impossible to notice.
+  const voiced = file.replace(/\.mp4$/, "-AVEC-VOIX.mp4");
+  const dst = join(dir, voiced);
   try {
     await run(ffmpegPath, [
       "-y",
@@ -137,14 +140,14 @@ async function addVoice(dir, file, text) {
       "-map", "0:v:0", "-map", "[a]",
       "-c:v", "copy", "-c:a", "aac", "-shortest",
       "-movflags", "+faststart",
-      tmp,
+      dst,
     ]);
-    renameSync(tmp, src);
-    return true;
+    rmSync(src, { force: true }); // keep only the voiced version
+    return voiced;
   } catch (e) {
     console.warn(`    ⚠ montage voix échoué : ${e.message}`);
-    rmSync(tmp, { force: true });
-    return false;
+    rmSync(dst, { force: true });
+    return null;
   } finally {
     rmSync(wav, { force: true });
   }
@@ -178,8 +181,12 @@ for (const ad of list) {
       maxBuffer: 10 * 1024 * 1024,
     });
     if (WANT_VOICE && ad.voix) {
-      ad.avecVoix = await addVoice(OUT_DIR, ad.file, ad.voix);
-      if (ad.avecVoix) console.log(`    🎙 voix off ajoutée`);
+      const voiced = await addVoice(OUT_DIR, ad.file, ad.voix);
+      if (voiced) {
+        ad.file = voiced;
+        ad.avecVoix = true;
+        console.log(`    🎙 voix off ajoutée`);
+      }
     }
     done.push(ad);
     console.log(`    ✓ ${ad.file}`);
@@ -241,5 +248,12 @@ writeFileSync(
   "utf8"
 );
 
-console.log(`\n✅ Campagne prête : ${OUT_DIR}`);
-console.log(`   → ouvre PLAN.md, tout y est (légendes, musique, liens de suivi).`);
+console.log(`\n${"═".repeat(64)}`);
+console.log(`✅ CAMPAGNE PRÊTE — ${done.length} pub(s)`);
+console.log(`\n📂 TES FICHIERS SONT ICI :`);
+console.log(`   ${OUT_DIR}`);
+console.log(`\n   (copie ce chemin dans l'explorateur Windows, ou ouvre`);
+console.log(`    Téléchargements → dossier "nightflow-pubs-${TODAY}")`);
+console.log(`\n📄 Ouvre PLAN.md : légendes, musique et liens de suivi.`);
+for (const ad of done) console.log(`   • ${ad.file}${ad.avecVoix ? "  🎙" : ""}`);
+console.log(`${"═".repeat(64)}\n`);
