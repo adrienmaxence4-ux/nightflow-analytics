@@ -35,6 +35,11 @@ interface Stats {
   adPerformance?: { code: string; visits: number }[];
 }
 
+interface StripeCheck {
+  verdict: "live" | "test" | "incomplet";
+  checks: { name: string; mode: string; ok: boolean; detail: string }[];
+}
+
 const euros = (cents: number) =>
   `€${(cents / 100).toLocaleString("fr-FR", { maximumFractionDigits: 2 })}`;
 
@@ -55,6 +60,7 @@ export default function AdminStatsPage() {
   const [vipBusy, setVipBusy] = useState(false);
   const [maintenance, setMaintenance] = useState<boolean | null>(null);
   const [maintBusy, setMaintBusy] = useState(false);
+  const [stripe, setStripe] = useState<StripeCheck | null>(null);
 
   const toggleMaintenance = async () => {
     if (maintBusy || maintenance === null) return;
@@ -118,6 +124,10 @@ export default function AdminStatsPage() {
       .then((r) => (r.ok ? r.json() : null))
       .then((j) => j && setMaintenance(!!j.maintenance))
       .catch(() => {});
+    fetch("/api/admin/stripe-check", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j) => j && setStripe(j as StripeCheck))
+      .catch(() => {});
   }, []);
 
   return (
@@ -129,6 +139,49 @@ export default function AdminStatsPage() {
 
       {error && (
         <Card className="p-6 text-sm text-neon-pinksoft">{error}</Card>
+      )}
+
+      {/* Audit Stripe : test ou réel ? */}
+      {stripe && (
+        <Card
+          className={`p-5 ${
+            stripe.verdict === "live"
+              ? "border-neon-lime/40"
+              : "border-neon-pinksoft/50 [background:linear-gradient(160deg,rgba(255,92,174,0.12),rgba(255,92,174,0.03))]"
+          }`}
+        >
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h3 className="text-[15px] font-bold">💳 Stripe — mode de paiement</h3>
+            <span
+              className={`rounded-full px-2.5 py-1 text-[10px] font-extrabold ${
+                stripe.verdict === "live"
+                  ? "bg-neon-lime/15 text-neon-lime"
+                  : "bg-neon-pinksoft/20 text-neon-pinksoft"
+              }`}
+            >
+              {stripe.verdict === "live"
+                ? "● RÉEL — tu encaisses vraiment"
+                : stripe.verdict === "test"
+                  ? "● TEST — paiements fictifs"
+                  : "● INCOMPLET"}
+            </span>
+          </div>
+          <div className="mt-4 flex flex-col gap-2.5">
+            {stripe.checks.map((c) => (
+              <div key={c.name} className="flex items-start gap-2.5">
+                <span
+                  className={`mt-0.5 text-[13px] ${c.ok ? "text-neon-lime" : "text-neon-pinksoft"}`}
+                >
+                  {c.ok ? "✓" : "!"}
+                </span>
+                <div>
+                  <div className="text-[13px] font-semibold text-white">{c.name}</div>
+                  <div className="text-[12px] text-ink-mut">{c.detail}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </Card>
       )}
 
       {/* Interrupteur de maintenance — réservé à l'admin */}

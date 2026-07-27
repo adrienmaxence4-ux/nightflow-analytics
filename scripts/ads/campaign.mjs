@@ -11,12 +11,16 @@
  * Le cron GitHub Actions lance exactement la même commande chaque semaine.
  */
 import { execFile } from "node:child_process";
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, writeFileSync, rmSync, renameSync } from "node:fs";
 import { promisify } from "node:util";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
+import ffmpegPath from "ffmpeg-static";
+import { synthesize, hasVoiceSupport } from "./voice.mjs";
 
 const run = promisify(execFile);
+/** ADS_VOICE=1 adds a local French voice-over (Windows only — see voice.mjs). */
+const WANT_VOICE = process.env.ADS_VOICE === "1";
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const SITE = process.env.ADS_SITE_URL ?? "https://nightflow-analytics.vercel.app";
 const TODAY = new Date().toISOString().slice(0, 10);
@@ -42,6 +46,7 @@ const ADS = [
     file: "nightflow-video-1.mp4",
     titre: "Choc — « Ta boutique perd de l'argent »",
     musique: "Phonk / dark trap tendance — drop calé sur 3 s (apparition du logo)",
+    voix: "Ta boutique perd de l'argent, et tu ne le vois même pas. Nightflow analyse tout à ta place : rupture de stock, publicité qui perd, opportunité ratée. Essaie gratuitement, sans carte.",
     legende: `Ta boutique perd de l'argent… et tu ne le vois même pas. 🌙
 
 Rupture de stock qui arrive, pub qui creuse ton budget, canal rentable que tu sous-exploites : ces fuites sont invisibles dans un tableau de bord classique.
@@ -57,6 +62,7 @@ Essai gratuit 30 jours, sans carte 👉 lien en bio`,
     file: "nightflow-video-2.mp4",
     titre: "Histoire du fondateur — « 17 ans, multidys »",
     musique: "« Snowfall » — Øneheart & reidenshi · extrait 0:15→0:35 · drop 0:28 calé sur 7 s",
+    voix: "J'ai dix-sept ans, je suis en terminale, et je suis multidys. J'ai construit l'intelligence artificielle qui lit tes chiffres à ta place. Une phrase claire, pas un tableau de bord.",
     legende: `17 ans. En Terminale. Multidys et TDA. 🌙
 
 Et j'ai construit une IA pour les e-commerçants.
@@ -76,6 +82,7 @@ Essai gratuit 30 jours, sans carte 👉 lien en bio`,
     file: "nightflow-video-3.mp4",
     titre: "Démo produit — on voit l'application",
     musique: "Chill / lo-fi tech tendance — drop quand l'insight finit de s'écrire (~7 s)",
+    voix: "Voici ce que ta boutique devrait te dire chaque matin. Ton produit phare, ton stock, tes ventes, et surtout l'action à faire aujourd'hui. Connecte ta boutique, l'intelligence artificielle fait le reste.",
     legende: `Voici ce que ta boutique devrait te dire chaque matin 👇
 
 Nightflow connecte ton Shopify (ou Wix, WooCommerce…) et transforme tes chiffres en UNE action claire :
@@ -94,6 +101,7 @@ Essai gratuit 30 jours, sans carte 👉 lien en bio`,
     file: "nightflow-video-4.mp4",
     titre: "Problème → bénéfice (temps + argent)",
     musique: "« Metamorphosis » — INTERWORLD · extrait 0:10→0:30 · drop 0:20 calé sur 7 s",
+    voix: "Gérer une boutique en ligne, c'est un casse-tête. Des heures perdues dans les chiffres, du budget publicitaire gaspillé. Nightflow règle tout ça : tu gagnes du temps, et tu gagnes de l'argent.",
     legende: `Gérer une boutique en ligne, c'est un casse-tête. 🌙
 
 Des heures perdues dans les tableaux. Des ruptures de stock qui coûtent cher. Du budget pub gaspillé. Et cette question chaque matin : « bon… je fais quoi maintenant ? »
@@ -108,6 +116,38 @@ Essai gratuit 30 jours, sans carte 👉 lien en bio`,
   },
 ];
 
+/**
+ * Replaces the video's silent track with the narration. The voice is padded
+ * with silence (`apad`) so the VIDEO stays the reference length — without it
+ * `-shortest` would cut the picture down to the length of the speech.
+ */
+async function addVoice(dir, file, text) {
+  const wav = join(dir, ".voice.wav");
+  if (!(await synthesize(text, wav, { rate: 1 }))) return false;
+  const src = join(dir, file);
+  const tmp = join(dir, `.voiced-${file}`);
+  try {
+    await run(ffmpegPath, [
+      "-y",
+      "-i", src,
+      "-i", wav,
+      "-filter_complex", "[1:a]aresample=44100,adelay=400,apad[a]",
+      "-map", "0:v:0", "-map", "[a]",
+      "-c:v", "copy", "-c:a", "aac", "-shortest",
+      "-movflags", "+faststart",
+      tmp,
+    ]);
+    renameSync(tmp, src);
+    return true;
+  } catch (e) {
+    console.warn(`    ⚠ montage voix échoué : ${e.message}`);
+    rmSync(tmp, { force: true });
+    return false;
+  } finally {
+    rmSync(wav, { force: true });
+  }
+}
+
 function ordered() {
   const focus = (process.env.ADS_FOCUS ?? "").trim().toLowerCase();
   if (!focus) return ADS;
@@ -117,7 +157,14 @@ function ordered() {
 
 mkdirSync(OUT_DIR, { recursive: true });
 const list = ordered();
-console.log(`🎬 Campagne du ${TODAY} → ${OUT_DIR}\n`);
+console.log(`🎬 Campagne du ${TODAY} → ${OUT_DIR}`);
+console.log(
+  WANT_VOICE
+    ? hasVoiceSupport()
+      ? "🎙 Voix off : activée (voix française locale)\n"
+      : "🎙 Voix off : demandée mais indisponible ici (Windows uniquement) — vidéos muettes\n"
+    : "🔇 Voix off : désactivée (ADS_VOICE=1 pour l'activer)\n"
+);
 
 const done = [];
 for (const ad of list) {
@@ -128,6 +175,10 @@ for (const ad of list) {
       env: { ...process.env, ADS_OUT_DIR: OUT_DIR },
       maxBuffer: 10 * 1024 * 1024,
     });
+    if (WANT_VOICE && ad.voix) {
+      ad.avecVoix = await addVoice(OUT_DIR, ad.file, ad.voix);
+      if (ad.avecVoix) console.log(`    🎙 voix off ajoutée`);
+    }
     done.push(ad);
     console.log(`    ✓ ${ad.file}`);
   } catch (e) {
@@ -156,6 +207,9 @@ for (const ad of done) {
     `- **Fichier** : \`${ad.file}\``,
     `- **Lien de suivi (à mettre en bio)** : ${SITE}/?a=${ad.code}`,
     `- **Musique** : ${ad.musique}`,
+    ad.avecVoix
+      ? `- **Voix off** : incluse — baisse la musique dans Instagram pour l'entendre`
+      : `- **Voix off** : aucune (vidéo muette — la musique porte tout)`,
     ``,
     `**Légende à copier :**`,
     ``,
