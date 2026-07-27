@@ -16,7 +16,7 @@ import { promisify } from "node:util";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import ffmpegPath from "ffmpeg-static";
-import { synthesize, hasVoiceSupport } from "./voice.mjs";
+import { synthesize, voiceProvider } from "./voice.mjs";
 
 const run = promisify(execFile);
 /** `--voice` (or ADS_VOICE=1) adds a local French voice-over — see voice.mjs.
@@ -124,8 +124,10 @@ Essai gratuit 30 jours, sans carte 👉 lien en bio`,
  * `-shortest` would cut the picture down to the length of the speech.
  */
 async function addVoice(dir, file, text) {
-  const wav = join(dir, ".voice.wav");
-  if (!(await synthesize(text, wav, { rate: 1 }))) return null;
+  // synthesize picks the format (mp3 via ElevenLabs, wav via Windows) and
+  // returns the real path — ffmpeg reads either.
+  const audio = await synthesize(text, join(dir, ".voice"), { rate: 1 });
+  if (!audio) return null;
   const src = join(dir, file);
   // Voiced files get their own name: opening the wrong (silent) file by
   // mistake is otherwise impossible to notice.
@@ -135,7 +137,7 @@ async function addVoice(dir, file, text) {
     await run(ffmpegPath, [
       "-y",
       "-i", src,
-      "-i", wav,
+      "-i", audio,
       "-filter_complex", "[1:a]aresample=44100,adelay=400,apad[a]",
       "-map", "0:v:0", "-map", "[a]",
       "-c:v", "copy", "-c:a", "aac", "-shortest",
@@ -149,7 +151,7 @@ async function addVoice(dir, file, text) {
     rmSync(dst, { force: true });
     return null;
   } finally {
-    rmSync(wav, { force: true });
+    rmSync(audio, { force: true });
   }
 }
 
@@ -163,12 +165,15 @@ function ordered() {
 mkdirSync(OUT_DIR, { recursive: true });
 const list = ordered();
 console.log(`🎬 Campagne du ${TODAY} → ${OUT_DIR}`);
+const PROVIDER_LABEL = {
+  elevenlabs: "🎙 Voix off : ElevenLabs (qualité studio)",
+  windows: "🎙 Voix off : voix Windows locale (robotique — pas de clé ElevenLabs)",
+  none: "🔇 Voix off : indisponible ici — vidéos muettes",
+};
 console.log(
   WANT_VOICE
-    ? hasVoiceSupport()
-      ? "🎙 Voix off : activée (voix française locale)\n"
-      : "🎙 Voix off : demandée mais indisponible ici (Windows uniquement) — vidéos muettes\n"
-    : "🔇 Voix off : désactivée (ADS_VOICE=1 pour l'activer)\n"
+    ? `${PROVIDER_LABEL[voiceProvider()]}\n`
+    : "🔇 Voix off : désactivée (npm run ads:voix pour l'activer)\n"
 );
 
 const done = [];
