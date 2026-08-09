@@ -7,22 +7,18 @@ import { DemoBanner } from "@/components/demo-banner";
 import { RangeToggle } from "@/components/ui/range-toggle";
 import { Triage } from "@/features/dashboard/triage";
 import { KpiCard } from "@/features/dashboard/kpi-card";
-import { RevenueChart } from "@/features/dashboard/revenue-chart";
-import { ProductBars } from "@/features/dashboard/product-bars";
-import { Funnel } from "@/features/dashboard/funnel";
 import { KpiDrawer } from "@/features/dashboard/kpi-drawer";
-import { ProductTable } from "@/features/products/product-table";
-import { ProductDrawer } from "@/features/products/product-drawer";
-import { CopilotPanel } from "@/features/copilot/copilot-panel";
 import { ReportMenu } from "@/features/reports/report-menu";
 import { TestPanel } from "@/features/admin/test-panel";
 import { useToast } from "@/hooks/use-toast";
 import { useRange } from "@/hooks/use-range";
 import { useIsAdmin } from "@/hooks/use-admin";
 import { getRangeDataSync } from "@/services/analytics.service";
-import { getProducts } from "@/services/products.service";
 import { parseMetric } from "@/utils/format";
-import type { Kpi, Product, Range } from "@/types";
+import type { Kpi, Range } from "@/types";
+
+/** Les seuls indicateurs de l'accueil : l'argent, la conversion, le trafic. */
+const KPIS_ACCUEIL = ["revenue", "conversion", "visitors"];
 
 export default function DashboardPage() {
   const toast = useToast();
@@ -30,9 +26,7 @@ export default function DashboardPage() {
   const isAdmin = useIsAdmin();
   const [data, setData] = useState(getRangeDataSync("day"));
   const [source, setSource] = useState<"db" | "mock" | null>(null);
-  const [products, setProducts] = useState<Product[]>(getProducts());
   const [activeKpi, setActiveKpi] = useState<Kpi | null>(null);
-  const [activeProduct, setActiveProduct] = useState<Product | null>(null);
 
   const loadRange = useCallback(async (r: Range) => {
     try {
@@ -50,27 +44,9 @@ export default function DashboardPage() {
     setSource("mock");
   }, []);
 
-  const loadProducts = useCallback(async () => {
-    try {
-      const res = await fetch("/api/products");
-      if (res.ok) {
-        const j = await res.json();
-        setProducts(j.products);
-        return;
-      }
-    } catch {
-      /* fall back */
-    }
-    setProducts(getProducts());
-  }, []);
-
   useEffect(() => {
     loadRange(range);
   }, [range, loadRange]);
-
-  useEffect(() => {
-    loadProducts();
-  }, [loadProducts]);
 
   // Simulated live visitor counter — only on mock demo data, day view.
   useEffect(() => {
@@ -98,7 +74,6 @@ export default function DashboardPage() {
 
   const refresh = () => {
     loadRange(range);
-    loadProducts();
     toast("Données actualisées");
   };
 
@@ -112,7 +87,6 @@ export default function DashboardPage() {
       if (res.ok) {
         toast(`Données de test ajoutées : ${d.orders ?? 0} commandes sur ${d.days ?? 0} jours ✓`);
         loadRange(range);
-        loadProducts();
       } else {
         toast(d.error ?? "Génération impossible", "info");
       }
@@ -129,13 +103,11 @@ export default function DashboardPage() {
         source={source}
         onSeeded={() => {
           loadRange(range);
-          loadProducts();
         }}
       />
       <TestPanel
         onApplied={() => {
           loadRange(range);
-          loadProducts();
         }}
       />
       <div className="flex flex-wrap items-center gap-3.5">
@@ -167,37 +139,23 @@ export default function DashboardPage() {
       {/* Le tri d'abord : on doit voir ce qui ne va pas avant les chiffres. */}
       <Triage />
 
-      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
-        {data.kpis.map((k, i) => (
-          <KpiCard
-            key={k.key}
-            kpi={k}
-            index={i}
-            series={data.series}
-            onClick={() => setActiveKpi(k)}
-          />
-        ))}
-      </div>
-
-      <div className="grid grid-cols-1 gap-5 xl:grid-cols-[1fr_380px]">
-        <div className="flex min-w-0 flex-col gap-5">
-          <RevenueChart data={data} />
-          <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-            <ProductBars data={data.bars} />
-            <Funnel steps={data.funnel} />
-          </div>
-          <ProductTable products={products} onSelect={setActiveProduct} />
-        </div>
-        <div className="xl:sticky xl:top-[88px] xl:self-start">
-          <CopilotPanel />
-        </div>
+      {/* Trois chiffres, pas douze. Le détail vit dans Analyses, Produits et
+          Copilote — inutile de le dupliquer ici. */}
+      <div className="grid grid-cols-1 gap-5 sm:grid-cols-3">
+        {data.kpis
+          .filter((k) => KPIS_ACCUEIL.includes(k.key))
+          .map((k, i) => (
+            <KpiCard
+              key={k.key}
+              kpi={k}
+              index={i}
+              series={data.series}
+              onClick={() => setActiveKpi(k)}
+            />
+          ))}
       </div>
 
       <KpiDrawer kpi={activeKpi} range={data} onClose={() => setActiveKpi(null)} />
-      <ProductDrawer
-        product={activeProduct}
-        onClose={() => setActiveProduct(null)}
-      />
     </PageTransition>
   );
 }

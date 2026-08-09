@@ -105,45 +105,20 @@ export function Triage() {
   });
 
   return (
-    <section className="relative overflow-hidden rounded-3xl border border-glass-border">
-      {/* ── Nébuleuse ── trois halos colorés qui donnent la profondeur */}
+    <section className="relative">
+      {/* Halos très doux seulement : le ciel étoilé de la page reste visible
+          au travers, sinon le bloc se détache comme une vignette collée. */}
       <div
         aria-hidden
-        className="absolute inset-0 -z-20"
+        className="pointer-events-none absolute -inset-x-6 -top-10 bottom-0 -z-10 opacity-70"
         style={{
           background:
-            "radial-gradient(900px 420px at 12% -10%, rgba(154,107,255,0.55), transparent 62%)," +
-            "radial-gradient(760px 380px at 88% 8%, rgba(61,242,255,0.30), transparent 60%)," +
-            "radial-gradient(680px 460px at 62% 115%, rgba(255,92,174,0.24), transparent 62%)," +
-            "linear-gradient(160deg, #0a0f2b 0%, #070b1a 60%, #05070f 100%)",
-        }}
-      />
-      {/* Poussière d'étoiles — points fins, jamais sous une carte */}
-      <div
-        aria-hidden
-        className="absolute inset-0 -z-10 opacity-[0.55]"
-        style={{
-          backgroundImage:
-            "radial-gradient(1.1px 1.1px at 18% 22%, #fff, transparent)," +
-            "radial-gradient(1px 1px at 34% 68%, #cfe3ff, transparent)," +
-            "radial-gradient(1.3px 1.3px at 57% 14%, #fff, transparent)," +
-            "radial-gradient(1px 1px at 73% 52%, #bcd8ff, transparent)," +
-            "radial-gradient(1.2px 1.2px at 89% 31%, #fff, transparent)," +
-            "radial-gradient(1px 1px at 46% 88%, #dbe9ff, transparent)," +
-            "radial-gradient(1px 1px at 8% 74%, #fff, transparent)",
-        }}
-      />
-      {/* Voile : sans lui, le texte passerait sur des zones claires */}
-      <div
-        aria-hidden
-        className="absolute inset-0 -z-10"
-        style={{
-          background:
-            "linear-gradient(180deg, rgba(5,7,15,0.28) 0%, rgba(5,7,15,0.55) 100%)",
+            "radial-gradient(620px 260px at 18% 0%, rgba(154,107,255,0.20), transparent 70%)," +
+            "radial-gradient(560px 240px at 82% 10%, rgba(61,242,255,0.13), transparent 70%)",
         }}
       />
 
-      <div className="relative p-5 sm:p-6">
+      <div className="relative">
         <div className="mb-5 flex flex-wrap items-end justify-between gap-2">
           <div>
             <h2 className="text-[19px] font-extrabold tracking-tight text-white">
@@ -169,9 +144,10 @@ export function Triage() {
               return (
                 <div
                   key={zone.cle}
-                  className="rounded-2xl border p-4 backdrop-blur-xl"
+                  // Même verre que les autres cartes de l'app (bg-glass +
+                  // backdrop-blur), teinté par la couleur de la zone.
+                  className="rounded-2xl border bg-glass p-4 backdrop-blur-xl"
                   style={{
-                    background: "rgba(14,18,40,0.55)",
                     borderColor: `${zone.teinte}33`,
                     boxShadow: `inset 0 1px 0 ${zone.teinte}1f`,
                   }}
