@@ -5,6 +5,7 @@ import { RefreshCw } from "lucide-react";
 import { PageTransition } from "@/components/layout/page-transition";
 import { DemoBanner } from "@/components/demo-banner";
 import { RangeToggle } from "@/components/ui/range-toggle";
+import { Triage } from "@/features/dashboard/triage";
 import { KpiCard } from "@/features/dashboard/kpi-card";
 import { RevenueChart } from "@/features/dashboard/revenue-chart";
 import { ProductBars } from "@/features/dashboard/product-bars";
@@ -162,6 +163,9 @@ export default function DashboardPage() {
         )}
         <ReportMenu />
       </div>
+
+      {/* Le tri d'abord : on doit voir ce qui ne va pas avant les chiffres. */}
+      <Triage />
 
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
         {data.kpis.map((k, i) => (
