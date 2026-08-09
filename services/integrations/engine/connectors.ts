@@ -6,6 +6,14 @@ import {
   isGoogleOAuthConfigured,
 } from "@/lib/env";
 import { getOAuthProvider } from "@/services/integrations/oauth-registry";
+import {
+  GOOGLE_ADS,
+  GORGIAS,
+  HOTJAR,
+  MONDIAL_RELAY,
+  PAYPAL,
+  SHIPSTATION,
+} from "./connectors-extra";
 import { syncShopify } from "@/services/integrations/shopify";
 import { syncStripe } from "@/services/integrations/stripe";
 import { syncKlaviyo } from "@/services/integrations/klaviyo";
@@ -345,6 +353,12 @@ export const CONNECTORS: Record<IntegrationSource, IntegrationConnector> = {
   ga4,
   meta: adStub("meta", "Meta Ads", env.metaAppSecret),
   tiktok: adStub("tiktok", "TikTok Ads", env.tiktokAppSecret),
+  googleads: GOOGLE_ADS,
+  hotjar: HOTJAR,
+  paypal: PAYPAL,
+  shipstation: SHIPSTATION,
+  mondialrelay: MONDIAL_RELAY,
+  gorgias: GORGIAS,
 };
 
 /** Provider id (DB) → connector. Note: GA4 is stored under provider "google". */
@@ -358,6 +372,12 @@ const PROVIDER_TO_SOURCE: Record<string, IntegrationSource> = {
   ga4: "ga4",
   meta: "meta",
   tiktok: "tiktok",
+  googleads: "googleads",
+  hotjar: "hotjar",
+  paypal: "paypal",
+  shipstation: "shipstation",
+  mondialrelay: "mondialrelay",
+  gorgias: "gorgias",
 };
 
 export function getConnector(

@@ -11,6 +11,8 @@ export const CATEGORY_LABELS: Record<ConnectorCategory, string> = {
   advertising: "Régies publicitaires",
   email: "Email & CRM",
   analytics: "Analyse d'audience",
+  logistics: "Logistique & expédition",
+  support: "Service client",
 };
 
 /** Short badge label (for table rows). */
@@ -19,6 +21,8 @@ export const CATEGORY_SHORT: Record<ConnectorCategory, string> = {
   advertising: "Publicité",
   email: "Email",
   analytics: "Analyse",
+  logistics: "Livraison",
+  support: "Support",
 };
 
 /**

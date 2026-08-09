@@ -23,7 +23,13 @@ export type IntegrationSource =
   | "klaviyo"
   | "ga4"
   | "meta"
-  | "tiktok";
+  | "tiktok"
+  | "googleads"
+  | "hotjar"
+  | "paypal"
+  | "shipstation"
+  | "mondialrelay"
+  | "gorgias";
 
 export type EventType =
   | "order"
@@ -49,7 +55,13 @@ export type ConnectionState =
  *   email       → email/CRM marketing (Klaviyo): attributed revenue
  *   analytics   → audience analysis (Google Analytics): traffic, sessions
  */
-export type ConnectorCategory = "commerce" | "advertising" | "email" | "analytics";
+export type ConnectorCategory =
+  | "commerce"
+  | "advertising"
+  | "email"
+  | "analytics"
+  | "logistics"
+  | "support";
 
 export interface NormalizedMetrics {
   /** Revenue in cents. */

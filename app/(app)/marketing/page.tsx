@@ -21,6 +21,8 @@ const TYPE_VARIANT: Record<ConnectorCategory, "cyan" | "violet" | "info" | "lime
   email: "violet",
   analytics: "info",
   commerce: "lime",
+  logistics: "info",
+  support: "violet",
 };
 
 export default function MarketingPage() {

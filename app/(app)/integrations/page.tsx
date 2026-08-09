@@ -9,6 +9,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { usePlan } from "@/hooks/use-plan";
+import { ApiKeyConnect } from "@/features/integrations/api-key-connect";
 import { ShopifyConnect } from "@/features/integrations/shopify-connect";
 import { WixConnect } from "@/features/integrations/wix-connect";
 import { WooConnect } from "@/features/integrations/woo-connect";
@@ -28,6 +29,16 @@ interface Integration {
 // OAuth-only providers — require app registration + platform review before
 // they can go live, so they stay "Coming soon" for now.
 const COMING_SOON: Integration[] = [
+  {
+    id: "googleads",
+    name: "Google Ads",
+    category: "Publicité",
+    description:
+      "Recherche Google & YouTube — en attente du jeton développeur Google.",
+    logo: "🔍",
+    accent: "from-amber-300 to-red-500",
+    willSync: ["Dépenses", "ROAS", "Mots-clés"],
+  },
   {
     id: "meta",
     name: "Meta Ads",
@@ -77,6 +88,17 @@ export default function IntegrationsPage() {
               description="Connexion en un clic — autorisez votre compte, aucune clé à créer."
               connectedHint="Revenus & commandes importés depuis Stripe."
             />
+            <ApiKeyConnect
+              provider="paypal"
+              name="PayPal"
+              logo="🅿️"
+              accent="from-blue-400 to-cyan-500"
+              description="Transactions PayPal — beaucoup d'acheteurs ne paient qu'avec ça."
+              connectedHint="Paiements et remboursements PayPal importés."
+              placeholder="idClient::secretClient"
+              helpHref="https://developer.paypal.com/api/rest/#link-getcredentials"
+              helpLabel="Créer mes identifiants"
+            />
           </CategorySection>
 
           <CategorySection
@@ -105,6 +127,60 @@ export default function IntegrationsPage() {
               description="Connexion en un clic — trafic, canaux d'acquisition & appareils."
               connectedHint="Trafic, canaux & appareils affichés dans Analytics."
               showSync={false}
+            />
+            <ApiKeyConnect
+              provider="hotjar"
+              name="Hotjar"
+              logo="🔥"
+              accent="from-orange-400 to-red-500"
+              description="Comportement réel des visiteurs (retours, enregistrements)."
+              connectedHint="Retours visiteurs remontés dans Analytics."
+              placeholder="idDuSite::jetonApi"
+              helpHref="https://help.hotjar.com/hc/en-us/articles/36819965653009-How-to-Set-Up-the-Hotjar-API"
+              helpLabel="Créer un jeton (plan Scale requis)"
+            />
+          </CategorySection>
+
+          <CategorySection
+            label="Logistique & expédition"
+            hint="Suivi des envois et de leur coût — pour savoir ce que la livraison mange sur ta marge."
+          >
+            <ApiKeyConnect
+              provider="shipstation"
+              name="ShipStation"
+              logo="📦"
+              accent="from-sky-400 to-blue-500"
+              description="Centralise tes envois et leurs coûts."
+              connectedHint="Expéditions et coûts importés."
+              placeholder="cleApi::secretApi"
+              helpHref="https://www.shipstation.com/docs/api/"
+              helpLabel="Où trouver mes clés"
+            />
+            <ApiKeyConnect
+              provider="mondialrelay"
+              name="Mondial Relay"
+              logo="🚚"
+              accent="from-emerald-400 to-teal-500"
+              description="Suivi des colis en point relais (France & Europe)."
+              connectedHint="Expéditions Mondial Relay importées."
+              placeholder="enseigne::clePrivee"
+            />
+          </CategorySection>
+
+          <CategorySection
+            label="Service client"
+            hint="Un pic de tickets précède souvent une chute de ventes."
+          >
+            <ApiKeyConnect
+              provider="gorgias"
+              name="Gorgias"
+              logo="💬"
+              accent="from-violet-400 to-purple-500"
+              description="Tickets de support, pour relier réclamations et ventes."
+              connectedHint="Volume de tickets suivi dans Analytics."
+              placeholder="domaine::email::cleApi"
+              helpHref="https://developers.gorgias.com/reference/authentication"
+              helpLabel="Créer une clé API"
             />
           </CategorySection>
         </div>
