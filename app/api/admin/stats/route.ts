@@ -15,6 +15,22 @@ export const dynamic = "force-dynamic";
 const DAY_MS = 86_400_000;
 const day = (d: Date) => d.toISOString().slice(0, 10);
 
+/** Pays les plus probables pour une boutique francophone, + langue à employer. */
+const PAYS: Record<string, string> = {
+  FR: "France", BE: "Belgique", CH: "Suisse", CA: "Canada", LU: "Luxembourg",
+  MC: "Monaco", MA: "Maroc", DZ: "Algérie", TN: "Tunisie", SN: "Sénégal",
+  CI: "Côte d'Ivoire", US: "États-Unis", GB: "Royaume-Uni", IE: "Irlande",
+  DE: "Allemagne", AT: "Autriche", ES: "Espagne", MX: "Mexique", PT: "Portugal",
+  BR: "Brésil", IT: "Italie", NL: "Pays-Bas", PL: "Pologne", SE: "Suède",
+  AU: "Australie", JP: "Japon", IN: "Inde",
+};
+const LANGUE: Record<string, string> = {
+  FR: "Français", BE: "Français", CH: "Français", CA: "Français", LU: "Français",
+  MC: "Français", MA: "Français", DZ: "Français", TN: "Français", SN: "Français",
+  CI: "Français", ES: "Espagnol", MX: "Espagnol", DE: "Allemand", AT: "Allemand",
+  PT: "Portugais", BR: "Portugais", IT: "Italien", NL: "Néerlandais",
+};
+
 export async function GET() {
   // Gate: logged-in admin only (session client), data via service role.
   const supabase = createClient();
@@ -39,12 +55,30 @@ export async function GET() {
   // ── Visitors (site_visits, unique per day) ──
   const { data: visits } = await admin
     .from("site_visits")
-    .select("date")
+    .select("date, country")
     .gte("date", day(since30));
+  const visitRows = (visits as { date: string; country: string | null }[] | null) ?? [];
   const visitsByDay = new Map<string, number>();
-  for (const v of (visits as { date: string }[] | null) ?? []) {
+  for (const v of visitRows) {
     visitsByDay.set(v.date, (visitsByDay.get(v.date) ?? 0) + 1);
   }
+
+  // ── D'où viennent les visiteurs, pour choisir la langue des publications ──
+  const parPays = new Map<string, number>();
+  for (const v of visitRows) {
+    if (v.country) parPays.set(v.country, (parPays.get(v.country) ?? 0) + 1);
+  }
+  const totalLocalise = [...parPays.values()].reduce((t, n) => t + n, 0);
+  const pays = [...parPays.entries()]
+    .map(([code, visiteurs]) => ({
+      code,
+      nom: PAYS[code] ?? code,
+      langue: LANGUE[code] ?? "Anglais",
+      visiteurs,
+      part: totalLocalise ? Math.round((visiteurs / totalLocalise) * 100) : 0,
+    }))
+    .sort((a, b) => b.visiteurs - a.visiteurs)
+    .slice(0, 12);
 
   // ── Signups (auth users) ──
   let usersTotal = 0;
@@ -159,5 +193,6 @@ export async function GET() {
     subsByPlan,
     series,
     adPerformance,
+    pays,
   });
 }

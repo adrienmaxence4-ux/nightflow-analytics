@@ -33,6 +33,13 @@ interface Stats {
   subsByPlan: { pro: number; scale: number };
   series: { label: string; visiteurs: number; inscrits: number; revenus: number }[];
   adPerformance?: { code: string; visits: number }[];
+  pays?: {
+    code: string;
+    nom: string;
+    langue: string;
+    visiteurs: number;
+    part: number;
+  }[];
 }
 
 interface StripeCheck {
@@ -322,6 +329,64 @@ export default function AdminStatsPage() {
               <p className="mt-3 text-[12px] text-ink-mut">
                 Aucune visite attribuée pour l&apos;instant — publie une pub avec
                 son lien de suivi et les résultats apparaîtront ici 📈
+              </p>
+            )}
+          </Card>
+
+          {/* D'où viennent les visiteurs — pour choisir la langue Instagram */}
+          <Card className="p-5">
+            <h3 className="text-[15px] font-bold">🌍 D&apos;où viennent tes visiteurs</h3>
+            <p className="mt-1 text-xs text-ink-mut">
+              Pays d&apos;origine sur 30 jours, et la langue à privilégier pour
+              tes publications. Aucune adresse IP n&apos;est enregistrée — seul
+              le pays est conservé.
+            </p>
+            {stats.pays && stats.pays.length > 0 ? (
+              <>
+                <div className="mt-4 flex flex-col gap-2">
+                  {stats.pays.map((p) => (
+                    <div key={p.code} className="flex items-center gap-3">
+                      <span className="w-36 flex-none truncate text-[13px] font-semibold text-white">
+                        {p.nom}
+                      </span>
+                      <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-white/5">
+                        <div
+                          className="h-full rounded-full bg-gradient-to-r from-neon-cyan to-neon-violet"
+                          style={{ width: `${Math.max(p.part, 2)}%` }}
+                        />
+                      </div>
+                      <span className="w-24 text-right text-[12px] text-ink-dim">
+                        {p.langue}
+                      </span>
+                      <span className="w-16 text-right text-[13px] font-bold text-neon-cyan">
+                        {p.visiteurs}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+                {(() => {
+                  // Langue majoritaire = celle à utiliser sur Instagram.
+                  const parLangue = new Map<string, number>();
+                  for (const p of stats.pays!) {
+                    parLangue.set(p.langue, (parLangue.get(p.langue) ?? 0) + p.visiteurs);
+                  }
+                  const [langue, n] = [...parLangue.entries()].sort(
+                    (a, b) => b[1] - a[1]
+                  )[0];
+                  const total = [...parLangue.values()].reduce((t, x) => t + x, 0);
+                  return (
+                    <p className="mt-4 rounded-xl border border-neon-cyan/25 bg-neon-cyan/5 px-3 py-2.5 text-[12.5px] text-ink-dim">
+                      👉 Publie en <span className="font-bold text-white">{langue}</span> —{" "}
+                      {Math.round((n / total) * 100)} % de tes visiteurs.
+                    </p>
+                  );
+                })()}
+              </>
+            ) : (
+              <p className="mt-3 text-[12px] text-ink-mut">
+                Aucun pays enregistré pour l&apos;instant. Les visites déjà
+                comptées n&apos;ont pas de pays : il apparaîtra à partir des
+                prochaines, une fois cette version en ligne 🌍
               </p>
             )}
           </Card>

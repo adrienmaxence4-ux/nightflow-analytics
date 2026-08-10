@@ -45,9 +45,16 @@ export async function POST(req: Request) {
 
   const db = admin as unknown as SupabaseClient;
   const today = new Date().toISOString().slice(0, 10);
+  // Pays seulement — l'en-tête est calculé par Vercel à partir de l'IP, que
+  // nous ne lisons ni ne stockons (donnée personnelle au sens du RGPD).
+  const brut = (req.headers.get("x-vercel-ip-country") ?? "").toUpperCase();
+  const country = /^[A-Z]{2}$/.test(brut) ? brut : null;
   await db
     .from("site_visits")
-    .upsert({ date: today, vid }, { onConflict: "date,vid", ignoreDuplicates: true });
+    .upsert(
+      { date: today, vid, country },
+      { onConflict: "date,vid", ignoreDuplicates: true }
+    );
 
   // Ad attribution — which published ad sent this visitor (no PII, deduped).
   if (ad && AD_RE.test(ad)) {

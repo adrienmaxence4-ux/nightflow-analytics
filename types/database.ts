@@ -177,6 +177,8 @@ export type IntegrationEventRow = {
 export type SiteVisitRow = {
   date: string;
   vid: string;
+  /** Code pays ISO à 2 lettres (jamais l'IP). Null si indisponible. */
+  country: string | null;
   created_at: string;
 }
 
