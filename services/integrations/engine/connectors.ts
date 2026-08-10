@@ -344,7 +344,7 @@ function adStub(
   };
 }
 
-export const CONNECTORS: Record<IntegrationSource, IntegrationConnector> = {
+const CONNECTORS: Record<IntegrationSource, IntegrationConnector> = {
   shopify,
   wix,
   woocommerce,
@@ -387,6 +387,3 @@ export function getConnector(
   return source ? CONNECTORS[source] : null;
 }
 
-export function listConnectors(): IntegrationConnector[] {
-  return Object.values(CONNECTORS);
-}

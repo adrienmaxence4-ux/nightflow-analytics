@@ -6,22 +6,6 @@ import {
   RECOMMENDATIONS,
 } from "./mock/data";
 
-/**
- * AI Copilot service (client-side).
- *
- * `askCopilot` hits the /api/copilot route — a real Claude answer grounded in
- * the user's store data — and gracefully falls back to a deterministic mock
- * answer when the network/AI is unavailable.
- */
-
-export function getInsights(): Insight[] {
-  return INSIGHTS;
-}
-
-export function getRecommendations(): Recommendation[] {
-  return RECOMMENDATIONS;
-}
-
 export function getAnalysisCards(): AnalysisCard[] {
   return ANALYSIS_CARDS;
 }

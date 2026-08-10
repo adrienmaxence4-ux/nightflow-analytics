@@ -1,20 +1,5 @@
 import type { ConnectorCategory } from "./types";
 
-/**
- * Labels + classification for connector categories. Lets the UI separate what
- * a tool is FOR — advertising régies vs email vs analytics vs commerce — so an
- * analysis source (Google Analytics) is never shown as an ad "campaign".
- */
-
-export const CATEGORY_LABELS: Record<ConnectorCategory, string> = {
-  commerce: "Boutique & paiements",
-  advertising: "Régies publicitaires",
-  email: "Email & CRM",
-  analytics: "Analyse d'audience",
-  logistics: "Logistique & expédition",
-  support: "Service client",
-};
-
 /** Short badge label (for table rows). */
 export const CATEGORY_SHORT: Record<ConnectorCategory, string> = {
   commerce: "Ventes",

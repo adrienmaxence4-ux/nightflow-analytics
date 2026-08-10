@@ -16,7 +16,7 @@ const GA_ADMIN = "https://analyticsadmin.googleapis.com/v1beta";
 const GA_DATA = "https://analyticsdata.googleapis.com/v1beta";
 const SCOPE = "https://www.googleapis.com/auth/analytics.readonly";
 
-export function googleRedirectUri(): string {
+function googleRedirectUri(): string {
   return `${env.siteUrl}/api/integrations/google/oauth/callback`;
 }
 

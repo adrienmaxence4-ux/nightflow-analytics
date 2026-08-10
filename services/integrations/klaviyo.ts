@@ -36,7 +36,7 @@ function headers(token: string): HeadersInit {
 }
 
 /** The fixed redirect URI registered in the Klaviyo OAuth app. */
-export function klaviyoRedirectUri(): string {
+function klaviyoRedirectUri(): string {
   return `${env.siteUrl}/api/integrations/klaviyo/oauth/callback`;
 }
 

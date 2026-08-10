@@ -105,24 +105,6 @@ export interface RawKlaviyoCampaign {
   sentAt?: string;
 }
 
-export function normalizeKlaviyoCampaign(
-  c: RawKlaviyoCampaign,
-  shopId: string
-): NormalizedEvent {
-  return {
-    shop_id: shopId,
-    source: "klaviyo",
-    event_type: "email",
-    timestamp: toMs(c.sentAt ?? Date.now()),
-    metrics: {
-      revenue: toCents(c.revenue),
-      clicks: c.clicks ?? 0,
-      orders: c.conversions ?? 0,
-    },
-    metadata: { campaign_id: c.id, channel: "email" },
-  };
-}
-
 // ── Google Analytics 4 ───────────────────────────────────────────────────────
 export interface RawGa4ChannelRow {
   channel?: string;
