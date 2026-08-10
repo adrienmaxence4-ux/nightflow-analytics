@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { createClient } from "@/lib/supabase/server";
+import { isAdminEmail } from "@/lib/admin";
 import { rateLimit } from "@/lib/rate-limit";
 
 /**
@@ -24,8 +26,17 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false }, { status: 400 });
   }
 
-  // "forget" — the admin's browser purges its own past visits from the stats.
+  // "forget" — purge des visites de ce navigateur. C'est une SUPPRESSION via
+  // la clé service-role : on exige d'être admin connecté, sinon n'importe qui
+  // connaissant un vid pourrait effacer des lignes de statistiques.
   if (forget) {
+    const supabase = createClient();
+    const {
+      data: { user },
+    } = (await supabase?.auth.getUser()) ?? { data: { user: null } };
+    if (!user || !isAdminEmail(user.email)) {
+      return NextResponse.json({ error: "Réservé à l'administrateur" }, { status: 403 });
+    }
     const admin = createAdminClient();
     if (admin) {
       await (admin as unknown as SupabaseClient)
@@ -35,8 +46,13 @@ export async function POST(req: Request) {
     }
     return NextResponse.json({ ok: true, forgotten: true });
   }
-  // Light abuse guard (per instance) — one vid can't spam inserts.
+
+  // Deux garde-fous : par visiteur (un onglet ne spamme pas) ET global (sinon
+  // il suffit de générer des vid au hasard pour gonfler les statistiques).
   if (!rateLimit(`track:${vid}`, 5, 60_000)) {
+    return NextResponse.json({ ok: true });
+  }
+  if (!rateLimit("track:global", 240, 60_000)) {
     return NextResponse.json({ ok: true });
   }
 
