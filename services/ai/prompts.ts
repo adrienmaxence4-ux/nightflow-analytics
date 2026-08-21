@@ -48,6 +48,25 @@ Détecte UNIQUEMENT les anomalies et risques (variations anormales, ruptures, ch
 Renvoie un tableau JSON de 1 à 4 objets au même format que les insights (severity "critical" ou "warning"), triés par gravité.`;
 }
 
+/**
+ * The closed vocabulary of things Nightflow can execute itself. Kept separate
+ * from the recommendation format so the constraint reads as a contract, not as
+ * one more field: the model chooses FROM this list or returns null, and the
+ * server re-resolves every target against the real catalogue before anything
+ * touches the store (see services/actions/suggest.ts).
+ */
+const ACTION_VOCABULARY = `CHAMP "action" — Nightflow peut exécuter certaines recommandations à la place du marchand.
+Quand ta recommandation correspond EXACTEMENT à l'une des actions ci-dessous, remplis "action". Sinon mets null.
+  - { "kind": "product.stock.set",     "product": "<nom exact du produit>", "value": <quantité à mettre en stock> }
+  - { "kind": "product.price.update",  "product": "<nom exact du produit>", "value": <nouveau prix en euros> }
+  - { "kind": "product.unpublish",     "product": "<nom exact du produit>" }
+  - { "kind": "discount.create",       "value": <pourcentage de remise entre 5 et 50> }
+Règles strictes :
+  - "product" doit être le nom d'un produit présent dans les données fournies, copié à l'identique. N'invente jamais un produit.
+  - Ne propose une action que si elle est justifiée par les chiffres, jamais pour remplir le champ.
+  - Une baisse de prix ne dépasse jamais 20 %.
+  - En cas de doute : "action": null. Une recommandation sans action reste utile.`;
+
 export function recommendationsSystem(store: string): string {
   return `${PERSONA(store)}
 
@@ -63,10 +82,13 @@ Renvoie un tableau JSON de 3 à 5 objets avec EXACTEMENT ces champs :
     "effort": "Faible" | "Moyen" | "Élevé",
     "priority": "LOW" | "MEDIUM" | "HIGH" | "CRITICAL",
     "impactScore": un entier 0-100,
-    "confidenceScore": un entier 0-100
+    "confidenceScore": un entier 0-100,
+    "action": null | { "kind": ..., "product": ..., "value": ... }
   }
 ]
-Trie de la plus rentable / urgente à la moins prioritaire.`;
+Trie de la plus rentable / urgente à la moins prioritaire.
+
+${ACTION_VOCABULARY}`;
 }
 
 export function summarySystem(store: string): string {

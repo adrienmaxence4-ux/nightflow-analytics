@@ -13,6 +13,7 @@ export type ImpactLevel = "high" | "medium" | "low";
 export type NotificationType = "stock" | "sales" | "ads" | "system" | "ai";
 export type PlanTier = "Starter" | "Pro" | "Scale";
 export type AiPriority = "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
+export type ActionStatus = "planned" | "applied" | "failed" | "undone";
 
 // ── Row shapes (source of truth, no self-reference) ──
 
@@ -277,6 +278,27 @@ export type AiRecommendationRow = {
   created_at: string;
 };
 
+export type AppliedActionRow = {
+  id: string;
+  store_id: string;
+  user_id: string;
+  kind: string;
+  provider: string;
+  source_ref: string | null;
+  summary: string;
+  params: Record<string, unknown>;
+  changes: { label: string; before: string; after: string }[];
+  before_state: Record<string, unknown>;
+  result: Record<string, unknown>;
+  status: ActionStatus;
+  error: string | null;
+  reversible: boolean;
+  expires_at: string;
+  executed_at: string | null;
+  undone_at: string | null;
+  created_at: string;
+};
+
 // ── Helper: build a Supabase-compatible table definition ──
 type Table<Row, Required extends keyof Row> = {
   Row: Row;
@@ -311,6 +333,7 @@ export interface Database {
       ai_messages: Table<AiMessageRow, "conversation_id" | "role" | "content">;
       ai_analysis_history: Table<AiAnalysisRow, "store_id" | "kind">;
       ai_recommendations: Table<AiRecommendationRow, "store_id" | "title">;
+      applied_actions: Table<AppliedActionRow, "store_id" | "user_id" | "kind" | "provider" | "summary">;
     };
     Views: Record<string, never>;
     Functions: {
@@ -334,6 +357,7 @@ export interface Database {
       impact_level: ImpactLevel;
       notification_type: NotificationType;
       ai_priority: AiPriority;
+      action_status: ActionStatus;
     };
     CompositeTypes: Record<string, never>;
   };

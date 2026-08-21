@@ -5,7 +5,9 @@ import type { SyncSummary } from "@/services/integrations/registry";
  * SERVER-ONLY. WooCommerce integration — key-based, multi-tenant.
  *
  * The customer creates a REST API key in WooCommerce (WooCommerce → Réglages →
- * Avancé → API REST, permission "Lecture") and pastes the store URL + consumer
+ * Avancé → API REST). "Lecture" is enough for the sync; "Lecture/Écriture" is
+ * what lets the Copilot apply a recommendation (see services/actions). They
+ * paste the store URL + consumer
  * key + consumer secret. All three are stored as ONE composite token
  * (`url::ck::cs`) in integrations.access_token, so the generic keyed-provider
  * flow (validation, encryption at rest, sync/disconnect routes) applies

@@ -9,6 +9,13 @@ export type Trend = "up" | "down";
 /** Priority bucket assigned by the AI prioritisation engine. */
 export type Priority = "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
 
+/**
+ * How much a detected item matters. Shared by insights, alerts and
+ * notifications so a single mapping drives colour, ordering and priority.
+ * "critical" and "warning" are the actionable ones (see isActionable).
+ */
+export type Severity = "critical" | "warning" | "info" | "positive";
+
 export type KpiKey = "revenue" | "orders" | "conversion" | "visitors";
 
 export interface Kpi {
@@ -94,7 +101,7 @@ export interface AnalysisCard {
  */
 export interface Insight {
   id: string;
-  severity: "critical" | "warning" | "positive" | "info";
+  severity: Severity;
   icon: string;
   what: string; // Que se passe-t-il ?
   why: string; // Pourquoi ?
@@ -109,6 +116,42 @@ export interface Insight {
   confidenceScore?: number;
 }
 
+/**
+ * A numeric parameter the user may adjust in the confirmation panel before
+ * Nightflow applies the action (quantity, new price, discount rate).
+ */
+export interface ActionField {
+  field: "quantity" | "newPriceCents" | "percentage";
+  label: string;
+  value: number;
+  min: number;
+  max: number;
+  step: number;
+  /** Render the value as euros (stored in cents). */
+  money?: boolean;
+  suffix?: string;
+}
+
+/**
+ * The executable half of a recommendation: what the "Appliquer" button will
+ * actually do. Present only when Nightflow can carry the change out itself on
+ * a connected store — otherwise the recommendation stays purely advisory.
+ */
+export interface SuggestedAction {
+  kind:
+    | "product.price.update"
+    | "product.stock.set"
+    | "product.unpublish"
+    | "discount.create";
+  /** Button label, e.g. "Réassortir maintenant". */
+  label: string;
+  /** One-line description of the change, shown on the card. */
+  preview: string;
+  /** Payload posted to /api/actions/plan. */
+  params: Record<string, string | number>;
+  editable?: ActionField;
+}
+
 export interface Recommendation {
   id: string;
   title: string;
@@ -121,17 +164,40 @@ export interface Recommendation {
   priority?: Priority;
   impactScore?: number;
   confidenceScore?: number;
+  /** Set when Nightflow can apply this recommendation on the store itself. */
+  action?: SuggestedAction;
 }
 
 export interface Notification {
   id: string;
   type: "stock" | "sales" | "ads" | "system" | "ai";
-  severity: "critical" | "warning" | "info" | "positive";
+  severity: Severity;
   icon: string;
   title: string;
   body: string;
   time: string;
   read: boolean;
+}
+
+/**
+ * One line of the daily triage panel — an alert plus what to do about it.
+ * Shared by GET /api/triage and the dashboard panel that renders it.
+ */
+export interface TriageItem {
+  id: string;
+  icon: string;
+  title: string;
+  detail: string;
+  action: string;
+  impact: string;
+}
+
+/** The triage split in three zones: what earns / what costs / what to watch. */
+export interface TriageZones {
+  winning: TriageItem[];
+  fix: TriageItem[];
+  watch: TriageItem[];
+  connected: boolean;
 }
 
 export interface Campaign {

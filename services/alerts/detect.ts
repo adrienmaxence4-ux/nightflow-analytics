@@ -5,7 +5,18 @@ import type {
   ProductRow,
   StoreRow,
 } from "@/types/database";
-import type { Insight, Notification, Recommendation } from "@/types";
+import type {
+  Insight,
+  Notification,
+  Priority,
+  Recommendation,
+  Severity,
+  SuggestedAction,
+} from "@/types";
+import {
+  discountAction,
+  restockAction,
+} from "@/services/actions/suggest";
 
 /**
  * SERVER-ONLY. The detection engine — the heart of "Nightflow watches your
@@ -15,7 +26,12 @@ import type { Insight, Notification, Recommendation } from "@/types";
  * It is deterministic and AI-free, so it's fast enough for the sidebar badge
  * and reliable even when no AI key is configured. The same alerts feed:
  *   • /api/notifications  → bell badge, Notifications page, desktop notifier
+ *   • /api/triage         → the daily triage panel on the dashboard
  *   • the Copilot insights fallback (rule-based, never the MoonStore demo)
+ *
+ * Structure: `snapshot()` crunches the numbers once, each RULE reads that
+ * snapshot and returns the alerts it wants to raise, `detectAlerts()` runs them
+ * all. Adding a detection = adding one rule function to RULES.
  */
 
 export interface StoreSignals {
@@ -30,7 +46,7 @@ export interface StoreSignals {
 export interface DetectedAlert {
   id: string;
   type: Notification["type"];
-  severity: Notification["severity"];
+  severity: Severity;
   icon: string;
   /** Short headline — Notification.title / Insight.what. */
   title: string;
@@ -44,6 +60,8 @@ export interface DetectedAlert {
   impact: string;
   /** 0-100, drives ordering (critical highest). */
   score: number;
+  /** Set when the alert is about one product — the target of the auto-action. */
+  productId?: string;
 }
 
 const euros = (cents: number) =>
@@ -51,10 +69,14 @@ const euros = (cents: number) =>
 const pct = (n: number) => `${n >= 0 ? "+" : ""}${n.toFixed(0)}%`;
 /** Magnitude only, for "baisse de X% / hausse de X%" phrasings. */
 const absPct = (n: number) => `${Math.abs(n).toFixed(0)}%`;
+const count = (n: number) => n.toLocaleString("fr-FR");
 const sum = (arr: MetricDailyRow[], k: keyof MetricDailyRow) =>
   arr.reduce((t, m) => t + (Number(m[k]) || 0), 0);
 const avg = (arr: MetricDailyRow[], k: keyof MetricDailyRow) =>
   arr.length ? sum(arr, k) / arr.length : 0;
+/** Percentage change from `before` to `now`; 0 when there is no base to compare. */
+const changePct = (now: number, before: number) =>
+  before > 0 ? ((now - before) / before) * 100 : 0;
 
 /** Loads everything the detector needs for the current user's store. */
 export async function loadStoreSignals(): Promise<StoreSignals | null> {
@@ -98,178 +120,270 @@ export async function loadStoreSignals(): Promise<StoreSignals | null> {
   };
 }
 
-/**
- * Pure detection — runs every rule against the signals and returns the alerts
- * that actually fire, sorted by severity/impact. No side effects, no AI.
- */
-export function detectAlerts(s: StoreSignals): DetectedAlert[] {
-  const out: DetectedAlert[] = [];
-  const { metrics, products, campaigns } = s;
+/** One metric over the recent window vs the window before it. */
+interface Trend {
+  current: number;
+  previous: number;
+  /** Relative change in %, 0 when `previous` is 0. */
+  change: number;
+}
 
+/** Everything the rules need, computed once from the raw signals. */
+interface StoreSnapshot {
+  /** Length in days of each comparison window. */
+  windowDays: number;
+  /** False when there isn't enough history to compare two windows. */
+  hasPreviousWindow: boolean;
+  revenue: Trend;
+  orders: Trend;
+  visitors: Trend;
+  conversion: Trend;
+  averageOrderValue: Trend;
+  /** Totals over the whole tracked history, not just the recent window. */
+  totalRevenue: number;
+  totalOrders: number;
+  totalVisitors: number;
+  metrics: MetricDailyRow[];
+  products: ProductRow[];
+  campaigns: CampaignRow[];
+}
+
+function snapshot({ metrics, products, campaigns }: StoreSignals): StoreSnapshot {
   // Compare the most recent window against the one before it. Scale the window
   // to the data we actually have so trends work from day 2 onward.
-  const win = Math.max(1, Math.min(7, Math.floor(metrics.length / 2)));
-  const cur = metrics.slice(0, win);
-  const prev = metrics.slice(win, win * 2);
-  const haveTrend = prev.length > 0;
+  const windowDays = Math.max(1, Math.min(7, Math.floor(metrics.length / 2)));
+  const recent = metrics.slice(0, windowDays);
+  const earlier = metrics.slice(windowDays, windowDays * 2);
 
-  const revCur = sum(cur, "revenue_cents");
-  const revPrev = sum(prev, "revenue_cents");
-  const ordCur = sum(cur, "orders");
-  const ordPrev = sum(prev, "orders");
-  const visCur = sum(cur, "visitors");
-  const visPrev = sum(prev, "visitors");
-  const convCur = avg(cur, "conversion");
-  const convPrev = avg(prev, "conversion");
-  const aovCur = ordCur > 0 ? revCur / ordCur : 0;
-  const aovPrev = ordPrev > 0 ? revPrev / ordPrev : 0;
+  const trend = (key: keyof MetricDailyRow, reduce = sum): Trend => {
+    const current = reduce(recent, key);
+    const previous = reduce(earlier, key);
+    return { current, previous, change: changePct(current, previous) };
+  };
 
-  const totalOrders = sum(metrics, "orders");
-  const totalRev = sum(metrics, "revenue_cents");
-  const totalVisitors = sum(metrics, "visitors");
-  const rel = (a: number, b: number) => (b > 0 ? ((a - b) / b) * 100 : 0);
+  const revenue = trend("revenue_cents");
+  const orders = trend("orders");
+  const basket = (rev: number, ord: number) => (ord > 0 ? rev / ord : 0);
+  const aovCurrent = basket(revenue.current, orders.current);
+  const aovPrevious = basket(revenue.previous, orders.previous);
 
-  // ── Revenue ──────────────────────────────────────────────────────────────
-  if (haveTrend && revPrev > 0) {
-    const change = rel(revCur, revPrev);
-    if (change <= -20) {
-      const critical = change <= -40;
-      out.push({
+  return {
+    windowDays,
+    hasPreviousWindow: earlier.length > 0,
+    revenue,
+    orders,
+    visitors: trend("visitors"),
+    conversion: trend("conversion", avg),
+    averageOrderValue: {
+      current: aovCurrent,
+      previous: aovPrevious,
+      change: changePct(aovCurrent, aovPrevious),
+    },
+    totalRevenue: sum(metrics, "revenue_cents"),
+    totalOrders: sum(metrics, "orders"),
+    totalVisitors: sum(metrics, "visitors"),
+    metrics,
+    products,
+    campaigns,
+  };
+}
+
+/** A detection rule: reads the snapshot, returns the alerts it wants to raise. */
+type Rule = (s: StoreSnapshot) => DetectedAlert[];
+
+// ── Revenue ──────────────────────────────────────────────────────────────────
+const revenueTrend: Rule = (s) => {
+  const { revenue, visitors, windowDays } = s;
+  if (!s.hasPreviousWindow || revenue.previous <= 0) return [];
+  const change = revenue.change;
+  const trafficIsDown = visitors.current < visitors.previous;
+
+  if (change <= -20) {
+    const critical = change <= -40;
+    return [
+      {
         id: "rev-drop",
         type: "sales",
         severity: critical ? "critical" : "warning",
         icon: "📉",
         title: `Chiffre d'affaires en baisse de ${absPct(change)}`,
-        body: `${euros(revCur)} sur ${win}j contre ${euros(revPrev)} la période précédente.`,
-        why: visCur < visPrev
+        body: `${euros(revenue.current)} sur ${windowDays}j contre ${euros(revenue.previous)} la période précédente.`,
+        why: trafficIsDown
           ? "Le trafic a baissé sur la même période — la chute du CA suit la chute des visiteurs."
           : "Le trafic tient mais le CA chute : la conversion ou le panier moyen se dégrade.",
-        action: visCur < visPrev
+        action: trafficIsDown
           ? "Relance l'acquisition (pub, email, réseaux) et vérifie qu'aucune campagne ne s'est arrêtée."
           : "Audite le tunnel d'achat (prix, frais de port, étapes du checkout) et relance tes meilleurs clients.",
-        impact: `≈ ${euros(revPrev - revCur)} de CA perdus vs période précédente`,
+        impact: `≈ ${euros(revenue.previous - revenue.current)} de CA perdus vs période précédente`,
         score: critical ? 98 : 82,
-      });
-    } else if (change >= 25) {
-      out.push({
+      },
+    ];
+  }
+  if (change >= 25) {
+    return [
+      {
         id: "rev-surge",
         type: "sales",
         severity: "positive",
         icon: "🚀",
         title: `Chiffre d'affaires en hausse de ${absPct(change)}`,
-        body: `${euros(revCur)} sur ${win}j contre ${euros(revPrev)} avant.`,
+        body: `${euros(revenue.current)} sur ${windowDays}j contre ${euros(revenue.previous)} avant.`,
         why: "La dynamique est excellente sur cette période.",
-        action: "Identifie ce qui a marché (canal, produit, promo) et remets une couche pendant que ça monte.",
-        impact: `+${euros(revCur - revPrev)} vs période précédente`,
+        action:
+          "Identifie ce qui a marché (canal, produit, promo) et remets une couche pendant que ça monte.",
+        impact: `+${euros(revenue.current - revenue.previous)} vs période précédente`,
         score: 46,
-      });
-    }
+      },
+    ];
   }
+  return [];
+};
 
-  // ── Sharp daily cliff (anomaly) ────────────────────────────────────────────
-  if (metrics.length >= 4) {
-    const last = metrics[0];
-    const trailing = metrics.slice(1, 8);
-    const baseline = avg(trailing, "revenue_cents");
-    if (baseline > 0 && last.revenue_cents < baseline * 0.5) {
-      out.push({
-        id: "rev-cliff",
-        type: "sales",
-        severity: "warning",
-        icon: "⚠️",
-        title: "Décrochage soudain du CA hier",
-        body: `${euros(last.revenue_cents)} hier contre ${euros(Math.round(baseline))} de moyenne les jours précédents.`,
-        why: "Une chute brutale isolée signale souvent un problème technique (paiement, site, tracking) plus qu'une tendance.",
-        action: "Passe une commande test de bout en bout maintenant et vérifie le statut de tes intégrations de paiement.",
-        impact: `≈ ${euros(Math.round(baseline) - last.revenue_cents)} en dessous du jour normal`,
-        score: 88,
-      });
-    }
-  }
+/** A single day collapsing well below its own baseline — usually a breakage. */
+const revenueCliff: Rule = ({ metrics }) => {
+  if (metrics.length < 4) return [];
+  const yesterday = metrics[0];
+  const baseline = avg(metrics.slice(1, 8), "revenue_cents");
+  if (baseline <= 0 || yesterday.revenue_cents >= baseline * 0.5) return [];
+  return [
+    {
+      id: "rev-cliff",
+      type: "sales",
+      severity: "warning",
+      icon: "⚠️",
+      title: "Décrochage soudain du CA hier",
+      body: `${euros(yesterday.revenue_cents)} hier contre ${euros(Math.round(baseline))} de moyenne les jours précédents.`,
+      why: "Une chute brutale isolée signale souvent un problème technique (paiement, site, tracking) plus qu'une tendance.",
+      action:
+        "Passe une commande test de bout en bout maintenant et vérifie le statut de tes intégrations de paiement.",
+      impact: `≈ ${euros(Math.round(baseline) - yesterday.revenue_cents)} en dessous du jour normal`,
+      score: 88,
+    },
+  ];
+};
 
-  // ── Conversion ─────────────────────────────────────────────────────────────
-  if (haveTrend && convPrev > 0 && rel(convCur, convPrev) <= -15 && ordCur > 0) {
-    out.push({
+// ── Conversion ───────────────────────────────────────────────────────────────
+const conversionTrend: Rule = ({
+  hasPreviousWindow,
+  conversion,
+  orders,
+  windowDays,
+}) => {
+  const drops = conversion.previous > 0 && conversion.change <= -15;
+  if (!hasPreviousWindow || !drops || orders.current <= 0) return [];
+  return [
+    {
       id: "conv-drop",
       type: "sales",
       severity: "warning",
       icon: "🎯",
-      title: `Taux de conversion en baisse (${convCur.toFixed(2)}%)`,
-      body: `${convCur.toFixed(2)}% sur ${win}j contre ${convPrev.toFixed(2)}% avant (${pct(rel(convCur, convPrev))}).`,
+      title: `Taux de conversion en baisse (${conversion.current.toFixed(2)}%)`,
+      body: `${conversion.current.toFixed(2)}% sur ${windowDays}j contre ${conversion.previous.toFixed(2)}% avant (${pct(conversion.change)}).`,
       why: "Tu attires des visiteurs mais ils achètent moins : friction dans le tunnel, prix, ou trafic moins qualifié.",
-      action: "Vérifie le parcours mobile, les frais de livraison affichés tard, et la vitesse de chargement des fiches produit.",
+      action:
+        "Vérifie le parcours mobile, les frais de livraison affichés tard, et la vitesse de chargement des fiches produit.",
       impact: "Chaque +0,5 pt de conversion = plus de CA à trafic constant",
       score: 74,
-    });
-  }
+    },
+  ];
+};
 
-  // ── Traffic ─────────────────────────────────────────────────────────────────
-  if (haveTrend && visPrev > 0) {
-    const change = rel(visCur, visPrev);
-    if (change <= -25) {
-      out.push({
+// ── Traffic ──────────────────────────────────────────────────────────────────
+const trafficTrend: Rule = ({
+  hasPreviousWindow,
+  visitors,
+  orders,
+  windowDays,
+}) => {
+  if (!hasPreviousWindow || visitors.previous <= 0) return [];
+
+  if (visitors.change <= -25) {
+    return [
+      {
         id: "traffic-drop",
         type: "ads",
         severity: "warning",
         icon: "🧭",
-        title: `Trafic en baisse de ${absPct(change)}`,
-        body: `${visCur.toLocaleString("fr-FR")} visiteurs sur ${win}j contre ${visPrev.toLocaleString("fr-FR")} avant.`,
+        title: `Trafic en baisse de ${absPct(visitors.change)}`,
+        body: `${count(visitors.current)} visiteurs sur ${windowDays}j contre ${count(visitors.previous)} avant.`,
         why: "Moins de visiteurs = moins de ventes potentielles, quelle que soit ta conversion.",
-        action: "Contrôle que tes campagnes tournent (budget non épuisé), et réactive email / SEO / réseaux.",
-        impact: `−${(visPrev - visCur).toLocaleString("fr-FR")} visiteurs vs avant`,
+        action:
+          "Contrôle que tes campagnes tournent (budget non épuisé), et réactive email / SEO / réseaux.",
+        impact: `−${count(visitors.previous - visitors.current)} visiteurs vs avant`,
         score: 70,
-      });
-    } else if (change >= 30 && rel(ordCur, ordPrev) < 10) {
-      out.push({
+      },
+    ];
+  }
+  // Traffic surging while orders stay flat: the visits are wasted.
+  if (visitors.change >= 30 && orders.change < 10) {
+    return [
+      {
         id: "traffic-no-convert",
         type: "sales",
         severity: "warning",
         icon: "🕳️",
         title: "Pic de trafic qui ne convertit pas",
-        body: `+${change.toFixed(0)}% de visiteurs mais les commandes stagnent.`,
+        body: `+${visitors.change.toFixed(0)}% de visiteurs mais les commandes stagnent.`,
         why: "Tu paies / génères du trafic qui repart sans acheter — soit il est mal ciblé, soit le tunnel bloque.",
-        action: "Vérifie la cohérence pub→page (message, prix, promo annoncée) et propose une offre de bienvenue.",
+        action:
+          "Vérifie la cohérence pub→page (message, prix, promo annoncée) et propose une offre de bienvenue.",
         impact: "Trafic gaspillé = budget d'acquisition perdu",
         score: 72,
-      });
-    }
+      },
+    ];
   }
+  return [];
+};
 
-  // ── Average order value ──────────────────────────────────────────────────────
-  if (haveTrend && aovPrev > 0 && rel(aovCur, aovPrev) <= -15) {
-    out.push({
+// ── Average order value ──────────────────────────────────────────────────────
+const basketTrend: Rule = ({ hasPreviousWindow, averageOrderValue, orders }) => {
+  const aov = averageOrderValue;
+  if (!hasPreviousWindow || aov.previous <= 0 || aov.change > -15) return [];
+  return [
+    {
       id: "aov-drop",
       type: "sales",
       severity: "warning",
       icon: "🧺",
-      title: `Panier moyen en baisse (${euros(aovCur)})`,
-      body: `${euros(aovCur)} contre ${euros(aovPrev)} avant (${pct(rel(aovCur, aovPrev))}).`,
+      title: `Panier moyen en baisse (${euros(aov.current)})`,
+      body: `${euros(aov.current)} contre ${euros(aov.previous)} avant (${pct(aov.change)}).`,
       why: "Les clients achètent moins par commande — souvent un effet promo ou la perte des ventes additionnelles.",
-      action: "Ajoute des ventes croisées (« souvent acheté avec »), des paliers de livraison gratuite et des packs.",
-      impact: `+1 € de panier moyen × ${ordCur} commandes = ${euros(ordCur * 100)} / période`,
+      action:
+        "Ajoute des ventes croisées (« souvent acheté avec »), des paliers de livraison gratuite et des packs.",
+      impact: `+1 € de panier moyen × ${orders.current} commandes = ${euros(orders.current * 100)} / période`,
       score: 64,
-    });
-  }
+    },
+  ];
+};
 
-  // ── Stock ────────────────────────────────────────────────────────────────────
+// ── Stock ────────────────────────────────────────────────────────────────────
+const LOW_STOCK_UNITS = 15;
+
+const stockLevels: Rule = ({ products, totalOrders }) => {
+  const out: DetectedAlert[] = [];
   for (const p of products) {
-    const velocity = totalOrders > 0 ? p.sales : 0; // units sold over the data window
+    // Only products that actually move are worth an alert; with no order in the
+    // tracked window we have no evidence the stock matters.
+    const sells = totalOrders > 0 && p.sales > 0;
     if (p.stock === 0 && p.sales > 0) {
       out.push({
         id: `stock-out-${p.id}`,
+        productId: p.id,
         type: "stock",
         severity: "critical",
         icon: "🚨",
         title: `Rupture de stock : ${p.name}`,
         body: `0 unité en stock alors que le produit s'est vendu ${p.sales} fois.`,
         why: "Un best-seller en rupture, c'est du CA qui part directement chez tes concurrents.",
-        action: "Réassortis en urgence ou mets le produit en précommande pour ne pas perdre la demande.",
+        action:
+          "Réassortis en urgence ou mets le produit en précommande pour ne pas perdre la demande.",
         impact: `≈ ${euros(p.price_cents)} par vente manquée`,
         score: 95,
       });
-    } else if (p.stock > 0 && p.stock <= 15 && velocity > 0) {
+    } else if (p.stock > 0 && p.stock <= LOW_STOCK_UNITS && sells) {
       out.push({
         id: `stock-low-${p.id}`,
+        productId: p.id,
         type: "stock",
         severity: "warning",
         icon: "📦",
@@ -282,54 +396,74 @@ export function detectAlerts(s: StoreSignals): DetectedAlert[] {
       });
     }
   }
+  return out;
+};
 
-  // ── Sales health ──────────────────────────────────────────────────────────────
-  if (products.length > 0 && totalOrders === 0) {
-    const broken = totalVisitors >= 100;
-    out.push({
+// ── Sales health ─────────────────────────────────────────────────────────────
+const salesHealth: Rule = ({ products, totalOrders, totalVisitors }) => {
+  if (products.length === 0 || totalOrders > 0) return [];
+  // Visitors but no order at all points at a broken funnel, not at a cold start.
+  const funnelLooksBroken = totalVisitors >= 100;
+  return [
+    {
       id: "no-sales",
       type: "sales",
       severity: "critical",
       icon: "🛒",
-      title: broken ? "Du trafic mais aucune vente" : "Aucune vente enregistrée",
-      body: broken
-        ? `${totalVisitors.toLocaleString("fr-FR")} visiteurs et 0 commande — le tunnel est probablement cassé.`
+      title: funnelLooksBroken
+        ? "Du trafic mais aucune vente"
+        : "Aucune vente enregistrée",
+      body: funnelLooksBroken
+        ? `${count(totalVisitors)} visiteurs et 0 commande — le tunnel est probablement cassé.`
         : "Tu as des produits en ligne mais 0 commande pour l'instant.",
-      why: broken
+      why: funnelLooksBroken
         ? "Des visiteurs qui n'achètent jamais signalent un blocage : paiement en échec, frais surprises, ou bug du checkout."
         : "Sans trafic qualifié, même une boutique parfaite ne vend pas.",
-      action: broken
+      action: funnelLooksBroken
         ? "Passe une commande test complète (jusqu'au paiement) et corrige le premier point de friction."
         : "Lance une première campagne d'acquisition ciblée et configure une séquence email de bienvenue.",
-      impact: broken ? "100% des ventes potentielles bloquées" : "Activation à débloquer",
-      score: broken ? 96 : 80,
-    });
-  }
+      impact: funnelLooksBroken
+        ? "100% des ventes potentielles bloquées"
+        : "Activation à débloquer",
+      score: funnelLooksBroken ? 96 : 80,
+    },
+  ];
+};
 
-  // ── Revenue concentration risk ───────────────────────────────────────────────
-  if (products.length >= 2 && totalRev > 0) {
-    const top = [...products].sort((a, b) => b.revenue_cents - a.revenue_cents)[0];
-    const share = Number(top.revenue_share);
-    if (share >= 50) {
-      out.push({
-        id: "concentration",
-        type: "sales",
-        severity: "warning",
-        icon: "🧨",
-        title: `Dépendance à un seul produit (${Math.round(share)}% du CA)`,
-        body: `${top.name} pèse ${Math.round(share)}% de ton chiffre d'affaires.`,
-        why: "Si ce produit décroche (rupture, saturation, concurrence), tout ton CA plonge avec lui.",
-        action: "Pousse 2-3 produits complémentaires en cross-sell et teste-les en pub pour diversifier.",
-        impact: "Réduit le risque sur la majorité de ton CA",
-        score: 58,
-      });
-    }
-  }
+// ── Revenue concentration risk ───────────────────────────────────────────────
+const CONCENTRATION_SHARE = 50;
 
-  // ── Marketing / campaigns ──────────────────────────────────────────────────────
+const concentrationRisk: Rule = ({ products, totalRevenue }) => {
+  if (products.length < 2 || totalRevenue <= 0) return [];
+  const top = [...products].sort((a, b) => b.revenue_cents - a.revenue_cents)[0];
+  const share = Number(top.revenue_share);
+  if (share < CONCENTRATION_SHARE) return [];
+  return [
+    {
+      id: "concentration",
+      type: "sales",
+      severity: "warning",
+      icon: "🧨",
+      title: `Dépendance à un seul produit (${Math.round(share)}% du CA)`,
+      body: `${top.name} pèse ${Math.round(share)}% de ton chiffre d'affaires.`,
+      why: "Si ce produit décroche (rupture, saturation, concurrence), tout ton CA plonge avec lui.",
+      action:
+        "Pousse 2-3 produits complémentaires en cross-sell et teste-les en pub pour diversifier.",
+      impact: "Réduit le risque sur la majorité de ton CA",
+      score: 58,
+    },
+  ];
+};
+
+// ── Marketing / campaigns ────────────────────────────────────────────────────
+const campaignReturns: Rule = ({ campaigns }) => {
+  const out: DetectedAlert[] = [];
   for (const c of campaigns) {
     if (c.status !== "active" || c.spend_cents <= 0) continue;
     const roas = Number(c.roas);
+    const spent = euros(c.spend_cents);
+    const earned = euros(c.revenue_cents);
+
     if (roas < 1) {
       out.push({
         id: `roas-loss-${c.id}`,
@@ -337,9 +471,10 @@ export function detectAlerts(s: StoreSignals): DetectedAlert[] {
         severity: "critical",
         icon: "💸",
         title: `${c.channel} : tu perds de l'argent (ROAS ${roas.toFixed(2)})`,
-        body: `${euros(c.spend_cents)} dépensés pour ${euros(c.revenue_cents)} générés.`,
+        body: `${spent} dépensés pour ${earned} générés.`,
         why: "Un ROAS sous 1 veut dire que chaque euro dépensé rapporte moins d'un euro : campagne déficitaire.",
-        action: "Mets la campagne en pause ou refais le ciblage/créa avant de continuer à brûler du budget.",
+        action:
+          "Mets la campagne en pause ou refais le ciblage/créa avant de continuer à brûler du budget.",
         impact: `≈ ${euros(c.spend_cents - c.revenue_cents)} perdus sur ce canal`,
         score: 90,
       });
@@ -350,7 +485,7 @@ export function detectAlerts(s: StoreSignals): DetectedAlert[] {
         severity: "positive",
         icon: "🏆",
         title: `${c.channel} cartonne (ROAS ${roas.toFixed(2)})`,
-        body: `${euros(c.revenue_cents)} générés pour ${euros(c.spend_cents)} dépensés.`,
+        body: `${earned} générés pour ${spent} dépensés.`,
         why: "Ce canal est largement rentable — il y a de la marge pour investir davantage.",
         action: "Augmente le budget par paliers (+20%) en surveillant que le ROAS tient.",
         impact: "Lever de croissance le plus rentable actuellement",
@@ -363,38 +498,84 @@ export function detectAlerts(s: StoreSignals): DetectedAlert[] {
         severity: "warning",
         icon: "⚖️",
         title: `${c.channel} à peine rentable (ROAS ${roas.toFixed(2)})`,
-        body: `${euros(c.spend_cents)} dépensés pour ${euros(c.revenue_cents)} générés.`,
+        body: `${spent} dépensés pour ${earned} générés.`,
         why: "Une fois les coûts produit + livraison déduits, un ROAS sous ~2 est souvent à perte.",
-        action: "Optimise le ciblage et la créa, ou réalloue le budget vers tes canaux qui performent.",
+        action:
+          "Optimise le ciblage et la créa, ou réalloue le budget vers tes canaux qui performent.",
         impact: "Marge fragile à sécuriser",
         score: 56,
       });
     }
   }
+  return out;
+};
 
-  // ── All clear (positive reassurance) ───────────────────────────────────────────
-  const hasNegative = out.some(
-    (a) => a.severity === "critical" || a.severity === "warning"
-  );
-  if (!hasNegative && totalOrders > 0) {
-    out.push({
-      id: "all-clear",
-      type: "system",
-      severity: "positive",
-      icon: "✅",
-      title: "Tout est au vert",
-      body: `${totalOrders} commande(s) et ${euros(totalRev)} de CA sur les données suivies, sans anomalie détectée.`,
-      why: "Aucun signal négatif sur le CA, la conversion, le stock ou les campagnes.",
-      action: "Continue sur ta lancée — pousse ce qui marche et garde un œil sur le réassort.",
-      impact: "Situation saine",
-      score: 30,
-    });
-  }
+const RULES: Rule[] = [
+  revenueTrend,
+  revenueCliff,
+  conversionTrend,
+  trafficTrend,
+  basketTrend,
+  stockLevels,
+  salesHealth,
+  concentrationRisk,
+  campaignReturns,
+];
 
-  return out.sort((a, b) => b.score - a.score);
+/** Positive reassurance — only when no rule raised anything actionable. */
+function allClear({ totalOrders, totalRevenue }: StoreSnapshot): DetectedAlert {
+  return {
+    id: "all-clear",
+    type: "system",
+    severity: "positive",
+    icon: "✅",
+    title: "Tout est au vert",
+    body: `${totalOrders} commande(s) et ${euros(totalRevenue)} de CA sur les données suivies, sans anomalie détectée.`,
+    why: "Aucun signal négatif sur le CA, la conversion, le stock ou les campagnes.",
+    action:
+      "Continue sur ta lancée — pousse ce qui marche et garde un œil sur le réassort.",
+    impact: "Situation saine",
+    score: 30,
+  };
+}
+
+/**
+ * Pure detection — runs every rule against the signals and returns the alerts
+ * that actually fire, sorted by severity/impact. No side effects, no AI.
+ */
+export function detectAlerts(signals: StoreSignals): DetectedAlert[] {
+  const s = snapshot(signals);
+  const alerts = RULES.flatMap((rule) => rule(s));
+
+  const nothingToFix = !alerts.some((a) => isActionable(a.severity));
+  if (nothingToFix && s.totalOrders > 0) alerts.push(allClear(s));
+
+  return alerts.sort((a, b) => b.score - a.score);
+}
+
+/**
+ * What every real-store caller wants: the detected alerts, or getting-started
+ * guidance when a brand-new store has nothing to detect yet.
+ */
+export function detectAlertsOrOnboarding(s: StoreSignals): DetectedAlert[] {
+  const alerts = detectAlerts(s);
+  return alerts.length ? alerts : onboardingAlerts(s);
 }
 
 const ORDER = { critical: 0, warning: 1, positive: 2, info: 3 } as const;
+
+/** True for the two severities that cost money now, and drive the bell badge. */
+export function isActionable(severity: Severity): boolean {
+  return severity === "critical" || severity === "warning";
+}
+
+/** Shared severity → priority ladder, so every surface agrees on it. */
+export function priorityFromSeverity(severity: Severity): Priority {
+  if (severity === "critical") return "CRITICAL";
+  if (severity === "warning") return "HIGH";
+  if (severity === "positive") return "MEDIUM";
+  return "LOW";
+}
 
 /** Maps a detected alert to a sidebar/notification-page Notification. */
 export function alertToNotification(a: DetectedAlert): Notification {
@@ -412,14 +593,6 @@ export function alertToNotification(a: DetectedAlert): Notification {
 
 /** Maps a detected alert to a Copilot Insight (What / Why / Action). */
 export function alertToInsight(a: DetectedAlert): Insight {
-  const priority =
-    a.severity === "critical"
-      ? "CRITICAL"
-      : a.severity === "warning"
-        ? "HIGH"
-        : a.severity === "positive"
-          ? "MEDIUM"
-          : "LOW";
   return {
     id: a.id,
     severity: a.severity,
@@ -429,31 +602,58 @@ export function alertToInsight(a: DetectedAlert): Insight {
     action: a.action,
     impact: a.impact,
     source: "Détection automatique",
-    priority,
+    priority: priorityFromSeverity(a.severity),
     impactScore: a.score,
     confidenceScore: 92,
   };
 }
 
+/**
+ * Maps a detected alert to an executable action when Nightflow can carry the
+ * fix out itself. Deterministic by construction: the target comes from the rule
+ * that raised the alert, never from a model.
+ */
+function autoAction(
+  a: DetectedAlert,
+  products: ProductRow[]
+): SuggestedAction | undefined {
+  if (a.productId) {
+    const product = products.find((p) => p.id === a.productId);
+    if (!product) return undefined;
+    // Out of stock or nearly out: the fix is the same, put units back.
+    if (a.id.startsWith("stock-out-") || a.id.startsWith("stock-low-")) {
+      return restockAction(product);
+    }
+    return undefined;
+  }
+  // Traffic that doesn't convert: a time-boxed promo is the standard,
+  // fully reversible lever — and Nightflow can create it in one click.
+  if (a.id === "traffic-no-convert" || a.id === "conv-drop") {
+    return discountAction(null);
+  }
+  return undefined;
+}
+
 /** Maps a detected alert to an actionable Recommendation. */
-export function alertToRecommendation(a: DetectedAlert): Recommendation {
-  const priority =
-    a.severity === "critical"
-      ? "CRITICAL"
-      : a.severity === "warning"
-        ? "HIGH"
-        : "MEDIUM";
+export function alertToRecommendation(
+  a: DetectedAlert,
+  products: ProductRow[] = []
+): Recommendation {
+  const action = autoAction(a, products);
   return {
     id: `rec-${a.id}`,
     title: a.title,
     detail: a.action,
     impact: a.impact,
-    impactLevel: a.severity === "critical" || a.severity === "warning" ? "high" : "medium",
-    cta: "Voir comment faire",
+    impactLevel: isActionable(a.severity) ? "high" : "medium",
+    cta: action ? action.label : "Voir comment faire",
     effort: "Moyen",
-    priority,
+    // Recommendations never carry a "LOW" priority: an info-level alert still
+    // deserves a medium nudge here.
+    priority: a.severity === "info" ? "MEDIUM" : priorityFromSeverity(a.severity),
     impactScore: a.score,
     confidenceScore: 92,
+    action,
   };
 }
 

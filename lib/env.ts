@@ -36,9 +36,13 @@ export const env = {
     process.env.SHOPIFY_CLIENT_ID ?? process.env.SHOPIFY_API_KEY ?? "",
   shopifyClientSecret:
     process.env.SHOPIFY_CLIENT_SECRET ?? process.env.SHOPIFY_API_SECRET ?? "",
+  // The write_* scopes are what let the Copilot APPLY a recommendation
+  // (price, stock, visibility, discount codes) instead of only advising.
+  // Drop them from SHOPIFY_SCOPES to run Nightflow strictly read-only —
+  // the "Appliquer" button then explains that the reconnection is needed.
   shopifyScopes:
     process.env.SHOPIFY_SCOPES ??
-    "read_products,read_orders,read_customers,read_inventory",
+    "read_products,write_products,read_orders,read_customers,read_inventory,write_inventory,write_discounts",
 
   // Stripe webhook signing secret (whsec_…) for /api/webhooks/stripe.
   stripeWebhookSecret: process.env.STRIPE_WEBHOOK_SECRET ?? "",

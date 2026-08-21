@@ -11,6 +11,7 @@ import { InsightCard } from "@/features/copilot/insight-card";
 import { AnalysisCard } from "@/features/copilot/analysis-card";
 import { CopilotChat } from "@/features/copilot/copilot-chat";
 import { CopilotAnswer, useCopilotAsk } from "@/features/copilot/copilot-answer";
+import { RecommendationsPanel } from "@/features/actions/recommendations-panel";
 import { ReportMenu } from "@/features/reports/report-menu";
 import { TestPanel } from "@/features/admin/test-panel";
 import { useToast } from "@/hooks/use-toast";
@@ -20,11 +21,16 @@ import {
   getGroupedInsights,
 } from "@/services/copilot.service";
 import { generateStoreReport } from "@/services/report.service";
-import type { AnalysisCard as AnalysisCardType, Insight } from "@/types";
+import type {
+  AnalysisCard as AnalysisCardType,
+  Insight,
+  Recommendation,
+} from "@/types";
 
 // Module-level cache: keeps the last analysis so navigating back to the Copilot
 // (or away and back) shows it INSTANTLY while it silently revalidates.
 let insightsCache: Insight[] | null = null;
+let recosCache: Recommendation[] | null = null;
 
 function group(insights: Insight[]) {
   return {
@@ -77,6 +83,7 @@ export default function CopilotPage() {
     insightsCache ? insightsToCards(insightsCache) : []
   );
   const [groups, setGroups] = useState(() => group(insightsCache ?? []));
+  const [recos, setRecos] = useState<Recommendation[]>(() => recosCache ?? []);
   const [loadingInsights, setLoadingInsights] = useState(!insightsCache);
   const [openAnalysis, setOpenAnalysis] = useState<AnalysisCardType | null>(null);
   const [reporting, setReporting] = useState(false);
@@ -90,9 +97,14 @@ export default function CopilotPage() {
     let alive = true;
     fetch("/api/insights")
       .then((r) => (r.ok ? r.json() : null))
-      .then((data: { insights?: Insight[] } | null) => {
+      .then((data: { insights?: Insight[]; recommendations?: Recommendation[] } | null) => {
         if (!alive) return;
         const items = data?.insights ?? [];
+        const recoItems = data?.recommendations ?? [];
+        if (recoItems.length > 0) {
+          recosCache = recoItems;
+          setRecos(recoItems);
+        }
         if (items.length > 0) {
           insightsCache = items;
           setGroups(group(items));
@@ -135,13 +147,19 @@ export default function CopilotPage() {
     toast("Analyse en cours…", "info");
     try {
       const res = await fetch("/api/insights?refresh=1");
-      const data = (await res.json()) as { insights?: Insight[] };
+      const data = (await res.json()) as {
+        insights?: Insight[];
+        recommendations?: Recommendation[];
+      };
       const items = data.insights ?? [];
       if (items.length) {
         insightsCache = items;
         setGroups(group(items));
         setAnalyses(insightsToCards(items));
       }
+      const recoItems = data.recommendations ?? [];
+      recosCache = recoItems;
+      setRecos(recoItems);
       toast(`Analyse actualisée — ${items.length} insights détectés`);
     } catch {
       toast("Actualisation impossible", "info");
@@ -215,6 +233,13 @@ export default function CopilotPage() {
               </div>
             )}
           </div>
+
+          {/* ── Actions the Copilot can carry out itself ── */}
+          <RecommendationsPanel
+            recommendations={recos}
+            loading={loadingInsights && recos.length === 0}
+            onApplied={refreshAnalysis}
+          />
 
           {/* ── Grouped insights (only the categories that have content) ── */}
           {groups.risks.length > 0 && (

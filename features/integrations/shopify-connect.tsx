@@ -1,15 +1,18 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import { RefreshCw, Store } from "lucide-react";
+import { useState } from "react";
+import { Store } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { timeAgo } from "@/utils/format";
+import { StatusPill } from "@/features/integrations/status-pill";
 import {
-  DEFAULT_STATUS,
-  StatusPill,
-  type IntegrationStatus,
-} from "@/features/integrations/status-pill";
+  ConnectionNotes,
+  ConnectorLogo,
+  DisconnectButton,
+  PrimaryButton,
+  SyncButton,
+} from "@/features/integrations/connector-ui";
+import { useConnection } from "@/features/integrations/use-connection";
 
 /**
  * In-app Shopify connection: each logged-in user enters THEIR own store domain
@@ -18,36 +21,22 @@ import {
  */
 export function ShopifyConnect() {
   const toast = useToast();
+  const connection = useConnection("shopify");
+  const { status, busy } = connection;
   const [domain, setDomain] = useState("");
-  const [status, setStatus] = useState<IntegrationStatus>(DEFAULT_STATUS);
-  const [busy, setBusy] = useState(false);
 
-  const loadStatus = useCallback(async () => {
-    try {
-      const res = await fetch("/api/integrations/status", { cache: "no-store" });
-      if (res.ok) {
-        const j = await res.json();
-        if (j.shopify) setStatus({ ...DEFAULT_STATUS, ...j.shopify });
-      }
-    } catch {
-      /* ignore */
-    }
-  }, []);
-
-  useEffect(() => {
-    loadStatus();
-  }, [loadStatus]);
-
+  /** "ma-boutique" and "https://ma-boutique.myshopify.com/admin" both work. */
   const normalizeShop = (raw: string): string => {
-    let shop = raw
+    const shop = raw
       .trim()
       .toLowerCase()
       .replace(/^https?:\/\//, "")
       .replace(/\/.*$/, "");
-    if (shop && !shop.includes(".")) shop = `${shop}.myshopify.com`;
+    if (shop && !shop.includes(".")) return `${shop}.myshopify.com`;
     return shop;
   };
 
+  // Shopify's OAuth is shop-scoped, so it starts from a full page redirect.
   const connect = (preset?: string) => {
     const shop = normalizeShop(preset ?? domain);
     if (!/^[a-z0-9][a-z0-9-]*\.myshopify\.com$/.test(shop)) {
@@ -57,48 +46,16 @@ export function ShopifyConnect() {
     window.location.href = `/api/integrations/shopify?shop=${encodeURIComponent(shop)}`;
   };
 
-  const sync = async () => {
-    setBusy(true);
-    setStatus((s) => ({ ...s, state: "syncing" }));
-    try {
-      const res = await fetch("/api/integrations/shopify/sync", { method: "POST" });
-      const data = await res.json().catch(() => ({}));
-      if (res.ok) {
-        toast(
-          `Synchronisé : ${data.products ?? 0} produits, ${data.orders ?? 0} commandes ✓`
-        );
-      } else {
-        toast(data.error ?? "Synchronisation impossible", "info");
-      }
-    } catch {
-      toast("Synchronisation impossible", "info");
-    } finally {
-      setBusy(false);
-      loadStatus();
-    }
-  };
-
-  const disconnect = async () => {
-    setBusy(true);
-    try {
-      await fetch("/api/integrations/shopify/disconnect", { method: "POST" });
-      toast("Boutique Shopify déconnectée");
-      setStatus(DEFAULT_STATUS);
-    } catch {
-      toast("Impossible de déconnecter", "info");
-    } finally {
-      setBusy(false);
-    }
-  };
-
   const needsReconnect = status.state === "error" || status.state === "expired";
+  // A store connected before the write scopes existed keeps reading fine but
+  // can't be modified by the Copilot. Re-running OAuth is the only way to grant
+  // the new rights, so the button stays available while connected.
+  const canReauthorize = status.connected && !!status.shop;
 
   return (
     <Card className="p-5">
       <div className="flex flex-wrap items-center gap-4">
-        <span className="grid h-12 w-12 flex-none place-items-center rounded-xl bg-gradient-to-br from-emerald-400 to-emerald-600 text-xl">
-          🛍
-        </span>
+        <ConnectorLogo accent="from-emerald-400 to-emerald-600">🛍</ConnectorLogo>
         <div className="min-w-[180px] flex-1">
           <div className="flex items-center gap-2">
             <h3 className="text-[16px] font-extrabold">Shopify</h3>
@@ -109,17 +66,15 @@ export function ShopifyConnect() {
               ? `Connecté à ${status.shop}`
               : "Connectez votre boutique pour importer produits, commandes & ventes."}
           </p>
-          {status.connected && status.lastSync && (
-            <p className="mt-0.5 text-[11px] text-ink-mut">
-              Dernière synchro : il y a {timeAgo(status.lastSync)}
-            </p>
-          )}
-          {status.state === "error" && status.error && (
-            <p className="mt-0.5 text-[11px] text-neon-pinksoft">{status.error}</p>
-          )}
-          {status.state === "expired" && (
-            <p className="mt-0.5 text-[11px] text-neon-amber">
-              Jeton expiré — reconnecte ta boutique.
+          <ConnectionNotes
+            status={status}
+            expiredHint="Jeton expiré — reconnecte ta boutique."
+          />
+          {canReauthorize && (
+            <p className="mt-1 text-[11px] text-ink-mut">
+              Le Copilot doit pouvoir modifier prix, stock et codes promo pour
+              appliquer ses recommandations : reconnecte la boutique une fois
+              pour lui accorder ces droits.
             </p>
           )}
         </div>
@@ -136,38 +91,28 @@ export function ShopifyConnect() {
                 className="glass-input w-full rounded-xl py-2.5 pl-9 pr-3 text-[13px]"
               />
             </div>
-            <button
-              onClick={() => connect()}
-              className="rounded-xl bg-gradient-to-r from-neon-cyan to-neon-cyansoft px-4 py-2.5 text-[13px] font-bold text-night-950 shadow-glow transition hover:brightness-110"
-            >
-              Connecter
-            </button>
+            <PrimaryButton onClick={() => connect()}>Connecter</PrimaryButton>
           </div>
         ) : (
           <div className="flex flex-wrap items-center gap-2">
-            {needsReconnect && (
-              <button
-                onClick={() => connect(status.shop ?? undefined)}
-                className="rounded-xl bg-gradient-to-r from-neon-cyan to-neon-cyansoft px-4 py-2.5 text-[13px] font-bold text-night-950 shadow-glow transition hover:brightness-110"
-              >
-                Reconnecter
-              </button>
+            {(needsReconnect || canReauthorize) && (
+              <PrimaryButton onClick={() => connect(status.shop ?? undefined)}>
+                {needsReconnect ? "Reconnecter" : "Autoriser les modifications"}
+              </PrimaryButton>
             )}
-            <button
-              onClick={sync}
+            <SyncButton
+              onClick={() =>
+                connection.sync(
+                  (d) =>
+                    `Synchronisé : ${d.products ?? 0} produits, ${d.orders ?? 0} commandes ✓`
+                )
+              }
+              busy={busy}
+            />
+            <DisconnectButton
+              onClick={() => connection.disconnect("Boutique Shopify déconnectée")}
               disabled={busy}
-              className="flex items-center gap-1.5 rounded-xl border border-glass-border bg-glass px-4 py-2.5 text-[13px] font-semibold text-ink-dim transition hover:border-glass-hi hover:text-white disabled:opacity-60"
-            >
-              <RefreshCw className={`h-3.5 w-3.5 ${busy ? "animate-spin" : ""}`} />
-              {busy ? "Synchro…" : "Synchroniser"}
-            </button>
-            <button
-              onClick={disconnect}
-              disabled={busy}
-              className="rounded-xl border border-glass-border bg-glass px-3.5 py-2.5 text-[13px] font-semibold text-ink-dim transition hover:border-neon-pink hover:text-white disabled:opacity-60"
-            >
-              Déconnecter
-            </button>
+            />
           </div>
         )}
       </div>
