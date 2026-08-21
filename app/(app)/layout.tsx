@@ -8,6 +8,7 @@ import { MobileNav } from "@/components/layout/mobile-nav";
 import { DesktopNotifier } from "@/features/notifications/desktop-notifier";
 import { VipRedeemer } from "@/features/vip/vip-redeemer";
 import { useAuth } from "@/hooks/use-auth";
+import { useUnread } from "@/hooks/use-unread";
 import { NAV_MAIN, NAV_SECONDARY } from "@/lib/nav";
 
 const TITLES: Record<string, string> = Object.fromEntries(
@@ -18,6 +19,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const { user, loading } = useAuth();
+  const unread = useUnread();
 
   // Auth guard — redirect unauthenticated users to login.
   useEffect(() => {
@@ -41,8 +43,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     <div className="relative z-10 grid min-h-screen grid-cols-1 lg:grid-cols-[248px_1fr]">
       <Sidebar />
       <div className="flex min-w-0 flex-col">
-        <Topbar title={title} />
-        <main className="flex flex-col gap-5 px-4 pb-28 pt-6 md:px-7 lg:pb-10">
+        <Topbar title={title} unread={unread.notifications} />
+        {/* pb-28 sur mobile : dégage la barre de navigation fixe + la zone sûre. */}
+        <main className="flex flex-col gap-6 px-4 pb-28 pt-6 md:px-6 lg:pb-10">
           {children}
         </main>
       </div>

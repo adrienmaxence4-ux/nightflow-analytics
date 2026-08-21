@@ -1,46 +1,58 @@
 import { enqueueEvents } from "@/lib/integrations/queue";
 import type {
+  ConnectorCategory,
   ConnectorContext,
   IntegrationConnector,
   IntegrationSource,
   NormalizedEvent,
+  SyncResult,
 } from "./types";
 
 /**
- * Connecteurs complémentaires : paiement, logistique, support, régies.
+ * SERVER-ONLY. Connectors authenticated with the CUSTOMER'S OWN credentials
+ * (payments, logistics, support, ad networks) — the same model as Wix and
+ * WooCommerce: nothing to get approved platform-side, the customer pastes their
+ * key and it's connected.
  *
- * Tous fonctionnent avec les identifiants DU CLIENT saisis dans l'interface
- * (même modèle que Wix/WooCommerce) — aucune app à faire valider côté
- * plateforme, le client colle sa clé et c'est connecté.
- *
- * Format des identifiants composites, séparés par `::` :
+ * Composite credential formats, `::`-separated:
  *   paypal        clientId::clientSecret
  *   shipstation   apiKey::apiSecret
- *   gorgias       domaine::email::apiKey
+ *   gorgias       domain::email::apiKey
  *   hotjar        siteId::apiToken
- *   mondialrelay  enseigne::clePrivee
+ *   mondialrelay  brandId::privateKey
+ *
+ * Error messages are French on purpose: they are stored on the integration and
+ * shown to the customer on the Integrations page.
  */
-const TIMEOUT = 20_000;
+const TIMEOUT_MS = 20_000;
 
-function parts(token: string | undefined, n: number): string[] | null {
-  const p = (token ?? "").split("::").map((s) => s.trim());
-  return p.length >= n && p.every(Boolean) ? p : null;
+/** The message every keyed connector shows when the credential is missing. */
+export const MISSING_CREDENTIAL = "identifiants manquants";
+
+/** Splits a composite credential, or null when a part is missing/blank. */
+function splitCredential(
+  credential: string | undefined,
+  expected: number
+): string[] | null {
+  const parts = (credential ?? "").split("::").map((s) => s.trim());
+  return parts.length >= expected && parts.every(Boolean) ? parts : null;
 }
 
-const b64 = (s: string) => Buffer.from(s).toString("base64");
+const basicAuth = (user: string, password: string) =>
+  Buffer.from(`${user}:${password}`).toString("base64");
 
-/** Base commune : ces intégrations n'ont ni OAuth ni webhooks entrants. */
-function baseCle(
+/** Shared shape: these integrations have neither OAuth nor inbound webhooks. */
+export function keyedConnectorBase(
   source: IntegrationSource,
   name: string,
-  category: IntegrationConnector["category"]
+  category: ConnectorCategory
 ) {
   return {
     source,
     name,
     category,
     usesPkce: false,
-    isConfigured: true, // clé par client — rien à configurer côté app
+    isConfigured: true, // per-customer key — nothing to configure app-side
     supportsWebhooks: false,
     buildAuthorizeUrl: () => "",
     exchangeCode: async () => null,
@@ -51,53 +63,74 @@ function baseCle(
   } as const;
 }
 
-/** fetchData + persistance : le même chemin que les webhooks. */
-async function syncViaEvents(
+/**
+ * Guard shared by every keyed sync: without a credential there is nothing to
+ * call, so fail fast and explicitly. Errors thrown by `run` are left to bubble
+ * up, so the sync runner can retry a transient failure.
+ */
+export async function syncWithCredential(
+  source: IntegrationSource,
+  ctx: ConnectorContext,
+  run: (credential: string) => Promise<number>
+): Promise<SyncResult> {
+  const credential = ctx.tokens?.accessToken;
+  if (!credential) {
+    return { source, events: 0, ok: false, error: MISSING_CREDENTIAL };
+  }
+  return { source, events: await run(credential), ok: true };
+}
+
+/** fetchData + persistence: the same path the webhooks take. */
+async function syncViaEventQueue(
   ctx: ConnectorContext,
   source: IntegrationSource,
-  fetcher: (ctx: ConnectorContext) => Promise<NormalizedEvent[]>
-) {
-  const token = ctx.tokens?.accessToken;
-  if (!token) return { source, events: 0, ok: false, error: "identifiants manquants" };
+  fetchEvents: (ctx: ConnectorContext) => Promise<NormalizedEvent[]>
+): Promise<SyncResult> {
+  const credential = ctx.tokens?.accessToken;
+  if (!credential) {
+    return { source, events: 0, ok: false, error: MISSING_CREDENTIAL };
+  }
   try {
-    const events = await fetcher(ctx);
-    const n = events.length ? await enqueueEvents(ctx.db, events) : 0;
-    return { source, events: n, ok: true };
+    const events = await fetchEvents(ctx);
+    const stored = events.length ? await enqueueEvents(ctx.db, events) : 0;
+    return { source, events: stored, ok: true };
   } catch (e) {
     return { source, events: 0, ok: false, error: (e as Error).message.slice(0, 160) };
   }
 }
 
+const THIRTY_DAYS_MS = 30 * 86_400_000;
+
 // ── PayPal ───────────────────────────────────────────────────────────────
-// OAuth2 client_credentials, puis l'API Transaction Search.
+// OAuth2 client_credentials, then the Transaction Search API.
 async function paypalEvents(ctx: ConnectorContext): Promise<NormalizedEvent[]> {
-  const p = parts(ctx.tokens?.accessToken, 2);
-  if (!p) throw new Error("attendu clientId::clientSecret");
-  const [id, secret] = p;
+  const parts = splitCredential(ctx.tokens?.accessToken, 2);
+  if (!parts) throw new Error("attendu clientId::clientSecret");
+  const [clientId, clientSecret] = parts;
 
   const auth = await fetch("https://api-m.paypal.com/v1/oauth2/token", {
     method: "POST",
     headers: {
-      Authorization: `Basic ${b64(`${id}:${secret}`)}`,
+      Authorization: `Basic ${basicAuth(clientId, clientSecret)}`,
       "Content-Type": "application/x-www-form-urlencoded",
     },
     body: "grant_type=client_credentials",
-    signal: AbortSignal.timeout(TIMEOUT),
+    signal: AbortSignal.timeout(TIMEOUT_MS),
   });
   if (!auth.ok) throw new Error(`auth PayPal ${auth.status}`);
   const { access_token } = (await auth.json()) as { access_token?: string };
   if (!access_token) throw new Error("jeton PayPal absent");
 
-  // L'API limite chaque appel à 31 jours.
-  const fin = new Date();
-  const debut = new Date(Date.now() - 30 * 86_400_000);
+  // The API caps each call at 31 days.
+  const to = new Date();
+  const from = new Date(Date.now() - THIRTY_DAYS_MS);
   const url =
     "https://api-m.paypal.com/v1/reporting/transactions" +
-    `?start_date=${debut.toISOString()}&end_date=${fin.toISOString()}` +
+    `?start_date=${from.toISOString()}&end_date=${to.toISOString()}` +
     "&fields=transaction_info&page_size=500";
   const res = await fetch(url, {
     headers: { Authorization: `Bearer ${access_token}` },
-    signal: AbortSignal.timeout(TIMEOUT),
+    signal: AbortSignal.timeout(TIMEOUT_MS),
   });
   if (!res.ok) throw new Error(`PayPal ${res.status}`);
   const data = (await res.json()) as {
@@ -116,14 +149,16 @@ async function paypalEvents(ctx: ConnectorContext): Promise<NormalizedEvent[]> {
     .filter((t): t is NonNullable<typeof t> => !!t?.transaction_id)
     .filter((t) => t.transaction_status === "S") // S = succeeded
     .map((t) => {
-      const montant = Math.round(parseFloat(t.transaction_amount?.value ?? "0") * 100);
+      const amountCents = Math.round(
+        parseFloat(t.transaction_amount?.value ?? "0") * 100
+      );
       return {
         shop_id: ctx.storeId,
         source: "paypal" as const,
-        // Un montant négatif est un remboursement, pas une vente.
-        event_type: montant < 0 ? ("refund" as const) : ("order" as const),
+        // A negative amount is a refund, not a sale.
+        event_type: amountCents < 0 ? ("refund" as const) : ("order" as const),
         timestamp: Date.parse(t.transaction_initiation_date ?? "") || Date.now(),
-        metrics: { revenue: Math.abs(montant), orders: 1 },
+        metrics: { revenue: Math.abs(amountCents), orders: 1 },
         metadata: { external_id: t.transaction_id, channel: "PayPal" },
       };
     });
@@ -131,14 +166,15 @@ async function paypalEvents(ctx: ConnectorContext): Promise<NormalizedEvent[]> {
 
 // ── ShipStation ──────────────────────────────────────────────────────────
 async function shipstationEvents(ctx: ConnectorContext): Promise<NormalizedEvent[]> {
-  const p = parts(ctx.tokens?.accessToken, 2);
-  if (!p) throw new Error("attendu apiKey::apiSecret");
-  const depuis = new Date(Date.now() - 30 * 86_400_000).toISOString().slice(0, 10);
+  const parts = splitCredential(ctx.tokens?.accessToken, 2);
+  if (!parts) throw new Error("attendu apiKey::apiSecret");
+  const [apiKey, apiSecret] = parts;
+  const since = new Date(Date.now() - THIRTY_DAYS_MS).toISOString().slice(0, 10);
   const res = await fetch(
-    `https://ssapi.shipstation.com/shipments?createDateStart=${depuis}&pageSize=500`,
+    `https://ssapi.shipstation.com/shipments?createDateStart=${since}&pageSize=500`,
     {
-      headers: { Authorization: `Basic ${b64(`${p[0]}:${p[1]}`)}` },
-      signal: AbortSignal.timeout(TIMEOUT),
+      headers: { Authorization: `Basic ${basicAuth(apiKey, apiSecret)}` },
+      signal: AbortSignal.timeout(TIMEOUT_MS),
     }
   );
   if (!res.ok) throw new Error(`ShipStation ${res.status}`);
@@ -150,7 +186,7 @@ async function shipstationEvents(ctx: ConnectorContext): Promise<NormalizedEvent
     source: "shipstation" as const,
     event_type: "order" as const,
     timestamp: Date.parse(s.createDate ?? "") || Date.now(),
-    // Le coût d'expédition est une dépense : on le range en `spend`.
+    // Shipping cost is an expense, so it belongs in `spend`.
     metrics: { orders: 1, spend: Math.round((s.shipmentCost ?? 0) * 100) },
     metadata: { external_id: String(s.shipmentId ?? ""), channel: "Expédition" },
   }));
@@ -158,22 +194,22 @@ async function shipstationEvents(ctx: ConnectorContext): Promise<NormalizedEvent
 
 // ── Gorgias ──────────────────────────────────────────────────────────────
 async function gorgiasEvents(ctx: ConnectorContext): Promise<NormalizedEvent[]> {
-  const p = parts(ctx.tokens?.accessToken, 3);
-  if (!p) throw new Error("attendu domaine::email::apiKey");
-  const [domaine, email, cle] = p;
+  const parts = splitCredential(ctx.tokens?.accessToken, 3);
+  if (!parts) throw new Error("attendu domaine::email::apiKey");
+  const [domain, email, apiKey] = parts;
   const res = await fetch(
-    `https://${domaine}.gorgias.com/api/tickets?limit=100&order_by=created_datetime:desc`,
+    `https://${domain}.gorgias.com/api/tickets?limit=100&order_by=created_datetime:desc`,
     {
-      headers: { Authorization: `Basic ${b64(`${email}:${cle}`)}` },
-      signal: AbortSignal.timeout(TIMEOUT),
+      headers: { Authorization: `Basic ${basicAuth(email, apiKey)}` },
+      signal: AbortSignal.timeout(TIMEOUT_MS),
     }
   );
   if (!res.ok) throw new Error(`Gorgias ${res.status}`);
   const data = (await res.json()) as {
     data?: { id?: number; created_datetime?: string; status?: string }[];
   };
-  // Un ticket n'est ni une vente ni une pub : on le compte comme un contact,
-  // pour repérer les pics de réclamations sans polluer le chiffre d'affaires.
+  // A ticket is neither a sale nor an ad, so it counts as a contact: that
+  // surfaces complaint spikes without polluting revenue.
   return (data.data ?? []).map((t) => ({
     shop_id: ctx.storeId,
     source: "gorgias" as const,
@@ -188,17 +224,17 @@ async function gorgiasEvents(ctx: ConnectorContext): Promise<NormalizedEvent[]> 
 }
 
 // ── Hotjar ───────────────────────────────────────────────────────────────
-// L'API existe, mais ses endpoints de données sont réservés aux plans Scale.
-// On échoue avec un message explicite plutôt qu'en silence.
+// The API exists, but its data endpoints are Scale-plan only. Fail with an
+// explicit message rather than silently.
 async function hotjarEvents(ctx: ConnectorContext): Promise<NormalizedEvent[]> {
-  const p = parts(ctx.tokens?.accessToken, 2);
-  if (!p) throw new Error("attendu siteId::apiToken");
-  const [siteId, jeton] = p;
+  const parts = splitCredential(ctx.tokens?.accessToken, 2);
+  if (!parts) throw new Error("attendu siteId::apiToken");
+  const [siteId, token] = parts;
   const res = await fetch(
     `https://api.hotjar.io/v2/sites/${encodeURIComponent(siteId)}/feedback`,
     {
-      headers: { Authorization: `Bearer ${jeton}` },
-      signal: AbortSignal.timeout(TIMEOUT),
+      headers: { Authorization: `Bearer ${token}` },
+      signal: AbortSignal.timeout(TIMEOUT_MS),
     }
   );
   if (res.status === 401 || res.status === 403) {
@@ -219,18 +255,18 @@ async function hotjarEvents(ctx: ConnectorContext): Promise<NormalizedEvent[]> {
 }
 
 // ── Mondial Relay ────────────────────────────────────────────────────────
-// Suivi d'expéditions via l'API Connect (identifiants marchand).
+// Shipment tracking through the Connect API (merchant credentials).
 async function mondialRelayEvents(ctx: ConnectorContext): Promise<NormalizedEvent[]> {
-  const p = parts(ctx.tokens?.accessToken, 2);
-  if (!p) throw new Error("attendu enseigne::clePrivee");
-  const [enseigne, cle] = p;
+  const parts = splitCredential(ctx.tokens?.accessToken, 2);
+  if (!parts) throw new Error("attendu enseigne::clePrivee");
+  const [brandId, privateKey] = parts;
   const res = await fetch("https://connect-api.mondialrelay.com/api/shipment", {
     method: "GET",
     headers: {
-      Authorization: `Basic ${b64(`${enseigne}:${cle}`)}`,
+      Authorization: `Basic ${basicAuth(brandId, privateKey)}`,
       Accept: "application/json",
     },
-    signal: AbortSignal.timeout(TIMEOUT),
+    signal: AbortSignal.timeout(TIMEOUT_MS),
   });
   if (!res.ok) throw new Error(`Mondial Relay ${res.status}`);
   const data = (await res.json()) as {
@@ -246,37 +282,38 @@ async function mondialRelayEvents(ctx: ConnectorContext): Promise<NormalizedEven
   }));
 }
 
-function connecteurCle(
+/** Builds a keyed connector that persists through the normalized event queue. */
+function keyedConnector(
   source: IntegrationSource,
   name: string,
-  category: IntegrationConnector["category"],
-  fetcher: (ctx: ConnectorContext) => Promise<NormalizedEvent[]>
+  category: ConnectorCategory,
+  fetchEvents: (ctx: ConnectorContext) => Promise<NormalizedEvent[]>
 ): IntegrationConnector {
   return {
-    ...baseCle(source, name, category),
-    fetchData: fetcher,
-    sync: (ctx) => syncViaEvents(ctx, source, fetcher),
+    ...keyedConnectorBase(source, name, category),
+    fetchData: fetchEvents,
+    sync: (ctx) => syncViaEventQueue(ctx, source, fetchEvents),
   };
 }
 
-export const PAYPAL = connecteurCle("paypal", "PayPal", "commerce", paypalEvents);
-export const SHIPSTATION = connecteurCle(
+export const PAYPAL = keyedConnector("paypal", "PayPal", "commerce", paypalEvents);
+export const SHIPSTATION = keyedConnector(
   "shipstation", "ShipStation", "logistics", shipstationEvents
 );
-export const MONDIAL_RELAY = connecteurCle(
+export const MONDIAL_RELAY = keyedConnector(
   "mondialrelay", "Mondial Relay", "logistics", mondialRelayEvents
 );
-export const GORGIAS = connecteurCle("gorgias", "Gorgias", "support", gorgiasEvents);
-export const HOTJAR = connecteurCle("hotjar", "Hotjar", "analytics", hotjarEvents);
+export const GORGIAS = keyedConnector("gorgias", "Gorgias", "support", gorgiasEvents);
+export const HOTJAR = keyedConnector("hotjar", "Hotjar", "analytics", hotjarEvents);
 
 /**
- * Google Ads : l'API exige un jeton développeur validé par Google EN PLUS de
- * l'OAuth. Tant que ce jeton n'est pas obtenu, le connecteur reste visible mais
- * inactif — mieux qu'un bouton qui échouerait sans explication.
+ * Google Ads: the API requires a developer token approved by Google ON TOP of
+ * OAuth. Until that token is granted the connector stays visible but inactive —
+ * better than a button that would fail without explanation.
  */
 export const GOOGLE_ADS: IntegrationConnector = {
-  ...baseCle("googleads", "Google Ads", "advertising"),
-  isConfigured: false, // en attente du jeton développeur Google Ads
+  ...keyedConnectorBase("googleads", "Google Ads", "advertising"),
+  isConfigured: false, // pending the Google Ads developer token
   fetchData: async () => [],
   sync: async () => ({
     source: "googleads",

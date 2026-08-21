@@ -2,86 +2,137 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Bell, Plus, Search, LogOut } from "lucide-react";
-import { useState } from "react";
+import { Bell, Plus, LogOut, Settings as SettingsIcon } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 
-export function Topbar({ title }: { title: string }) {
+/** Salutation réelle selon l'heure — « Bonsoir » à 9h sonnait faux. */
+function greeting(): string {
+  const h = new Date().getHours();
+  if (h < 6) return "Bonne nuit";
+  if (h < 13) return "Bonjour";
+  if (h < 18) return "Bon après-midi";
+  return "Bonsoir";
+}
+
+export function Topbar({
+  title,
+  unread = 0,
+}: {
+  title: string;
+  unread?: number;
+}) {
   const { user, signOut } = useAuth();
   const toast = useToast();
   const router = useRouter();
   const [menu, setMenu] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+
+  // Le menu se fermait sur onMouseLeave : impossible à fermer au clavier, et
+  // il disparaissait dès que le curseur passait à côté. Échap + clic extérieur.
+  useEffect(() => {
+    if (!menu) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setMenu(false);
+        triggerRef.current?.focus();
+      }
+    };
+    const onDown = (e: PointerEvent) => {
+      const t = e.target as Node;
+      if (!menuRef.current?.contains(t) && !triggerRef.current?.contains(t)) {
+        setMenu(false);
+      }
+    };
+    document.addEventListener("keydown", onKey);
+    document.addEventListener("pointerdown", onDown);
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.removeEventListener("pointerdown", onDown);
+    };
+  }, [menu]);
 
   return (
-    <header className="sticky top-0 z-40 flex items-center gap-3 border-b border-glass-border bg-night-950/80 px-4 py-3.5 backdrop-blur-xl md:px-7">
-      <div className="hidden sm:block">
-        <div className="text-xs text-ink-mut">Bonsoir, {user?.name ?? "👋"} 🌙</div>
-        <b className="text-[19px] font-extrabold">{title}</b>
+    <header className="sticky top-0 z-40 flex h-[var(--topbar-h)] items-center gap-4 border-b border-glass-border bg-night-950/85 px-4 backdrop-blur-xl md:px-6">
+      <div className="min-w-0">
+        <div className="truncate text-label text-ink-mut">
+          {greeting()}
+          {user?.name ? `, ${user.name}` : ""}
+        </div>
+        <h1 className="truncate text-title">{title}</h1>
       </div>
 
-      <div className="relative ml-2 hidden max-w-[400px] flex-1 md:block">
-        <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-mut" />
-        <input
-          placeholder="Rechercher produits, commandes, insights…"
-          className="glass-input w-full rounded-xl py-2.5 pl-10 pr-3.5 text-[13px]"
-        />
-      </div>
-
-      <div className="ml-auto flex items-center gap-2.5">
+      <div className="ml-auto flex items-center gap-2">
         <Link
           href="/notifications"
-          className="relative grid h-11 w-11 place-items-center rounded-xl border border-glass-border bg-glass text-ink-dim transition hover:border-glass-hi hover:text-white hover:shadow-glow"
-          aria-label="Notifications"
+          className="relative grid h-11 w-11 place-items-center rounded-md border border-glass-border bg-glass text-ink-dim transition duration-base ease-out hover:border-glass-hi hover:text-white active:translate-y-px"
+          aria-label={
+            unread > 0
+              ? `Notifications, ${unread} non lues`
+              : "Notifications"
+          }
         >
-          <Bell className="h-[18px] w-[18px]" />
-          <span className="absolute right-2.5 top-2.5 h-2 w-2 rounded-full border-2 border-night-950 bg-neon-pink shadow-glow-pink" />
+          <Bell className="h-[18px] w-[18px]" aria-hidden />
+          {unread > 0 && (
+            <span className="absolute -right-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full border-2 border-night-950 bg-neon-pink px-1 text-[10px] font-bold text-white">
+              {unread > 9 ? "9+" : unread}
+            </span>
+          )}
         </Link>
 
-        <Button
-          size="sm"
-          className="h-11"
-          onClick={() => router.push("/integrations")}
-        >
-          <Plus className="h-4 w-4" strokeWidth={2.4} />
+        <Button size="md" onClick={() => router.push("/integrations")}>
+          <Plus className="h-4 w-4" strokeWidth={2.4} aria-hidden />
           <span className="hidden sm:inline">Connecter une boutique</span>
         </Button>
 
         <div className="relative">
           <button
+            ref={triggerRef}
             onClick={() => setMenu((m) => !m)}
-            className="grid h-11 w-11 place-items-center rounded-xl border border-glass-hi bg-gradient-to-br from-neon-pink to-neon-violet text-sm font-extrabold text-white transition hover:shadow-glow-pink"
+            aria-haspopup="menu"
+            aria-expanded={menu}
+            aria-label="Menu du compte"
+            className="grid h-11 w-11 place-items-center rounded-md border border-glass-hi bg-gradient-to-br from-neon-pink to-neon-violet text-body font-extrabold text-white transition duration-base ease-out hover:brightness-110 active:translate-y-px"
           >
             {user?.initials ?? "NF"}
           </button>
+
           {menu && (
             <div
-              className="absolute right-0 top-[52px] z-50 w-52 overflow-hidden rounded-xl border border-glass-border bg-night-900/97 p-1.5 shadow-premium backdrop-blur-xl"
-              onMouseLeave={() => setMenu(false)}
+              ref={menuRef}
+              role="menu"
+              className="surface-raised absolute right-0 top-[52px] z-50 w-56 p-2"
             >
               <div className="px-3 py-2">
-                <div className="text-[13px] font-bold">{user?.name}</div>
-                <div className="truncate text-[11px] text-ink-mut">
+                <div className="truncate text-body font-bold">{user?.name}</div>
+                <div className="truncate text-label text-ink-mut">
                   {user?.email}
                 </div>
               </div>
               <div className="my-1 h-px bg-glass-border" />
               <Link
                 href="/settings"
-                className="block rounded-lg px-3 py-2 text-[13px] text-ink-dim transition hover:bg-glass-2 hover:text-white"
+                role="menuitem"
+                onClick={() => setMenu(false)}
+                className="flex min-h-tap items-center gap-2 rounded-sm px-3 text-body text-ink-dim transition duration-base ease-out hover:bg-glass-2 hover:text-white"
               >
+                <SettingsIcon className="h-4 w-4" aria-hidden />
                 Paramètres
               </Link>
               <button
+                role="menuitem"
                 onClick={async () => {
+                  setMenu(false);
                   await signOut();
                   toast("Déconnecté");
                   router.push("/login");
                 }}
-                className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-[13px] text-ink-dim transition hover:bg-glass-2 hover:text-neon-pinksoft"
+                className="flex min-h-tap w-full items-center gap-2 rounded-sm px-3 text-body text-ink-dim transition duration-base ease-out hover:bg-glass-2 hover:text-neon-pinksoft"
               >
-                <LogOut className="h-4 w-4" />
+                <LogOut className="h-4 w-4" aria-hidden />
                 Se déconnecter
               </button>
             </div>

@@ -1,12 +1,15 @@
-import type { Insight, Priority } from "@/types";
+import type { Insight } from "@/types";
 import { callClaudeJSON } from "@/services/ai/anthropic";
+import { clampScore, isPriority, textOr } from "@/services/ai/normalize";
 import { anomaliesSystem, insightsSystem } from "@/services/ai/prompts";
 import { buildStoreContext } from "@/services/ai/store-context";
 import {
   alertToInsight,
   detectAlerts,
+  detectAlertsOrOnboarding,
+  isActionable,
   loadStoreSignals,
-  onboardingAlerts,
+  priorityFromSeverity,
 } from "@/services/alerts/detect";
 import { INSIGHTS } from "@/services/mock/data";
 
@@ -18,9 +21,7 @@ import { INSIGHTS } from "@/services/mock/data";
 async function ruleBasedInsights(): Promise<Insight[] | null> {
   const signals = await loadStoreSignals();
   if (!signals) return null;
-  const alerts = detectAlerts(signals);
-  const base = alerts.length ? alerts : onboardingAlerts(signals);
-  return base.map(alertToInsight);
+  return detectAlertsOrOnboarding(signals).map(alertToInsight);
 }
 
 /**
@@ -29,22 +30,8 @@ async function ruleBasedInsights(): Promise<Insight[] | null> {
  */
 
 const SEVERITIES = ["critical", "warning", "positive", "info"] as const;
-const PRIORITIES: Priority[] = ["LOW", "MEDIUM", "HIGH", "CRITICAL"];
 
 type RawInsight = Partial<Insight> & Record<string, unknown>;
-
-function clampScore(v: unknown, fallback: number): number {
-  const n = typeof v === "number" ? v : Number(v);
-  if (!Number.isFinite(n)) return fallback;
-  return Math.max(0, Math.min(100, Math.round(n)));
-}
-
-function priorityFromSeverity(sev: Insight["severity"]): Priority {
-  if (sev === "critical") return "CRITICAL";
-  if (sev === "warning") return "HIGH";
-  if (sev === "positive") return "MEDIUM";
-  return "LOW";
-}
 
 function normalize(raw: RawInsight[], prefix: string): Insight[] {
   const items = raw
@@ -53,19 +40,18 @@ function normalize(raw: RawInsight[], prefix: string): Insight[] {
       const severity = SEVERITIES.includes(r.severity as never)
         ? (r.severity as Insight["severity"])
         : "info";
-      const priority = PRIORITIES.includes(r.priority as Priority)
-        ? (r.priority as Priority)
-        : priorityFromSeverity(severity);
       return {
         id: `${prefix}-${i}`,
         severity,
-        icon: typeof r.icon === "string" && r.icon ? r.icon : "✨",
+        icon: textOr(r.icon, "✨"),
         what: String(r.what ?? ""),
         why: String(r.why ?? ""),
         action: String(r.action ?? ""),
         impact: String(r.impact ?? ""),
         source: String(r.source ?? "Analyse IA"),
-        priority,
+        priority: isPriority(r.priority)
+          ? r.priority
+          : priorityFromSeverity(severity),
         impactScore: clampScore(r.impactScore, 50),
         confidenceScore: clampScore(r.confidenceScore, 70),
       };
@@ -110,14 +96,12 @@ export async function detectAnomalies(): Promise<{
   const signals = await loadStoreSignals();
   if (signals) {
     const items = detectAlerts(signals)
-      .filter((a) => a.severity === "critical" || a.severity === "warning")
+      .filter((a) => isActionable(a.severity))
       .map(alertToInsight);
     return { source: "mock", items };
   }
   return {
     source: "mock",
-    items: INSIGHTS.filter(
-      (i) => i.severity === "critical" || i.severity === "warning"
-    ),
+    items: INSIGHTS.filter((i) => isActionable(i.severity)),
   };
 }

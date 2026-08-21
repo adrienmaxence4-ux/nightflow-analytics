@@ -2,8 +2,10 @@ import { NextResponse } from "next/server";
 import {
   alertToNotification,
   detectAlerts,
+  isActionable,
   loadStoreSignals,
 } from "@/services/alerts/detect";
+import { getConnector } from "@/services/integrations/engine/connectors";
 import type { Notification } from "@/types";
 
 /**
@@ -14,13 +16,6 @@ import type { Notification } from "@/types";
  * No AI call → fast enough for the sidebar badge. Returns { items, count }
  * where count = actionable (warning/critical) items.
  */
-const PROVIDER_LABEL: Record<string, string> = {
-  shopify: "Shopify",
-  stripe: "Stripe",
-  klaviyo: "Klaviyo",
-  google: "Google Analytics",
-};
-
 export async function GET() {
   const empty = { items: [] as Notification[], count: 0 };
 
@@ -29,23 +24,23 @@ export async function GET() {
 
   const items: Notification[] = detectAlerts(signals).map(alertToNotification);
 
-  // Append a reassuring "connected" line per active integration.
+  // Append a reassuring "connected" line per active integration. The connector
+  // registry already knows every provider's display name.
   for (const provider of signals.connectedProviders) {
     items.push({
       id: `integ-${provider}`,
       type: "system",
       severity: "positive",
       icon: "🔌",
-      title: `${PROVIDER_LABEL[provider] ?? provider} connecté`,
+      title: `${getConnector(provider)?.name ?? provider} connecté`,
       body: "Source de données active et synchronisée.",
       time: "Récemment",
       read: false,
     });
   }
 
-  const count = items.filter(
-    (n) => n.severity === "warning" || n.severity === "critical"
-  ).length;
-
-  return NextResponse.json({ items, count });
+  return NextResponse.json({
+    items,
+    count: items.filter((n) => isActionable(n.severity)).length,
+  });
 }

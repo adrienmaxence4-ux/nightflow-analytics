@@ -1,4 +1,5 @@
 import { downloadBlob, toCsv, dateStamp } from "@/utils/download";
+import type { jsPDF } from "jspdf";
 import type {
   Campaign,
   Insight,
@@ -12,8 +13,13 @@ import type {
  *
  * Pulls the user's REAL data from the API routes (dashboard, products,
  * marketing, insights — each falls back to the MoonStore mock server-side) and
- * turns it into downloadable artefacts: a branded PDF report and CSV exports.
- * jsPDF is dynamically imported so it ships in its own chunk (browser-only).
+ * turns it into downloadable artefacts: a branded PDF report, an Excel
+ * workbook, a Word document and CSV exports. jsPDF, xlsx and docx are all
+ * dynamically imported so each ships in its own chunk (browser-only).
+ *
+ * The three formats deliberately don't share one table definition: the PDF is
+ * ASCII-only (its built-in Helvetica has no accents) and each format shows the
+ * columns that fit it — the workbook the widest, the PDF the narrowest.
  */
 
 interface ReportData {
@@ -63,181 +69,125 @@ async function collect(): Promise<ReportData> {
   };
 }
 
+/** Store name + date, as shown at the top of the PDF and the Word document. */
+function heading(data: ReportData) {
+  return {
+    store: (data.range.sub || "Votre boutique").split(" · ")[0],
+    today: new Date().toLocaleDateString("fr-FR", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    }),
+  };
+}
+
+/** Same three KPI columns in every format. */
+const kpiRows = (data: ReportData): string[][] =>
+  data.range.kpis.map((k) => [k.label, k.value, `${k.delta} ${k.sub}`]);
+
+// ─────────────────────────────────────────────────────────────
+// PDF report
+// ─────────────────────────────────────────────────────────────
+
+type Doc = jsPDF;
 // jsPDF augments its instance with lastAutoTable after a table is drawn.
 type WithAutoTable = { lastAutoTable?: { finalY: number } };
 
-/**
- * Generates a branded PDF report from the store's real data and downloads it.
- */
-export async function generateStoreReport(): Promise<{ source: "db" | "mock" }> {
-  const data = await collect();
-  const { jsPDF } = await import("jspdf");
-  const { autoTable } = await import("jspdf-autotable");
+/** Page geometry plus the vertical cursor the drawing steps advance. */
+interface Layout {
+  pageW: number;
+  pageH: number;
+  margin: number;
+  contentW: number;
+  y: number;
+}
 
-  const doc = new jsPDF({ unit: "mm", format: "a4" });
-  const pageW = doc.internal.pageSize.getWidth();
-  const pageH = doc.internal.pageSize.getHeight();
-  const margin = 14;
-  const contentW = pageW - margin * 2;
+const LINE_H = 5;
 
-  const store = (data.range.sub || "Votre boutique").split(" · ")[0];
-  const today = new Date().toLocaleDateString("fr-FR", {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  });
-
-  // ── Header band ──
+function drawHeaderBand(doc: Doc, l: Layout, data: ReportData): void {
+  const { store, today } = heading(data);
   doc.setFillColor(16, 19, 40);
-  doc.rect(0, 0, pageW, 34, "F");
+  doc.rect(0, 0, l.pageW, 34, "F");
   doc.setFont("helvetica", "bold");
   doc.setFontSize(10);
   doc.setTextColor(120, 210, 255);
-  doc.text("NIGHTFLOW ANALYTICS", margin, 13);
+  doc.text("NIGHTFLOW ANALYTICS", l.margin, 13);
   doc.setFontSize(20);
   doc.setTextColor(255, 255, 255);
-  doc.text("Rapport de performance", margin, 23);
+  doc.text("Rapport de performance", l.margin, 23);
   doc.setFont("helvetica", "normal");
   doc.setFontSize(10);
   doc.setTextColor(185, 196, 230);
-  doc.text(`${store} - genere le ${today}`, margin, 30);
+  doc.text(`${store} - genere le ${today}`, l.margin, 30);
+}
 
-  let y = 44;
+function drawMockBanner(doc: Doc, l: Layout): void {
+  doc.setFillColor(255, 244, 214);
+  doc.rect(l.margin, l.y - 5, l.contentW, 9, "F");
+  doc.setTextColor(122, 91, 0);
+  doc.setFontSize(9);
+  doc.text(
+    "Donnees de demonstration (aucune boutique connectee avec des ventes reelles).",
+    l.margin + 3,
+    l.y + 1
+  );
+  l.y += 12;
+}
 
-  if (data.source === "mock") {
-    doc.setFillColor(255, 244, 214);
-    doc.rect(margin, y - 5, contentW, 9, "F");
-    doc.setTextColor(122, 91, 0);
-    doc.setFontSize(9);
-    doc.text(
-      "Donnees de demonstration (aucune boutique connectee avec des ventes reelles).",
-      margin + 3,
-      y + 1
-    );
-    y += 12;
+/** Section heading, starting a new page when there's no room left for one. */
+function drawSectionTitle(doc: Doc, l: Layout, label: string): void {
+  if (l.y > l.pageH - 30) {
+    doc.addPage();
+    l.y = 20;
   }
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(13);
+  doc.setTextColor(26, 20, 64);
+  doc.text(label, l.margin, l.y);
+  doc.setDrawColor(220, 215, 245);
+  doc.line(l.margin, l.y + 2, l.margin + l.contentW, l.y + 2);
+  l.y += 9;
+}
 
-  const sectionTitle = (label: string): void => {
-    if (y > pageH - 30) {
-      doc.addPage();
-      y = 20;
-    }
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(13);
-    doc.setTextColor(26, 20, 64);
-    doc.text(label, margin, y);
-    doc.setDrawColor(220, 215, 245);
-    doc.line(margin, y + 2, margin + contentW, y + 2);
-    y += 9;
-  };
-
-  const tableStyle = {
-    startY: y,
-    margin: { left: margin, right: margin },
-    theme: "striped" as const,
-    styles: { fontSize: 9, cellPadding: 2.5, textColor: [40, 44, 60] as [number, number, number] },
-    headStyles: { fillColor: [26, 20, 64] as [number, number, number], textColor: 255, fontStyle: "bold" as const },
-    alternateRowStyles: { fillColor: [246, 244, 255] as [number, number, number] },
-  };
-
-  const advanceAfterTable = (): void => {
-    y = ((doc as unknown as WithAutoTable).lastAutoTable?.finalY ?? y) + 9;
-  };
-
-  // ── Summary ──
-  if (data.summary) {
-    sectionTitle("Synthese du Copilot");
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(10);
-    doc.setTextColor(45, 48, 64);
-    const lines = doc.splitTextToSize(data.summary, contentW);
-    doc.text(lines, margin, y);
-    y += lines.length * 5 + 6;
-  }
-
-  // ── KPIs ──
-  sectionTitle("Indicateurs cles (30 derniers jours)");
-  autoTable(doc, {
-    ...tableStyle,
-    startY: y,
-    head: [["Indicateur", "Valeur", "Evolution"]],
-    body: data.range.kpis.length
-      ? data.range.kpis.map((k) => [k.label, k.value, `${k.delta} ${k.sub}`])
-      : [["Aucune donnee", "-", "-"]],
-  });
-  advanceAfterTable();
-
-  // ── Products ──
-  sectionTitle("Produits");
-  autoTable(doc, {
-    ...tableStyle,
-    startY: y,
-    head: [["Produit", "Ventes", "Revenu", "Conv.", "Tendance"]],
-    body: data.products.length
-      ? data.products.map((p) => [
-          p.name,
-          String(p.sales),
-          p.revenue,
-          p.conversion,
-          p.delta || "-",
-        ])
-      : [["Aucun produit synchronise", "-", "-", "-", "-"]],
-  });
-  advanceAfterTable();
-
-  // ── Campaigns ──
-  sectionTitle("Canaux marketing");
-  autoTable(doc, {
-    ...tableStyle,
-    startY: y,
-    head: [["Canal", "Depenses", "Revenu", "ROAS"]],
-    body: data.campaigns.length
-      ? data.campaigns.map((c) => [
-          c.channel,
-          c.spend,
-          c.revenue,
-          `${c.roas.toFixed(1)}x`,
-        ])
-      : [["Aucune campagne", "-", "-", "-"]],
-  });
-  advanceAfterTable();
-
-  // ── Insights ──
-  sectionTitle("Insights & recommandations");
+function drawSummary(doc: Doc, l: Layout, summary: string): void {
+  drawSectionTitle(doc, l, "Synthese du Copilot");
+  doc.setFont("helvetica", "normal");
   doc.setFontSize(10);
-  if (!data.insights.length) {
-    doc.setFont("helvetica", "italic");
-    doc.setTextColor(150, 155, 180);
-    doc.text("Aucun insight pour l'instant.", margin, y);
-    y += 6;
-  }
-  for (const ins of data.insights) {
-    const block = [
-      ...doc.splitTextToSize(`- ${ins.what}`, contentW),
-      ...doc.splitTextToSize(`  Pourquoi : ${ins.why}`, contentW),
-      ...doc.splitTextToSize(`  -> ${ins.action}`, contentW),
-    ];
-    if (y + block.length * 5 > pageH - 18) {
-      doc.addPage();
-      y = 20;
-    }
-    doc.setFont("helvetica", "bold");
-    doc.setTextColor(26, 20, 64);
-    const whatLines = doc.splitTextToSize(`- ${ins.what}`, contentW);
-    doc.text(whatLines, margin, y);
-    y += whatLines.length * 5;
-    doc.setFont("helvetica", "normal");
-    doc.setTextColor(110, 115, 140);
-    const whyLines = doc.splitTextToSize(`  Pourquoi : ${ins.why}`, contentW);
-    doc.text(whyLines, margin, y);
-    y += whyLines.length * 5;
-    doc.setTextColor(40, 44, 60);
-    const actLines = doc.splitTextToSize(`  -> ${ins.action}`, contentW);
-    doc.text(actLines, margin, y);
-    y += actLines.length * 5 + 4;
+  doc.setTextColor(45, 48, 64);
+  const lines = doc.splitTextToSize(summary, l.contentW);
+  doc.text(lines, l.margin, l.y);
+  l.y += lines.length * LINE_H + 6;
+}
+
+/** One insight block: what (bold) / why (muted) / action. */
+function drawInsight(doc: Doc, l: Layout, insight: Insight): void {
+  const wrap = (text: string) => doc.splitTextToSize(text, l.contentW);
+  const what = wrap(`- ${insight.what}`);
+  const why = wrap(`  Pourquoi : ${insight.why}`);
+  const action = wrap(`  -> ${insight.action}`);
+
+  const height = (what.length + why.length + action.length) * LINE_H;
+  if (l.y + height > l.pageH - 18) {
+    doc.addPage();
+    l.y = 20;
   }
 
-  // ── Footer on every page ──
+  doc.setFont("helvetica", "bold");
+  doc.setTextColor(26, 20, 64);
+  doc.text(what, l.margin, l.y);
+  l.y += what.length * LINE_H;
+
+  doc.setFont("helvetica", "normal");
+  doc.setTextColor(110, 115, 140);
+  doc.text(why, l.margin, l.y);
+  l.y += why.length * LINE_H;
+
+  doc.setTextColor(40, 44, 60);
+  doc.text(action, l.margin, l.y);
+  l.y += action.length * LINE_H + 4;
+}
+
+function drawFooterOnEveryPage(doc: Doc, l: Layout): void {
   const pages = doc.getNumberOfPages();
   for (let i = 1; i <= pages; i++) {
     doc.setPage(i);
@@ -246,11 +196,108 @@ export async function generateStoreReport(): Promise<{ source: "db" | "mock" }> 
     doc.setTextColor(150, 155, 180);
     doc.text(
       "Genere automatiquement par Nightflow Analytics - votre directeur e-commerce IA.",
-      margin,
-      pageH - 8
+      l.margin,
+      l.pageH - 8
     );
-    doc.text(`${i} / ${pages}`, pageW - margin, pageH - 8, { align: "right" });
+    doc.text(`${i} / ${pages}`, l.pageW - l.margin, l.pageH - 8, {
+      align: "right",
+    });
   }
+}
+
+/**
+ * Generates a branded PDF report from the store's real data and downloads it.
+ */
+export async function generateStoreReport(): Promise<{ source: "db" | "mock" }> {
+  const data = await collect();
+  const { jsPDF: JsPdf } = await import("jspdf");
+  const { autoTable } = await import("jspdf-autotable");
+
+  const doc = new JsPdf({ unit: "mm", format: "a4" });
+  const margin = 14;
+  const l: Layout = {
+    pageW: doc.internal.pageSize.getWidth(),
+    pageH: doc.internal.pageSize.getHeight(),
+    margin,
+    contentW: doc.internal.pageSize.getWidth() - margin * 2,
+    y: 44,
+  };
+
+  const tableStyle = {
+    margin: { left: margin, right: margin },
+    theme: "striped" as const,
+    styles: {
+      fontSize: 9,
+      cellPadding: 2.5,
+      textColor: [40, 44, 60] as [number, number, number],
+    },
+    headStyles: {
+      fillColor: [26, 20, 64] as [number, number, number],
+      textColor: 255,
+      fontStyle: "bold" as const,
+    },
+    alternateRowStyles: {
+      fillColor: [246, 244, 255] as [number, number, number],
+    },
+  };
+
+  /** Draws a section title + its table, then parks the cursor below it. */
+  const section = (label: string, head: string[], body: string[][]): void => {
+    drawSectionTitle(doc, l, label);
+    autoTable(doc, { ...tableStyle, startY: l.y, head: [head], body });
+    l.y = ((doc as unknown as WithAutoTable).lastAutoTable?.finalY ?? l.y) + 9;
+  };
+
+  drawHeaderBand(doc, l, data);
+  if (data.source === "mock") drawMockBanner(doc, l);
+  if (data.summary) drawSummary(doc, l, data.summary);
+
+  const kpis = kpiRows(data);
+  section(
+    "Indicateurs cles (30 derniers jours)",
+    ["Indicateur", "Valeur", "Evolution"],
+    kpis.length ? kpis : [["Aucune donnee", "-", "-"]]
+  );
+
+  section(
+    "Produits",
+    ["Produit", "Ventes", "Revenu", "Conv.", "Tendance"],
+    data.products.length
+      ? data.products.map((p) => [
+          p.name,
+          String(p.sales),
+          p.revenue,
+          p.conversion,
+          p.delta || "-",
+        ])
+      : [["Aucun produit synchronise", "-", "-", "-", "-"]]
+  );
+
+  section(
+    "Canaux marketing",
+    ["Canal", "Depenses", "Revenu", "ROAS"],
+    data.campaigns.length
+      ? data.campaigns.map((c) => [
+          c.channel,
+          c.spend,
+          c.revenue,
+          `${c.roas.toFixed(1)}x`,
+        ])
+      : [["Aucune campagne", "-", "-", "-"]]
+  );
+
+  drawSectionTitle(doc, l, "Insights & recommandations");
+  doc.setFontSize(10);
+  if (data.insights.length) {
+    for (const insight of data.insights) drawInsight(doc, l, insight);
+  } else {
+    doc.setFont("helvetica", "italic");
+    doc.setTextColor(150, 155, 180);
+    doc.text("Aucun insight pour l'instant.", l.margin, l.y);
+    l.y += 6;
+  }
+
+  drawFooterOnEveryPage(doc, l);
 
   doc.save(`nightflow-rapport-${dateStamp()}.pdf`);
   return { source: data.source };
@@ -285,14 +332,7 @@ export async function generateStoreReportExcel(): Promise<{ source: "db" | "mock
     [data.summary || "—"],
   ]);
 
-  sheet("KPIs", [
-    ["Indicateur", "Valeur", "Évolution"],
-    ...data.range.kpis.map((k): (string | number)[] => [
-      k.label,
-      k.value,
-      `${k.delta} ${k.sub}`,
-    ]),
-  ]);
+  sheet("KPIs", [["Indicateur", "Valeur", "Évolution"], ...kpiRows(data)]);
 
   sheet("Produits", [
     ["Produit", "Ventes", "Revenu", "Conversion", "Part du CA", "Stock", "Tendance"],
@@ -349,15 +389,14 @@ export async function generateStoreReportWord(): Promise<{ source: "db" | "mock"
     WidthType,
   } = await import("docx");
 
-  const store = (data.range.sub || "Votre boutique").split(" · ")[0];
-  const today = new Date().toLocaleDateString("fr-FR", {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  });
+  const { store, today } = heading(data);
 
   const h = (text: string) =>
-    new Paragraph({ text, heading: HeadingLevel.HEADING_1, spacing: { before: 300, after: 120 } });
+    new Paragraph({
+      text,
+      heading: HeadingLevel.HEADING_1,
+      spacing: { before: 300, after: 120 },
+    });
   const p = (text: string, opts?: { bold?: boolean; color?: string }) =>
     new Paragraph({
       children: [new TextRun({ text, bold: opts?.bold, color: opts?.color })],
@@ -405,7 +444,12 @@ export async function generateStoreReportWord(): Promise<{ source: "db" | "mock"
   ];
 
   if (data.source === "mock") {
-    children.push(p("⚠ Données de démonstration (aucune boutique connectée avec des ventes réelles).", { color: "7A5B00" }));
+    children.push(
+      p(
+        "⚠ Données de démonstration (aucune boutique connectée avec des ventes réelles).",
+        { color: "7A5B00" }
+      )
+    );
   }
 
   if (data.summary) {
@@ -416,33 +460,42 @@ export async function generateStoreReportWord(): Promise<{ source: "db" | "mock"
     h("Indicateurs clés (30 derniers jours)"),
     table(
       ["Indicateur", "Valeur", "Évolution"],
-      data.range.kpis.length
-        ? data.range.kpis.map((k) => [k.label, k.value, `${k.delta} ${k.sub}`])
-        : [["Aucune donnée", "—", "—"]]
+      kpiRows(data).length ? kpiRows(data) : [["Aucune donnée", "—", "—"]]
     ),
     h("Produits"),
     table(
       ["Produit", "Ventes", "Revenu", "Conv.", "Stock"],
       data.products.length
-        ? data.products.map((pr) => [pr.name, String(pr.sales), pr.revenue, pr.conversion, String(pr.stock)])
+        ? data.products.map((pr) => [
+            pr.name,
+            String(pr.sales),
+            pr.revenue,
+            pr.conversion,
+            String(pr.stock),
+          ])
         : [["Aucun produit synchronisé", "—", "—", "—", "—"]]
     ),
     h("Canaux marketing"),
     table(
       ["Canal", "Dépenses", "Revenu", "ROAS"],
       data.campaigns.length
-        ? data.campaigns.map((c) => [c.channel, c.spend, c.revenue, `${c.roas.toFixed(1)}x`])
+        ? data.campaigns.map((c) => [
+            c.channel,
+            c.spend,
+            c.revenue,
+            `${c.roas.toFixed(1)}x`,
+          ])
         : [["Aucune campagne", "—", "—", "—"]]
     ),
     h("Insights & recommandations")
   );
 
   if (data.insights.length) {
-    for (const ins of data.insights) {
+    for (const insight of data.insights) {
       children.push(
-        p(`• ${ins.what}`, { bold: true }),
-        p(`Pourquoi : ${ins.why}`, { color: "555577" }),
-        p(`→ ${ins.action}`)
+        p(`• ${insight.what}`, { bold: true }),
+        p(`Pourquoi : ${insight.why}`, { color: "555577" }),
+        p(`→ ${insight.action}`)
       );
     }
   } else {

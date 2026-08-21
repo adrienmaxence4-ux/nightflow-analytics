@@ -1,54 +1,56 @@
 import { NextResponse } from "next/server";
-import { bySeverity, detectAlerts, loadStoreSignals } from "@/services/alerts/detect";
+import {
+  bySeverity,
+  detectAlerts,
+  isActionable,
+  loadStoreSignals,
+} from "@/services/alerts/detect";
+import type { Severity, TriageItem, TriageZones } from "@/types";
 
 /**
  * GET /api/triage
- * Les alertes réparties en trois zones, pour voir en deux secondes ce qui va
- * et ce qui ne va pas :
- *   gagne     — ce qui rapporte
- *   regler    — ce qui coûte de l'argent maintenant (critical + warning)
- *   surveiller— ce qui mérite un œil (info)
+ * The alerts split into three zones, so two seconds are enough to see what is
+ * going well and what isn't:
+ *   winning — what makes money
+ *   fix     — what costs money right now (critical + warning)
+ *   watch   — what deserves an eye (info)
  *
- * Contrairement à /api/notifications, on garde `action` et `impact` : c'est le
- * « quoi faire » qui distingue Nightflow d'un tableau de bord de plus.
+ * Unlike /api/notifications this keeps `action` and `impact`: the "what to do"
+ * is what makes Nightflow more than one more dashboard.
  */
 export const dynamic = "force-dynamic";
 
-export interface TriageItem {
-  id: string;
-  icon: string;
-  titre: string;
-  detail: string;
-  action: string;
-  impact: string;
-}
-
-const MAX_PAR_ZONE = 4;
+const MAX_PER_ZONE = 4;
 
 export async function GET() {
-  const vide = { gagne: [], regler: [], surveiller: [], connecte: false };
+  const empty: TriageZones = {
+    winning: [],
+    fix: [],
+    watch: [],
+    connected: false,
+  };
 
   const signals = await loadStoreSignals();
-  if (!signals) return NextResponse.json(vide);
+  if (!signals) return NextResponse.json(empty);
 
-  const alertes = detectAlerts(signals).sort(bySeverity);
-  const zone = (test: (s: string) => boolean): TriageItem[] =>
-    alertes
-      .filter((a) => test(a.severity))
-      .slice(0, MAX_PAR_ZONE)
+  const alerts = detectAlerts(signals).sort(bySeverity);
+  const zone = (belongs: (s: Severity) => boolean): TriageItem[] =>
+    alerts
+      .filter((a) => belongs(a.severity))
+      .slice(0, MAX_PER_ZONE)
       .map((a) => ({
         id: a.id,
         icon: a.icon,
-        titre: a.title,
+        title: a.title,
         detail: a.body,
         action: a.action,
         impact: a.impact,
       }));
 
   return NextResponse.json({
-    gagne: zone((s) => s === "positive"),
-    regler: zone((s) => s === "critical" || s === "warning"),
-    surveiller: zone((s) => s === "info"),
-    connecte: signals.connectedProviders.length > 0,
-  });
+    winning: zone((s) => s === "positive"),
+    fix: zone(isActionable),
+    watch: zone((s) => s === "info"),
+    connected: signals.connectedProviders.length > 0,
+  } satisfies TriageZones);
 }

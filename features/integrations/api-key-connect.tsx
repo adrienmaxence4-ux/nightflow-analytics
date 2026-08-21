@@ -1,10 +1,17 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import { Check, Eye, EyeOff, KeyRound, RefreshCw } from "lucide-react";
+import { useState } from "react";
+import { Check, Eye, EyeOff, KeyRound } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
+import {
+  ConnectorLogo,
+  DisconnectButton,
+  PrimaryButton,
+  SyncButton,
+} from "@/features/integrations/connector-ui";
+import { useConnection } from "@/features/integrations/use-connection";
 
 /**
  * Generic connector for API-KEY based providers (Stripe, Klaviyo, …).
@@ -39,26 +46,10 @@ export function ApiKeyConnect({
   helpLabel,
 }: ApiKeyConnectProps) {
   const toast = useToast();
+  const connection = useConnection(provider);
+  const { status, busy } = connection;
   const [apiKey, setApiKey] = useState("");
   const [reveal, setReveal] = useState(false);
-  const [connected, setConnected] = useState(false);
-  const [busy, setBusy] = useState(false);
-
-  const loadStatus = useCallback(async () => {
-    try {
-      const res = await fetch("/api/integrations/status");
-      if (res.ok) {
-        const j = await res.json();
-        if (j[provider]) setConnected(!!j[provider].connected);
-      }
-    } catch {
-      /* ignore */
-    }
-  }, [provider]);
-
-  useEffect(() => {
-    loadStatus();
-  }, [loadStatus]);
 
   const connect = async () => {
     const key = apiKey.trim();
@@ -66,80 +57,26 @@ export function ApiKeyConnect({
       toast(`Collez votre clé ${name}`, "info");
       return;
     }
-    setBusy(true);
-    try {
-      const res = await fetch(`/api/integrations/${provider}/connect`, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ apiKey: key }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (res.ok) {
-        setConnected(true);
-        setApiKey("");
-        toast(
-          `${name} connecté ✓ — ${data.orders ?? 0} commandes, ${Math.round(
-            (data.revenueCents ?? 0) / 100
-          ).toLocaleString("fr-FR")} € importés`
-        );
-      } else {
-        toast(data.error ?? `Connexion ${name} impossible`, "info");
-      }
-    } catch {
-      toast(`Connexion ${name} impossible`, "info");
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const sync = async () => {
-    setBusy(true);
-    try {
-      const res = await fetch(`/api/integrations/${provider}/sync`, {
-        method: "POST",
-      });
-      const data = await res.json().catch(() => ({}));
-      if (res.ok) {
-        toast(
-          `Synchronisé : ${data.orders ?? 0} commandes, ${Math.round(
-            (data.revenueCents ?? 0) / 100
-          ).toLocaleString("fr-FR")} € ✓`
-        );
-      } else {
-        toast(data.error ?? "Synchronisation impossible", "info");
-      }
-    } catch {
-      toast("Synchronisation impossible", "info");
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const disconnect = async () => {
-    setBusy(true);
-    try {
-      await fetch(`/api/integrations/${provider}/disconnect`, { method: "POST" });
-      toast(`${name} déconnecté`);
-      setConnected(false);
-    } catch {
-      toast("Impossible de déconnecter", "info");
-    } finally {
-      setBusy(false);
-    }
+    const data = await connection.connect(key, `Connexion ${name} impossible`);
+    if (!data) return;
+    setApiKey("");
+    // Flip the card immediately, then let the real status catch up.
+    connection.setStatus((s) => ({ ...s, connected: true, state: "connected" }));
+    const imported = Math.round((data.revenueCents ?? 0) / 100).toLocaleString(
+      "fr-FR"
+    );
+    toast(`${name} connecté ✓ — ${data.orders ?? 0} commandes, ${imported} € importés`);
+    connection.reload();
   };
 
   return (
     <Card className="p-5">
       <div className="flex flex-wrap items-center gap-4">
-        <span
-          className={`grid h-12 w-12 flex-none place-items-center rounded-xl bg-gradient-to-br text-xl ${accent}`}
-        >
-          {logo}
-        </span>
+        <ConnectorLogo accent={accent}>{logo}</ConnectorLogo>
         <div className="min-w-[180px] flex-1">
           <div className="flex items-center gap-2">
             <h3 className="text-[16px] font-extrabold">{name}</h3>
-            {connected ? (
+            {status.connected ? (
               <Badge variant="lime">
                 <Check className="h-3 w-3" strokeWidth={3} /> Connecté
               </Badge>
@@ -148,27 +85,17 @@ export function ApiKeyConnect({
             )}
           </div>
           <p className="text-[12px] text-ink-mut">
-            {connected ? connectedHint : description}
+            {status.connected ? connectedHint : description}
           </p>
         </div>
 
-        {connected ? (
+        {status.connected ? (
           <div className="flex flex-wrap items-center gap-2">
-            <button
-              onClick={sync}
+            <SyncButton onClick={() => connection.sync()} busy={busy} variant="primary" />
+            <DisconnectButton
+              onClick={() => connection.disconnect(`${name} déconnecté`)}
               disabled={busy}
-              className="flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-neon-cyan to-neon-cyansoft px-4 py-2.5 text-[13px] font-bold text-night-950 shadow-glow transition hover:brightness-110 disabled:opacity-60"
-            >
-              <RefreshCw className="h-3.5 w-3.5" />
-              {busy ? "Synchro…" : "Synchroniser"}
-            </button>
-            <button
-              onClick={disconnect}
-              disabled={busy}
-              className="rounded-xl border border-glass-border bg-glass px-3.5 py-2.5 text-[13px] font-semibold text-ink-dim transition hover:border-neon-pink hover:text-white disabled:opacity-60"
-            >
-              Déconnecter
-            </button>
+            />
           </div>
         ) : (
           <div className="flex flex-1 flex-wrap items-center gap-2">
@@ -193,18 +120,14 @@ export function ApiKeyConnect({
                 {reveal ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>
             </div>
-            <button
-              onClick={connect}
-              disabled={busy}
-              className="rounded-xl bg-gradient-to-r from-neon-cyan to-neon-cyansoft px-4 py-2.5 text-[13px] font-bold text-night-950 shadow-glow transition hover:brightness-110 disabled:opacity-60"
-            >
+            <PrimaryButton onClick={connect} disabled={busy}>
               {busy ? "Connexion…" : "Connecter"}
-            </button>
+            </PrimaryButton>
           </div>
         )}
       </div>
 
-      {!connected && helpHref && (
+      {!status.connected && helpHref && (
         <a
           href={helpHref}
           target="_blank"

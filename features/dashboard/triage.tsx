@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
+import type { TriageItem, TriageZones } from "@/types";
 
 /**
  * « Ton point du jour » — l'activité triée en trois zones : ce qui rapporte,
@@ -12,43 +13,28 @@ import { Skeleton } from "@/components/ui/skeleton";
  * portent leur propre fond opaque. Le texte ne repose jamais directement sur
  * une zone claire — c'est ce qui rend l'effet spatial lisible.
  */
-interface Item {
-  id: string;
-  icon: string;
-  titre: string;
-  detail: string;
-  action: string;
-  impact: string;
-}
-interface Triage {
-  gagne: Item[];
-  regler: Item[];
-  surveiller: Item[];
-  connecte: boolean;
-}
-
 const ZONES = [
   {
-    cle: "gagne" as const,
+    key: "winning" as const,
     label: "CE QUI MARCHE",
-    teinte: "#7dffb0",
-    vide: "Rien à célébrer pour l'instant.",
+    tint: "#7dffb0",
+    empty: "Rien à célébrer pour l'instant.",
   },
   {
-    cle: "regler" as const,
+    key: "fix" as const,
     label: "À RÉGLER",
-    teinte: "#ff5c72",
-    vide: "Aucun problème détecté 🎉",
+    tint: "#ff5c72",
+    empty: "Aucun problème détecté 🎉",
   },
   {
-    cle: "surveiller" as const,
+    key: "watch" as const,
     label: "À SURVEILLER",
-    teinte: "#ffcc66",
-    vide: "Rien à surveiller.",
+    tint: "#ffcc66",
+    empty: "Rien à surveiller.",
   },
 ];
 
-function Ligne({ item, teinte }: { item: Item; teinte: string }) {
+function Row({ item, tint }: { item: TriageItem; tint: string }) {
   return (
     <li
       className="rounded-xl border p-3 transition-colors"
@@ -56,28 +42,28 @@ function Ligne({ item, teinte }: { item: Item; teinte: string }) {
         // Fond propre à la carte : garantit le contraste du texte quelle que
         // soit la zone de la nébuleuse qui se trouve derrière.
         background: "rgba(8,11,26,0.62)",
-        borderColor: `${teinte}2e`,
+        borderColor: `${tint}2e`,
       }}
     >
       <div className="flex items-start gap-2">
         <span className="text-[15px] leading-none">{item.icon}</span>
         <div className="min-w-0 flex-1">
           <p className="text-[13.5px] font-bold leading-snug text-white">
-            {item.titre}
+            {item.title}
           </p>
           <p className="mt-0.5 text-[12px] leading-snug text-ink-dim">
             {item.detail}
           </p>
           <p
             className="mt-1.5 text-[12.5px] font-semibold leading-snug"
-            style={{ color: teinte }}
+            style={{ color: tint }}
           >
             → {item.action}
           </p>
           {item.impact && (
             <span
               className="mt-2 inline-block rounded-md px-1.5 py-0.5 text-[10.5px] font-bold"
-              style={{ background: `${teinte}1f`, color: teinte }}
+              style={{ background: `${tint}1f`, color: tint }}
             >
               {item.impact}
             </span>
@@ -89,17 +75,17 @@ function Ligne({ item, teinte }: { item: Item; teinte: string }) {
 }
 
 export function Triage() {
-  const [data, setData] = useState<Triage | null>(null);
-  const [erreur, setErreur] = useState(false);
+  const [data, setData] = useState<TriageZones | null>(null);
+  const [failed, setFailed] = useState(false);
 
   useEffect(() => {
     fetch("/api/triage", { cache: "no-store" })
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
       .then(setData)
-      .catch(() => setErreur(true));
+      .catch(() => setFailed(true));
   }, []);
 
-  const heure = new Date().toLocaleTimeString("fr-FR", {
+  const updatedAt = new Date().toLocaleTimeString("fr-FR", {
     hour: "2-digit",
     minute: "2-digit",
   });
@@ -129,37 +115,37 @@ export function Triage() {
             </p>
           </div>
           <span className="text-[11.5px] font-semibold text-ink-mut">
-            mis à jour à {heure}
+            mis à jour à {updatedAt}
           </span>
         </div>
 
-        {erreur ? (
+        {failed ? (
           <p className="rounded-xl border border-glass-border bg-[rgba(8,11,26,0.6)] p-4 text-[13px] text-ink-dim">
             Impossible de charger ton point du jour. Réessaie dans un instant.
           </p>
         ) : (
           <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
             {ZONES.map((zone) => {
-              const items = data?.[zone.cle];
+              const items = data?.[zone.key];
               return (
                 <div
-                  key={zone.cle}
+                  key={zone.key}
                   // Même verre que les autres cartes de l'app (bg-glass +
                   // backdrop-blur), teinté par la couleur de la zone.
                   className="rounded-2xl border bg-glass p-4 backdrop-blur-xl"
                   style={{
-                    borderColor: `${zone.teinte}33`,
-                    boxShadow: `inset 0 1px 0 ${zone.teinte}1f`,
+                    borderColor: `${zone.tint}33`,
+                    boxShadow: `inset 0 1px 0 ${zone.tint}1f`,
                   }}
                 >
                   <div className="mb-3 flex items-center gap-2">
                     <span
                       className="h-2 w-2 flex-none rounded-full"
-                      style={{ background: zone.teinte, boxShadow: `0 0 10px ${zone.teinte}` }}
+                      style={{ background: zone.tint, boxShadow: `0 0 10px ${zone.tint}` }}
                     />
                     <h3
                       className="text-[11.5px] font-extrabold tracking-[1.6px]"
-                      style={{ color: zone.teinte }}
+                      style={{ color: zone.tint }}
                     >
                       {zone.label}
                     </h3>
@@ -178,12 +164,12 @@ export function Triage() {
                   ) : items && items.length > 0 ? (
                     <ul className="flex flex-col gap-2">
                       {items.map((it) => (
-                        <Ligne key={it.id} item={it} teinte={zone.teinte} />
+                        <Row key={it.id} item={it} tint={zone.tint} />
                       ))}
                     </ul>
                   ) : (
                     <p className="rounded-xl border border-dashed border-glass-border px-3 py-4 text-center text-[12px] text-ink-mut">
-                      {zone.vide}
+                      {zone.empty}
                     </p>
                   )}
                 </div>
@@ -192,7 +178,7 @@ export function Triage() {
           </div>
         )}
 
-        {data && !data.connecte && (
+        {data && !data.connected && (
           <p className="mt-4 text-[12px] text-ink-mut">
             Connecte ta boutique pour remplir ce tableau avec tes vraies données.
           </p>

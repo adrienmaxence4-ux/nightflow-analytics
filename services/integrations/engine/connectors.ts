@@ -10,10 +10,13 @@ import {
   GOOGLE_ADS,
   GORGIAS,
   HOTJAR,
+  MISSING_CREDENTIAL,
   MONDIAL_RELAY,
   PAYPAL,
   SHIPSTATION,
-} from "./connectors-extra";
+  keyedConnectorBase,
+  syncWithCredential,
+} from "./keyed-connectors";
 import { syncShopify } from "@/services/integrations/shopify";
 import { syncStripe } from "@/services/integrations/stripe";
 import { syncKlaviyo } from "@/services/integrations/klaviyo";
@@ -35,12 +38,10 @@ import {
 } from "./webhook-verify";
 import type {
   AuthResult,
-  ConnectorContext,
   IntegrationConnector,
   IntegrationSource,
   NormalizedEvent,
   StoredTokens,
-  SyncResult,
   WebhookInput,
 } from "./types";
 
@@ -56,16 +57,27 @@ const SHOPIFY_WEBHOOK_TOPICS = ["orders/create", "refunds/create", "products/upd
 const SHOPIFY_API_VERSION = "2024-10";
 
 /** OAuth delegation helpers for the providers wired through oauth-registry. */
-function oauthBuildUrl(id: string, state: string, cc?: string): string {
-  return getOAuthProvider(id)?.buildAuthorizeUrl(state, cc) ?? "";
+function oauthBuildUrl(
+  providerId: string,
+  state: string,
+  codeChallenge?: string
+): string {
+  return (
+    getOAuthProvider(providerId)?.buildAuthorizeUrl(state, codeChallenge) ?? ""
+  );
 }
 async function oauthExchange(
-  id: string,
+  providerId: string,
   code: string,
-  cv?: string
+  codeVerifier?: string
 ): Promise<AuthResult | null> {
-  const r = await getOAuthProvider(id)?.exchangeCode(code, cv);
-  return r ? { accessToken: r.accessToken, metadata: r.metadata } : null;
+  const granted = await getOAuthProvider(providerId)?.exchangeCode(
+    code,
+    codeVerifier
+  );
+  return granted
+    ? { accessToken: granted.accessToken, metadata: granted.metadata }
+    : null;
 }
 
 // ── Shopify ──────────────────────────────────────────────────────────────────
@@ -110,10 +122,13 @@ const shopify: IntegrationConnector = {
 
   async sync(ctx) {
     const shop = ctx.tokens?.metadata?.shop as string | undefined;
-    const token = ctx.tokens?.accessToken;
-    if (!shop || !token) return { source: "shopify", events: 0, ok: false, error: "missing shop/token" };
-    const s = await syncShopify(shop, token, ctx.storeId, ctx.db);
-    return { source: "shopify", events: s.products + s.orders, ok: true };
+    if (!shop) {
+      return { source: "shopify", events: 0, ok: false, error: MISSING_CREDENTIAL };
+    }
+    return syncWithCredential("shopify", ctx, async (token) => {
+      const synced = await syncShopify(shop, token, ctx.storeId, ctx.db);
+      return synced.products + synced.orders;
+    });
   },
 
   async registerWebhooks(ctx) {
@@ -153,56 +168,28 @@ const shopify: IntegrationConnector = {
 };
 
 // ── Wix Stores (BÊTA, key-based: composite `siteId::apiKey` credential) ──────
+// Wix and WooCommerce share the keyed base: no OAuth, no inbound webhooks, and
+// their credentials don't expire on a schedule. Both sync straight into the
+// store tables, so they emit no normalized events of their own.
 const wix: IntegrationConnector = {
-  source: "wix",
-  name: "Wix Stores",
-  category: "commerce",
-  usesPkce: false,
-  isConfigured: true, // per-customer API key — nothing to configure app-side
-  supportsWebhooks: false,
-
-  // Key-based: no OAuth flow.
-  buildAuthorizeUrl: () => "",
-  exchangeCode: async () => null,
-  refresh: async () => null, // Wix API keys don't expire on a schedule.
-
-  fetchData: async () => [], // sync writes directly into the store tables
-  async sync(ctx) {
-    const token = ctx.tokens?.accessToken;
-    if (!token) return { source: "wix", events: 0, ok: false, error: "missing token" };
-    const s = await syncWix(token, ctx.storeId, ctx.db);
-    return { source: "wix", events: s.orders, ok: true };
-  },
-  registerWebhooks: async () => {},
-  verifyWebhook: () => false,
-  normalizeWebhook: () => [],
+  ...keyedConnectorBase("wix", "Wix Stores", "commerce"),
+  fetchData: async () => [],
+  sync: (ctx) =>
+    syncWithCredential("wix", ctx, async (credential) => {
+      const synced = await syncWix(credential, ctx.storeId, ctx.db);
+      return synced.orders;
+    }),
 };
 
 // ── WooCommerce (key-based: composite `url::ck::cs` credential) ──────────────
 const woocommerce: IntegrationConnector = {
-  source: "woocommerce",
-  name: "WooCommerce",
-  category: "commerce",
-  usesPkce: false,
-  isConfigured: true, // per-customer REST keys — nothing to configure app-side
-  supportsWebhooks: false,
-
-  buildAuthorizeUrl: () => "",
-  exchangeCode: async () => null,
-  refresh: async () => null, // WooCommerce REST keys don't expire.
-
+  ...keyedConnectorBase("woocommerce", "WooCommerce", "commerce"),
   fetchData: async () => [],
-  async sync(ctx) {
-    const token = ctx.tokens?.accessToken;
-    if (!token) {
-      return { source: "woocommerce", events: 0, ok: false, error: "missing token" };
-    }
-    const s = await syncWoo(token, ctx.storeId, ctx.db);
-    return { source: "woocommerce", events: s.orders, ok: true };
-  },
-  registerWebhooks: async () => {},
-  verifyWebhook: () => false,
-  normalizeWebhook: () => [],
+  sync: (ctx) =>
+    syncWithCredential("woocommerce", ctx, async (credential) => {
+      const synced = await syncWoo(credential, ctx.storeId, ctx.db);
+      return synced.orders;
+    }),
 };
 
 // ── Stripe ───────────────────────────────────────────────────────────────────
@@ -238,12 +225,11 @@ const stripe: IntegrationConnector = {
     return out;
   },
 
-  async sync(ctx) {
-    const key = ctx.tokens?.accessToken;
-    if (!key) return { source: "stripe", events: 0, ok: false, error: "missing token" };
-    const s = await syncStripe(key, ctx.storeId, ctx.db);
-    return { source: "stripe", events: s.orders, ok: true };
-  },
+  sync: (ctx) =>
+    syncWithCredential("stripe", ctx, async (key) => {
+      const synced = await syncStripe(key, ctx.storeId, ctx.db);
+      return synced.orders;
+    }),
 
   // Stripe webhook endpoints are configured in the Stripe dashboard.
   registerWebhooks: async () => {},
@@ -277,12 +263,11 @@ const klaviyo: IntegrationConnector = {
 
   // Campaign performance is pulled by the existing sync into campaigns.
   fetchData: async () => [],
-  async sync(ctx) {
-    const key = ctx.tokens?.accessToken;
-    if (!key) return { source: "klaviyo", events: 0, ok: false, error: "missing token" };
-    const s = await syncKlaviyo(key, ctx.storeId, ctx.db);
-    return { source: "klaviyo", events: s.orders, ok: true };
-  },
+  sync: (ctx) =>
+    syncWithCredential("klaviyo", ctx, async (key) => {
+      const synced = await syncKlaviyo(key, ctx.storeId, ctx.db);
+      return synced.orders;
+    }),
   registerWebhooks: async () => {},
   verifyWebhook: () => false,
   normalizeWebhook: () => [],
