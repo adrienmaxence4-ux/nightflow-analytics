@@ -21,7 +21,10 @@ export async function POST(
   }
 
   const { apiKey } = (await req.json().catch(() => ({}))) as { apiKey?: string };
-  const key = apiKey?.trim();
+  const raw = apiKey?.trim() ?? "";
+  // Normalise first, so what gets stored is the credential itself rather than
+  // whatever wrapper the provider's dashboard displayed around it.
+  const key = def.normalize ? def.normalize(raw) : raw;
   if (!key) {
     return NextResponse.json({ error: "Clé API manquante" }, { status: 400 });
   }

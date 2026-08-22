@@ -2,6 +2,7 @@ import { describe, it, expect, vi, afterEach } from "vitest";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   WINDSOR_CHANNELS,
+  extractWindsorKey,
   syncWindsor,
   validateWindsorKey,
 } from "@/services/integrations/windsor";
@@ -93,6 +94,56 @@ describe("windsor key validation", () => {
     const calls = mockFetch({ data: [] });
     expect(await validateWindsorKey("   ")).toBe(false);
     expect(calls).toHaveLength(0);
+  });
+});
+
+describe("pasted credential", () => {
+  // Windsor's dashboard shows a ready-made request URL, so that is what people
+  // copy. Every one of these has to end up as the same key.
+  const KEY = "abc123XYZ";
+
+  it("accepts a bare key", () => {
+    expect(extractWindsorKey(KEY)).toBe(KEY);
+  });
+
+  it("accepts the full request URL Windsor displays", () => {
+    expect(
+      extractWindsorKey(
+        `https://connectors.windsor.ai/all?api_key=${KEY}&date_preset=last_30d&fields=date,spend`
+      )
+    ).toBe(KEY);
+  });
+
+  it("accepts the URL without a protocol", () => {
+    expect(extractWindsorKey(`connectors.windsor.ai/all?api_key=${KEY}`)).toBe(KEY);
+  });
+
+  it("accepts api_key wherever it sits in the query string", () => {
+    expect(
+      extractWindsorKey(`https://connectors.windsor.ai/all?fields=date&api_key=${KEY}`)
+    ).toBe(KEY);
+  });
+
+  it("strips a Bearer prefix, quotes and stray whitespace", () => {
+    expect(extractWindsorKey(`  "Bearer ${KEY}"  `)).toBe(KEY);
+  });
+
+  it("refuses a Windsor URL that carries no key", () => {
+    expect(extractWindsorKey("https://connectors.windsor.ai/all?fields=date")).toBe("");
+    expect(extractWindsorKey("https://onboard.windsor.ai/")).toBe("");
+  });
+
+  it("refuses an empty paste", () => {
+    expect(extractWindsorKey("   ")).toBe("");
+  });
+
+  it("validates a key pasted as a URL, sending only the key upstream", async () => {
+    const calls = mockFetch({ data: [] });
+    const ok = await validateWindsorKey(
+      `https://connectors.windsor.ai/all?api_key=${KEY}&fields=date`
+    );
+    expect(ok).toBe(true);
+    expect(calls[0].headers.Authorization).toBe(`Bearer ${KEY}`);
   });
 });
 

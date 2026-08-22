@@ -3,7 +3,11 @@ import { validateStripeKey, syncStripe } from "@/services/integrations/stripe";
 import { validateKlaviyoKey, syncKlaviyo } from "@/services/integrations/klaviyo";
 import { validateWixKey, syncWix } from "@/services/integrations/wix";
 import { validateWooKey, syncWoo } from "@/services/integrations/woocommerce";
-import { validateWindsorKey, syncWindsor } from "@/services/integrations/windsor";
+import {
+  validateWindsorKey,
+  syncWindsor,
+  extractWindsorKey,
+} from "@/services/integrations/windsor";
 
 /**
  * SERVER-ONLY. Registry of API-KEY based integrations (multi-tenant).
@@ -24,6 +28,13 @@ export interface SyncSummary {
 export interface KeyedProviderDef {
   id: string;
   label: string;
+  /**
+   * Cleans up what the customer pasted before it is validated and stored.
+   * Some providers hand out a ready-made request URL rather than a bare key,
+   * and rejecting the string their own dashboard told the user to copy is a
+   * self-inflicted support ticket.
+   */
+  normalize?: (raw: string) => string;
   /** Returns true when the pasted key is valid (can read the account). */
   validate: (key: string) => Promise<boolean>;
   /** Pulls the provider's data into Supabase. */
@@ -63,6 +74,7 @@ export const KEYED_PROVIDERS: Record<string, KeyedProviderDef> = {
   windsor: {
     id: "windsor",
     label: "Windsor.ai",
+    normalize: extractWindsorKey,
     validate: validateWindsorKey,
     sync: syncWindsor,
   },

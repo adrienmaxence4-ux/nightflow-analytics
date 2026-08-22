@@ -110,9 +110,9 @@ export default function IntegrationsPage() {
               name="Régies publicitaires (Windsor.ai)"
               logo="📣"
               accent="from-sky-400 to-blue-600"
-              description="Meta Ads, TikTok Ads, Google Ads… Autorisez vos comptes sur Windsor, collez votre clé ici, et le Copilot analyse la dépense."
+              description="Meta Ads, TikTok Ads, Google Ads… Autorisez vos comptes sur Windsor, puis collez ici votre clé API — ou directement l'URL que Windsor vous affiche."
               connectedHint="Dépense & ROAS par régie affichés dans Marketing."
-              placeholder="Votre clé API Windsor.ai"
+              placeholder="Clé API ou URL Windsor.ai"
               helpHref="https://onboard.windsor.ai/"
               helpLabel="Connecter mes régies & copier ma clé"
             />

@@ -83,6 +83,32 @@ function channelFor(source: string): string {
   return pretty ? `${pretty} Ads` : "Publicité";
 }
 
+/**
+ * Windsor's dashboard hands out a ready-made request URL, not a bare key, so
+ * that URL is what most people paste. Accepting only the key would reject the
+ * exact string the product told them to copy — extract it instead.
+ *
+ * Handles: the bare key, a full request URL (with or without protocol), a
+ * `Bearer …` prefix, and surrounding quotes/whitespace. Returns "" when the
+ * input is a URL carrying no key, which is not a credential.
+ */
+export function extractWindsorKey(raw: string): string {
+  let v = (raw ?? "").trim().replace(/^["']|["']$/g, "").trim();
+  v = v.replace(/^bearer\s+/i, "").trim();
+
+  const m = v.match(/[?&]api_?key=([^&\s]+)/i);
+  if (m) {
+    try {
+      return decodeURIComponent(m[1]).trim();
+    } catch {
+      return m[1].trim();
+    }
+  }
+  // A Windsor URL with no api_key in it carries nothing we can authenticate with.
+  if (/^https?:\/\//i.test(v) || /windsor\.ai/i.test(v)) return "";
+  return v;
+}
+
 interface WindsorRow {
   date?: string;
   source?: string;
@@ -135,10 +161,11 @@ async function windsorGet(
 
 /** The pasted key can read the customer's blended data. */
 export async function validateWindsorKey(key: string): Promise<boolean> {
-  if (!key.trim()) return false;
+  const apiKey = extractWindsorKey(key);
+  if (!apiKey) return false;
   // An account with no source connected yet still answers 200 with an empty
   // array — that's a valid key, just nothing plugged in on Windsor's side.
-  const rows = await windsorGet(key.trim(), "all", {
+  const rows = await windsorGet(apiKey, "all", {
     fields: "date,source",
     date_preset: "last_7d",
   });
@@ -165,11 +192,16 @@ export async function syncWindsor(
   storeId: string,
   db: SupabaseClient
 ): Promise<SyncSummary> {
+  const apiKey = extractWindsorKey(key);
+  if (!apiKey) {
+    throw new Error("Clé Windsor.ai illisible — colle la clé ou l'URL fournie par Windsor.");
+  }
+
   const to = new Date();
   const from = new Date();
   from.setDate(from.getDate() - DAYS);
 
-  const rows = await windsorGet(key.trim(), "all", {
+  const rows = await windsorGet(apiKey, "all", {
     fields: FIELDS,
     date_from: isoDay(from),
     date_to: isoDay(to),
