@@ -23,6 +23,11 @@ import { useIsAdmin } from "@/hooks/use-admin";
 /**
  * Founder-only: what was published on Instagram and what it actually produced.
  *
+ * Numbers come from Meta directly when the connection carries the Instagram
+ * permissions, and from Windsor only as a fallback — the badge next to the
+ * list names the source, because "27 vues" means nothing without knowing who
+ * counted them.
+ *
  * The page deliberately keeps two numbers apart. Views, likes and reach are
  * measured per post. Link visits are measured per tracking code. They only
  * join when a post published its own `?a=CODE` link — and when it didn't, the
@@ -55,6 +60,8 @@ interface CodeStat {
 interface Payload {
   days: number;
   connected: boolean;
+  /** Which connector produced the numbers below. */
+  source: "meta" | "windsor" | null;
   instagramError: string | null;
   posts: Post[];
   totals: {
@@ -132,18 +139,19 @@ export default function AdminReelsPage() {
               sub="tous codes confondus" tone="#7dffb0" />
           </div>
 
-          {/* ── Windsor not connected: the page has nothing to show ── */}
+          {/* ── No connector at all: the page has nothing to show ── */}
           {!data.connected && (
             <Card className="flex flex-wrap items-center gap-4 p-5">
               <span className="grid h-10 w-10 flex-none place-items-center rounded-xl border border-glass-hi bg-glass-2">
                 <Plug className="h-4 w-4 text-neon-cyan" aria-hidden />
               </span>
               <p className="min-w-[240px] flex-1 text-[13px] leading-relaxed text-ink-dim">
-                Les statistiques Instagram passent par Windsor.ai. Connecte-le
-                dans Intégrations pour voir tes Reels ici.
+                Connecte <b className="text-white">Meta Ads</b> dans Intégrations
+                pour voir tes Reels ici. Ta connexion doit couvrir Instagram —
+                voir la note ci-dessous.
               </p>
               <Link href="/integrations">
-                <Button variant="primary" size="sm">Connecter Windsor</Button>
+                <Button variant="primary" size="sm">Connecter Meta</Button>
               </Link>
             </Card>
           )}
@@ -179,8 +187,13 @@ export default function AdminReelsPage() {
 
           {/* ── Posts ── */}
           <section>
-            <h2 className="mb-3 text-[10px] font-bold tracking-[1.6px] text-ink-mut">
+            <h2 className="mb-3 flex flex-wrap items-center gap-2 text-[10px] font-bold tracking-[1.6px] text-ink-mut">
               PUBLICATIONS
+              {data.source && (
+                <Badge variant={data.source === "meta" ? "cyan" : "violet"}>
+                  via {data.source === "meta" ? "Meta" : "Windsor"}
+                </Badge>
+              )}
             </h2>
             {data.posts.length === 0 ? (
               <Card className="p-6 text-center text-[13px] text-ink-mut">

@@ -287,3 +287,140 @@ export async function syncMeta(
 
 /** The channel label this connector owns. Shared so Windsor can stand aside. */
 export const META_CHANNEL = "Meta Ads";
+
+// ── Instagram organic (Reels & posts) ────────────────────────────────────────
+
+/**
+ * Reels metrics do NOT come from ads_read: that permission covers the Ads
+ * Insights API, which reports on paid campaigns. Published-post engagement is
+ * a different API and a different grant — instagram_basic to list the media,
+ * instagram_manage_insights to read its numbers, plus pages_show_list because
+ * an Instagram business account is reached through the Page it is linked to.
+ *
+ * Those permissions have to be on the login configuration for a token to carry
+ * them. When they are missing the calls simply return nothing, so the caller
+ * degrades to "not authorised" rather than showing zeros that read like a post
+ * that flopped.
+ */
+
+interface IgAccountRow {
+  instagram_business_account?: { id?: string };
+}
+interface IgMediaRow {
+  id?: string;
+  caption?: string;
+  media_type?: string;
+  media_product_type?: string;
+  permalink?: string;
+  timestamp?: string;
+  like_count?: number;
+  comments_count?: number;
+}
+interface IgInsightRow {
+  name?: string;
+  values?: { value?: number }[];
+}
+
+/** One published post, same shape the Windsor path produces. */
+export interface MetaInstagramPost {
+  id: string;
+  date: string;
+  caption: string;
+  permalink: string;
+  isReel: boolean;
+  views: number;
+  likes: number;
+  comments: number;
+  shares: number;
+  saves: number;
+  reach: number;
+  trackingCode: string | null;
+}
+
+/** `?a=CODE` published in the caption, or null. Never guessed. */
+export function trackingCodeInCaption(caption: string): string | null {
+  const m = caption.match(/[?&]a=([a-zA-Z0-9_-]{2,40})/);
+  return m ? m[1] : null;
+}
+
+/**
+ * The Instagram business account behind the authorising user's Pages.
+ * Returns null when the grant lacks the Instagram permissions.
+ */
+export async function findInstagramAccountId(
+  accessToken: string
+): Promise<string | null> {
+  const pages = await graphGet<{ data?: IgAccountRow[] }>("me/accounts", {
+    access_token: accessToken,
+    fields: "instagram_business_account",
+    limit: "50",
+  });
+  for (const page of pages?.data ?? []) {
+    const id = page.instagram_business_account?.id;
+    if (id) return id;
+  }
+  return null;
+}
+
+/** Insight metrics, by media product type. Reels report plays as `views`. */
+const IG_METRICS = "views,reach,likes,comments,shares,saved,total_interactions";
+
+function metric(rows: IgInsightRow[] | undefined, name: string): number {
+  const hit = rows?.find((r) => r.name === name);
+  return Math.max(0, Math.round(hit?.values?.[0]?.value ?? 0));
+}
+
+/**
+ * Published posts with their engagement, newest first. Insights are fetched per
+ * media because Instagram does not expose them in the list call.
+ */
+export async function fetchMetaInstagramPosts(
+  accessToken: string,
+  days = 90,
+  maxPosts = 30
+): Promise<MetaInstagramPost[] | null> {
+  const igId = await findInstagramAccountId(accessToken);
+  if (!igId) return null;
+
+  const media = await graphGet<{ data?: IgMediaRow[] }>(`${igId}/media`, {
+    access_token: accessToken,
+    fields:
+      "id,caption,media_type,media_product_type,permalink,timestamp,like_count,comments_count",
+    limit: String(maxPosts),
+  });
+  if (!media?.data) return null;
+
+  const since = Date.now() - days * 86_400_000;
+  const recent = media.data.filter((m) => {
+    if (!m.id) return false;
+    const t = m.timestamp ? Date.parse(m.timestamp) : NaN;
+    return Number.isNaN(t) ? true : t >= since;
+  });
+
+  const posts: MetaInstagramPost[] = [];
+  for (const m of recent) {
+    const insights = await graphGet<{ data?: IgInsightRow[] }>(
+      `${m.id}/insights`,
+      { access_token: accessToken, metric: IG_METRICS }
+    );
+    const rows = insights?.data;
+    const caption = String(m.caption ?? "");
+    posts.push({
+      id: String(m.id),
+      date: (m.timestamp ?? "").slice(0, 10),
+      caption,
+      permalink: String(m.permalink ?? ""),
+      isReel: m.media_product_type === "REELS" || m.media_type === "REELS",
+      // like_count on the media is the reliable one; the insight metric is
+      // absent on older posts.
+      views: metric(rows, "views"),
+      likes: Math.max(metric(rows, "likes"), Math.round(m.like_count ?? 0)),
+      comments: Math.max(metric(rows, "comments"), Math.round(m.comments_count ?? 0)),
+      shares: metric(rows, "shares"),
+      saves: metric(rows, "saved"),
+      reach: metric(rows, "reach"),
+      trackingCode: trackingCodeInCaption(caption),
+    });
+  }
+  return posts.sort((a, b) => b.date.localeCompare(a.date));
+}

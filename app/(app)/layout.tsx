@@ -11,9 +11,13 @@ import { useAuth } from "@/hooks/use-auth";
 import { useUnread } from "@/hooks/use-unread";
 import { NAV_MAIN, NAV_SECONDARY } from "@/lib/nav";
 
-const TITLES: Record<string, string> = Object.fromEntries(
-  [...NAV_MAIN, ...NAV_SECONDARY].map((n) => [n.href, n.label])
-);
+const TITLES: Record<string, string> = {
+  ...Object.fromEntries([...NAV_MAIN, ...NAV_SECONDARY].map((n) => [n.href, n.label])),
+  // Admin routes live outside the nav arrays (they are added to the sidebar
+  // only for the owner), so their titles are declared here.
+  "/admin": "Stats du site",
+  "/admin/reels": "Mes publications",
+};
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();

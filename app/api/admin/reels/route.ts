@@ -8,6 +8,7 @@ import {
   fetchInstagramPosts,
   type InstagramPost,
 } from "@/services/integrations/windsor";
+import { fetchMetaInstagramPosts } from "@/services/integrations/meta";
 
 /**
  * GET /api/admin/reels — ADMIN ONLY.
@@ -45,23 +46,51 @@ export async function GET() {
   const { data: stores } = await supabase.from("stores").select("id").limit(1);
   const storeId = (stores?.[0] as { id: string } | undefined)?.id ?? null;
 
-  // ── Instagram, through the Windsor connector ──
+  // ── Instagram ──
+  // Meta first: it is the direct, first-party source. Windsor only fills in
+  // when Meta is not connected or its grant lacks the Instagram permissions,
+  // so the page still shows something instead of going dark.
   let posts: InstagramPost[] = [];
   let instagramError: string | null = null;
   let connected = false;
+  let source: "meta" | "windsor" | null = null;
 
   if (storeId) {
-    const tokens = await getStoredTokens(
-      supabase as unknown as SupabaseClient,
-      storeId,
-      "windsor"
-    );
-    connected = !!tokens;
-    if (tokens) {
+    const db = supabase as unknown as SupabaseClient;
+
+    const metaTokens = await getStoredTokens(db, storeId, "meta");
+    if (metaTokens) {
+      connected = true;
       try {
-        posts = await fetchInstagramPosts(tokens.accessToken, DAYS);
+        const metaPosts = await fetchMetaInstagramPosts(
+          metaTokens.accessToken,
+          DAYS
+        );
+        if (metaPosts) {
+          posts = metaPosts;
+          source = "meta";
+        } else {
+          // The token is valid but carries no Instagram grant — say which
+          // permissions are missing rather than showing an empty list.
+          instagramError =
+            "Ta connexion Meta ne couvre pas Instagram. Ajoute instagram_basic, instagram_manage_insights et pages_show_list à la configuration de connexion, puis reconnecte.";
+        }
       } catch (e) {
         instagramError = (e as Error).message.slice(0, 200);
+      }
+    }
+
+    if (!source) {
+      const windsorTokens = await getStoredTokens(db, storeId, "windsor");
+      if (windsorTokens) {
+        connected = true;
+        try {
+          posts = await fetchInstagramPosts(windsorTokens.accessToken, DAYS);
+          source = "windsor";
+          instagramError = null;
+        } catch (e) {
+          instagramError = (e as Error).message.slice(0, 200);
+        }
       }
     }
   }
@@ -113,6 +142,7 @@ export async function GET() {
   return NextResponse.json({
     days: DAYS,
     connected,
+    source,
     instagramError,
     posts: enriched,
     totals: {
