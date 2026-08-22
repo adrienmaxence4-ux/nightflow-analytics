@@ -29,6 +29,21 @@ export interface OAuthConnectProps {
   showSync?: boolean;
 }
 
+/**
+ * Why the callback stopped, in the customer's words. Keys match the `reason`
+ * the /oauth/callback route appends when it bails out.
+ */
+const OAUTH_FAILURES: Record<string, string> = {
+  token:
+    "la plateforme a refusé l'échange. La clé secrète de l'app est probablement incorrecte ou tronquée.",
+  state: "la session d'autorisation a expiré. Relance la connexion.",
+  denied: "autorisation refusée.",
+  params: "réponse incomplète de la plateforme. Réessaie.",
+  store: "aucune boutique rattachée à ton compte.",
+  provider: "connecteur inconnu.",
+  supabase: "base de données indisponible.",
+};
+
 export function OAuthConnect({
   provider,
   name,
@@ -44,12 +59,18 @@ export function OAuthConnect({
 
   // Surface the result of the OAuth redirect (?stripe=connected|error|…).
   useEffect(() => {
-    const outcome = new URLSearchParams(window.location.search).get(provider);
+    const params = new URLSearchParams(window.location.search);
+    const outcome = params.get(provider);
     if (!outcome) return;
     if (outcome === "connected") toast(`${name} connecté ✓`);
     else if (outcome === "notconfigured")
       toast(`${name} OAuth pas encore configuré`, "info");
-    else if (outcome === "error") toast(`Connexion ${name} échouée`, "info");
+    else if (outcome === "error") {
+      // The callback already knows why it gave up; saying "échouée" and
+      // dropping the reason turns a two-minute fix into a debugging session.
+      const why = OAUTH_FAILURES[params.get("reason") ?? ""];
+      toast(why ? `${name} : ${why}` : `Connexion ${name} échouée`, "info");
+    }
     window.history.replaceState({}, "", window.location.pathname);
   }, [provider, name, toast]);
 
