@@ -102,6 +102,23 @@ export default function IntegrationsPage() {
           </CategorySection>
 
           <CategorySection
+            label="Publicité"
+            hint="Dépense, revenu attribué et ROAS de vos régies — Meta, TikTok, Google Ads et les autres."
+          >
+            <ApiKeyConnect
+              provider="windsor"
+              name="Régies publicitaires (Windsor.ai)"
+              logo="📣"
+              accent="from-sky-400 to-blue-600"
+              description="Meta Ads, TikTok Ads, Google Ads… Autorisez vos comptes sur Windsor, collez votre clé ici, et le Copilot analyse la dépense."
+              connectedHint="Dépense & ROAS par régie affichés dans Marketing."
+              placeholder="Votre clé API Windsor.ai"
+              helpHref="https://onboard.windsor.ai/"
+              helpLabel="Connecter mes régies & copier ma clé"
+            />
+          </CategorySection>
+
+          <CategorySection
             label="Email & CRM"
             hint="Revenu attribué à vos campagnes email."
           >
@@ -198,13 +215,15 @@ export default function IntegrationsPage() {
           </span>
           <div>
             <h3 className="text-[14px] font-bold">
-              Régies publicitaires — bientôt
+              Meta Ads &amp; TikTok Ads — disponibles via Windsor.ai
             </h3>
             <p className="mt-1 text-[13px] leading-relaxed text-ink-dim">
-              Meta Ads et TikTok Ads passent par une connexion OAuth qui
-              nécessite la validation de l&apos;app par chaque plateforme. Une
-              fois disponibles, le Copilot analysera aussi ces données. Activez
-              les notifications pour être prévenu.
+              La connexion directe à Meta et TikTok attend la validation de
+              l&apos;app par chaque plateforme. En attendant, la carte
+              «&nbsp;Régies publicitaires&nbsp;» ci-dessus passe par Windsor.ai,
+              dont les apps sont déjà approuvées : vous autorisez vos comptes
+              chez eux, et le Copilot analyse votre dépense dès la
+              synchronisation suivante.
             </p>
           </div>
         </div>

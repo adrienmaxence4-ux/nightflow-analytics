@@ -3,6 +3,7 @@ import { validateStripeKey, syncStripe } from "@/services/integrations/stripe";
 import { validateKlaviyoKey, syncKlaviyo } from "@/services/integrations/klaviyo";
 import { validateWixKey, syncWix } from "@/services/integrations/wix";
 import { validateWooKey, syncWoo } from "@/services/integrations/woocommerce";
+import { validateWindsorKey, syncWindsor } from "@/services/integrations/windsor";
 
 /**
  * SERVER-ONLY. Registry of API-KEY based integrations (multi-tenant).
@@ -56,6 +57,14 @@ export const KEYED_PROVIDERS: Record<string, KeyedProviderDef> = {
     label: "WooCommerce",
     validate: validateWooKey,
     sync: syncWoo,
+  },
+  // Brings Meta Ads and TikTok Ads (and every other platform the customer
+  // connects on Windsor) without waiting on each network's app review.
+  windsor: {
+    id: "windsor",
+    label: "Windsor.ai",
+    validate: validateWindsorKey,
+    sync: syncWindsor,
   },
 };
 

@@ -11,6 +11,11 @@ describe("keyed integrations registry", () => {
     expect(KEYED_PROVIDER_IDS).toContain("klaviyo");
   });
 
+  it("exposes Windsor, the route Meta Ads and TikTok Ads come in by", () => {
+    expect(KEYED_PROVIDER_IDS).toContain("windsor");
+    expect(getKeyedProvider("windsor")?.label).toBe("Windsor.ai");
+  });
+
   it("each provider has a label, validate() and sync()", () => {
     for (const id of KEYED_PROVIDER_IDS) {
       const def = KEYED_PROVIDERS[id];

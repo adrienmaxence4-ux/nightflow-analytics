@@ -22,6 +22,7 @@ import { syncStripe } from "@/services/integrations/stripe";
 import { syncKlaviyo } from "@/services/integrations/klaviyo";
 import { syncWix } from "@/services/integrations/wix";
 import { syncWoo } from "@/services/integrations/woocommerce";
+import { syncWindsor } from "@/services/integrations/windsor";
 import { refreshGoogleToken } from "@/services/integrations/google";
 import {
   normalizeShopifyOrder,
@@ -192,6 +193,20 @@ const woocommerce: IntegrationConnector = {
     }),
 };
 
+// ── Windsor.ai (key-based: blended ad platforms) ─────────────────────────────
+// The route Meta Ads and TikTok Ads actually reach Nightflow today: Windsor's
+// apps are already approved by both networks, so no app review stands between
+// a customer and their spend. See services/integrations/windsor.ts.
+const windsor: IntegrationConnector = {
+  ...keyedConnectorBase("windsor", "Régies publicitaires (Windsor.ai)", "advertising"),
+  fetchData: async () => [],
+  sync: (ctx) =>
+    syncWithCredential("windsor", ctx, async (key) => {
+      const synced = await syncWindsor(key, ctx.storeId, ctx.db);
+      return synced.orders;
+    }),
+};
+
 // ── Stripe ───────────────────────────────────────────────────────────────────
 const stripe: IntegrationConnector = {
   source: "stripe",
@@ -344,6 +359,7 @@ const CONNECTORS: Record<IntegrationSource, IntegrationConnector> = {
   shipstation: SHIPSTATION,
   mondialrelay: MONDIAL_RELAY,
   gorgias: GORGIAS,
+  windsor,
 };
 
 /** Provider id (DB) → connector. Note: GA4 is stored under provider "google". */
@@ -363,6 +379,7 @@ const PROVIDER_TO_SOURCE: Record<string, IntegrationSource> = {
   shipstation: "shipstation",
   mondialrelay: "mondialrelay",
   gorgias: "gorgias",
+  windsor: "windsor",
 };
 
 export function getConnector(

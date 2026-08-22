@@ -29,7 +29,8 @@ export type IntegrationSource =
   | "paypal"
   | "shipstation"
   | "mondialrelay"
-  | "gorgias";
+  | "gorgias"
+  | "windsor";
 
 export type EventType =
   | "order"
