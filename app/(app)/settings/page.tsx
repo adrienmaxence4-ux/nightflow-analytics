@@ -9,31 +9,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
-import { ShopifyConnect } from "@/features/integrations/shopify-connect";
-import { WixConnect } from "@/features/integrations/wix-connect";
-import { WooConnect } from "@/features/integrations/woo-connect";
-import { OAuthConnect } from "@/features/integrations/oauth-connect";
 import { UpgradeGate } from "@/features/billing/upgrade-gate";
 import { InstallApp } from "@/features/pwa/install-app";
 import { usePlan } from "@/hooks/use-plan";
 
-interface Integration {
-  id: string;
-  name: string;
-  description: string;
-  logo: string;
-  accent: string;
-}
-
-// OAuth-only sources — need platform app review before they go live → "Bientôt".
-const INTEGRATIONS: Integration[] = [
-  { id: "meta", name: "Meta Ads", description: "Performance Facebook & Instagram.", logo: "📘", accent: "from-blue-400 to-blue-600" },
-  { id: "tiktok", name: "TikTok Ads", description: "ROAS & créatives par campagne.", logo: "🎵", accent: "from-neon-pink to-neon-violet" },
-];
 
 const SECTIONS = [
   { id: "profile", label: "Profil" },
-  { id: "integrations", label: "Intégrations" },
   { id: "api", label: "Clés API" },
   { id: "app", label: "Application" },
 ];
@@ -42,7 +24,7 @@ export default function SettingsPage() {
   const toast = useToast();
   const { user } = useAuth();
   const { plan } = usePlan();
-  const [tab, setTab] = useState("integrations");
+  const [tab, setTab] = useState("profile");
   const [storeName, setStoreName] = useState("");
   const [saving, setSaving] = useState(false);
 
@@ -72,7 +54,7 @@ export default function SettingsPage() {
     <PageTransition>
       <PageHeader
         title="Paramètres"
-        subtitle="Gérez votre espace de travail, vos intégrations et vos clés"
+        subtitle="Gérez votre espace de travail et vos clés"
       />
 
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-[200px_1fr]">
@@ -95,99 +77,6 @@ export default function SettingsPage() {
         </Card>
 
         <div className="flex flex-col gap-5">
-          {tab === "integrations" && !plan.integrations && (
-            <UpgradeGate
-              title="Connectez vos boutiques avec Nightflow Pro"
-              message="Le plan Gratuit reste sur la démo. Passez en Pro pour connecter Shopify, Stripe, Klaviyo & Google Analytics et importer vos vraies données."
-              plan="Pro"
-            />
-          )}
-
-          {tab === "integrations" && plan.integrations && (
-            <div className="flex flex-col gap-5">
-              <div>
-                <h3 className="mb-1 text-[15px] font-bold">
-                  Connectez votre boutique
-                </h3>
-                <p className="mb-3 text-xs text-ink-mut">
-                  Chaque utilisateur connecte sa propre boutique : Nightflow
-                  importe alors ses produits, commandes et ventes (données
-                  isolées par compte).
-                </p>
-                <ShopifyConnect />
-              </div>
-
-              <div className="flex flex-col gap-3">
-                <WixConnect />
-                <WooConnect />
-                <OAuthConnect
-                  provider="stripe"
-                  name="Stripe"
-                  logo="💳"
-                  accent="from-indigo-400 to-violet-500"
-                  description="Connexion en un clic — autorisez votre compte, aucune clé à créer."
-                  connectedHint="Revenus & commandes importés depuis Stripe."
-                />
-                <OAuthConnect
-                  provider="klaviyo"
-                  name="Klaviyo"
-                  logo="✉️"
-                  accent="from-fuchsia-400 to-pink-500"
-                  description="Connexion en un clic — autorisez votre compte, aucune clé à créer."
-                  connectedHint="Revenu attribué Klaviyo affiché dans Marketing."
-                />
-                <OAuthConnect
-                  provider="google"
-                  name="Google Analytics"
-                  logo="📈"
-                  accent="from-amber-300 to-orange-500"
-                  description="Connexion en un clic — trafic, canaux & appareils."
-                  connectedHint="Trafic, canaux & appareils affichés dans Analytics."
-                  showSync={false}
-                />
-              </div>
-
-              <Card className="p-5">
-                <h3 className="mb-1 text-[15px] font-bold">
-                  Régies publicitaires — bientôt
-                </h3>
-                <p className="mb-4 text-xs text-ink-mut">
-                  Google Analytics, Meta Ads et TikTok Ads passent par OAuth et
-                  nécessitent la validation de l&apos;app par chaque plateforme.
-                </p>
-                <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                  {INTEGRATIONS.map((i) => (
-                    <div
-                      key={i.id}
-                      className="flex items-center gap-3 rounded-2xl border border-glass-border bg-glass-2 p-3.5"
-                    >
-                      <span
-                        className={`grid h-11 w-11 flex-none place-items-center rounded-xl bg-gradient-to-br text-lg ${i.accent}`}
-                      >
-                        {i.logo}
-                      </span>
-                      <div className="flex-1 overflow-hidden">
-                        <div className="flex items-center gap-2">
-                          <b className="text-[13px]">{i.name}</b>
-                          <Badge variant="violet">Bientôt</Badge>
-                        </div>
-                        <p className="truncate text-[11px] text-ink-mut">
-                          {i.description}
-                        </p>
-                      </div>
-                      <button
-                        disabled
-                        className="flex-none cursor-not-allowed rounded-xl border border-glass-border bg-glass px-3 py-2 text-xs font-bold text-ink-mut"
-                      >
-                        Bientôt
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </Card>
-            </div>
-          )}
-
           {tab === "profile" && (
             <Card className="p-5">
               <h3 className="mb-4 text-[15px] font-bold">Profil</h3>
