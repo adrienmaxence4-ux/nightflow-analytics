@@ -2,6 +2,7 @@ import {
   env,
   isShopifyConfigured,
   isStripeOAuthConfigured,
+  isMetaOAuthConfigured,
   isKlaviyoOAuthConfigured,
   isGoogleOAuthConfigured,
 } from "@/lib/env";
@@ -23,6 +24,12 @@ import { syncKlaviyo } from "@/services/integrations/klaviyo";
 import { syncWix } from "@/services/integrations/wix";
 import { syncWoo } from "@/services/integrations/woocommerce";
 import { syncWindsor } from "@/services/integrations/windsor";
+import {
+  buildMetaAuthorizeUrl,
+  exchangeMetaCode,
+  refreshMetaToken,
+  syncMeta,
+} from "@/services/integrations/meta";
 import { refreshGoogleToken } from "@/services/integrations/google";
 import {
   normalizeShopifyOrder,
@@ -319,7 +326,47 @@ const ga4: IntegrationConnector = {
   normalizeWebhook: () => [],
 };
 
-// ── Meta Ads / TikTok Ads (future-ready) ─────────────────────────────────────
+// ── Meta Ads (one-click OAuth, read-only) ────────────────────────────────────
+// No longer a stub: the flow is live and works today on ad accounts the app
+// owner has a role on. Reaching everyone else is Meta's App Review, not code.
+const meta: IntegrationConnector = {
+  source: "meta",
+  name: "Meta Ads",
+  category: "advertising",
+  usesPkce: false,
+  isConfigured: isMetaOAuthConfigured,
+  supportsWebhooks: true,
+
+  buildAuthorizeUrl: (state) => buildMetaAuthorizeUrl(state),
+  exchangeCode: async (code) => {
+    const r = await exchangeMetaCode(code);
+    return r
+      ? { accessToken: r.accessToken, refreshToken: null, expiresAt: r.expiresAt }
+      : null;
+  },
+  // Long-lived tokens last ~60 days and can be re-extended, so a connection
+  // left alone keeps working instead of silently dying after two months.
+  refresh: async (tokens) => {
+    const r = await refreshMetaToken(tokens.accessToken);
+    return r
+      ? { accessToken: r.accessToken, refreshToken: null, expiresAt: r.expiresAt }
+      : null;
+  },
+
+  fetchData: async () => [],
+  sync: (ctx) =>
+    syncWithCredential("meta", ctx, async (token) => {
+      const synced = await syncMeta(token, ctx.storeId, ctx.db);
+      return synced.orders;
+    }),
+
+  registerWebhooks: async () => {},
+  verifyWebhook: (i: WebhookInput) =>
+    verifyHexHmac(i.rawBody, i.headers["x-hub-signature-256"], env.metaAppSecret),
+  normalizeWebhook: () => [],
+};
+
+// ── TikTok Ads (still pending platform approval) ─────────────────────────────
 function adStub(
   source: "meta" | "tiktok",
   name: string,
@@ -351,7 +398,7 @@ const CONNECTORS: Record<IntegrationSource, IntegrationConnector> = {
   stripe,
   klaviyo,
   ga4,
-  meta: adStub("meta", "Meta Ads", env.metaAppSecret),
+  meta,
   tiktok: adStub("tiktok", "TikTok Ads", env.tiktokAppSecret),
   googleads: GOOGLE_ADS,
   hotjar: HOTJAR,

@@ -36,15 +36,22 @@ function mockFetch(payload: unknown, ok = true) {
   return calls;
 }
 
-/** Captures what the sync writes, and which rows it deletes first. */
-function fakeDb() {
+/**
+ * Captures what the sync writes and which rows it deletes first.
+ * `metaConnected` drives the integrations lookup, so the "stand aside when Meta
+ * is direct" branch is exercised deliberately rather than via a swallowed error.
+ */
+function fakeDb(metaConnected = false) {
   const inserted: Record<string, unknown>[] = [];
   const deleted: { filters: [string, unknown][] } = { filters: [] };
 
   const db = {
-    from() {
+    from(table: string) {
       const filters: [string, unknown][] = [];
       const chain = {
+        select() {
+          return chain;
+        },
         delete() {
           return chain;
         },
@@ -60,6 +67,13 @@ function fakeDb() {
           filters.push([col, vals]);
           deleted.filters = filters;
           return Promise.resolve({ error: null });
+        },
+        limit() {
+          const rows =
+            table === "integrations" && metaConnected
+              ? [{ provider: "meta" }]
+              : [];
+          return Promise.resolve({ data: rows, error: null });
         },
       };
       return chain;
@@ -224,6 +238,32 @@ describe("windsor sync", () => {
     mockFetch({ error: "nope" }, false);
     const { db } = fakeDb();
     await expect(syncWindsor("k", "store-1", db)).rejects.toThrow(/Windsor/);
+  });
+
+  it("stands aside on Meta when the direct connector owns it", async () => {
+    mockFetch({
+      data: [
+        { date: "2026-08-01", source: "facebook", campaign: "Retargeting", spend: 100, total_revenue: 400 },
+        { date: "2026-08-01", source: "tiktok", campaign: "UGC", spend: 50, total_revenue: 25 },
+      ],
+    });
+    const { db, inserted, deleted } = fakeDb(true);
+    await syncWindsor("k", "store-1", db);
+
+    // First-party Meta data wins; Windsor keeps the channels nothing else owns.
+    expect(inserted.map((r) => r.channel)).toEqual(["TikTok Ads"]);
+    const [, vals] = deleted.filters[1];
+    expect(vals).not.toContain("Meta Ads");
+    expect(vals).toContain("TikTok Ads");
+  });
+
+  it("keeps Meta when only Windsor provides it", async () => {
+    mockFetch({
+      data: [{ date: "2026-08-01", source: "facebook", spend: 100, total_revenue: 400 }],
+    });
+    const { db, inserted } = fakeDb(false);
+    await syncWindsor("k", "store-1", db);
+    expect(inserted.map((r) => r.channel)).toEqual(["Meta Ads"]);
   });
 
   it("owns the channel names the mapping produces", () => {

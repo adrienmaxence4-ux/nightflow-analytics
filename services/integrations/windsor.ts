@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { SyncSummary } from "@/services/integrations/registry";
+import { META_CHANNEL } from "@/services/integrations/meta";
 
 /**
  * SERVER-ONLY. Windsor.ai integration — key-based, multi-tenant.
@@ -159,6 +160,25 @@ async function windsorGet(
   }
 }
 
+/** True when the store already pulls Meta Ads through the direct connector. */
+async function hasDirectMeta(
+  db: SupabaseClient,
+  storeId: string
+): Promise<boolean> {
+  try {
+    const { data } = await db
+      .from("integrations")
+      .select("provider")
+      .eq("store_id", storeId)
+      .eq("provider", "meta")
+      .eq("status", "connected")
+      .limit(1);
+    return ((data as unknown[] | null) ?? []).length > 0;
+  } catch {
+    return false; // on doubt, let Windsor fill the gap rather than leave it empty
+  }
+}
+
 /** The pasted key can read the customer's blended data. */
 export async function validateWindsorKey(key: string): Promise<boolean> {
   const apiKey = extractWindsorKey(key);
@@ -210,6 +230,14 @@ export async function syncWindsor(
     throw new Error("Windsor.ai n'a pas répondu — vérifie ta clé API.");
   }
 
+  // When the merchant connected Meta directly, that first-party data wins:
+  // Windsor stands aside on that one channel rather than the two connectors
+  // overwriting each other on every sync.
+  const metaDirect = await hasDirectMeta(db, storeId);
+  const owned = metaDirect
+    ? WINDSOR_CHANNELS.filter((c) => c !== META_CHANNEL)
+    : WINDSOR_CHANNELS;
+
   const byChannel = new Map<string, ChannelTotals>();
   for (const r of rows) {
     const source = String(r.source ?? "").trim();
@@ -237,7 +265,9 @@ export async function syncWindsor(
   // A source with neither spend nor attributed revenue is an organic or
   // analytics connector riding along in the blend — not a paid channel.
   const paid = [...byChannel.entries()].filter(
-    ([, t]) => t.spendCents > 0 || t.revenueCents > 0
+    ([channel, t]) =>
+      (t.spendCents > 0 || t.revenueCents > 0) &&
+      (!metaDirect || channel !== META_CHANNEL)
   );
 
   // Replace only what this connector owns, so Klaviyo's row and anything the
@@ -246,7 +276,7 @@ export async function syncWindsor(
     .from("campaigns")
     .delete()
     .eq("store_id", storeId)
-    .in("channel", WINDSOR_CHANNELS);
+    .in("channel", owned);
 
   if (paid.length > 0) {
     await db.from("campaigns").insert(

@@ -105,12 +105,20 @@ export default function IntegrationsPage() {
             label="Publicité"
             hint="Dépense, revenu attribué et ROAS de vos régies — Meta, TikTok, Google Ads et les autres."
           >
+            <OAuthConnect
+              provider="meta"
+              name="Meta Ads"
+              logo="📘"
+              accent="from-blue-500 to-indigo-600"
+              description="Connexion en un clic — autorisez votre compte, aucune clé à créer. Facebook & Instagram Ads."
+              connectedHint="Dépense, revenu attribué et ROAS Meta affichés dans Marketing."
+            />
             <ApiKeyConnect
               provider="windsor"
               name="Régies publicitaires (Windsor.ai)"
               logo="📣"
               accent="from-sky-400 to-blue-600"
-              description="Meta Ads, TikTok Ads, Google Ads… Autorisez vos comptes sur Windsor, puis collez ici votre clé API — ou directement l'URL que Windsor vous affiche."
+              description="TikTok Ads, Google Ads, LinkedIn… et Meta si vous préférez ne pas le connecter directement. Autorisez vos comptes sur Windsor, puis collez ici votre clé API — ou l'URL que Windsor affiche."
               connectedHint="Dépense & ROAS par régie affichés dans Marketing."
               placeholder="Clé API ou URL Windsor.ai"
               helpHref="https://onboard.windsor.ai/"
@@ -215,15 +223,14 @@ export default function IntegrationsPage() {
           </span>
           <div>
             <h3 className="text-[14px] font-bold">
-              Meta Ads &amp; TikTok Ads — disponibles via Windsor.ai
+              TikTok Ads — en attente d&apos;approbation
             </h3>
             <p className="mt-1 text-[13px] leading-relaxed text-ink-dim">
-              La connexion directe à Meta et TikTok attend la validation de
-              l&apos;app par chaque plateforme. En attendant, la carte
-              «&nbsp;Régies publicitaires&nbsp;» ci-dessus passe par Windsor.ai,
-              dont les apps sont déjà approuvées : vous autorisez vos comptes
-              chez eux, et le Copilot analyse votre dépense dès la
-              synchronisation suivante.
+              La connexion directe à TikTok demande une revue
+              sandbox→production et un audit de sécurité des données — c&apos;est
+              l&apos;API publicitaire la plus verrouillée. En attendant, TikTok
+              passe par la carte «&nbsp;Régies publicitaires&nbsp;» ci-dessus, et
+              Meta Ads se connecte déjà en un clic.
             </p>
           </div>
         </div>

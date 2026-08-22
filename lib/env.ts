@@ -69,8 +69,14 @@ export const env = {
   // retry). Vercel Cron sends it as a Bearer token.
   cronSecret: process.env.CRON_SECRET ?? "",
 
-  // Meta Ads / TikTok Ads (future-ready — pending each platform's app review).
+  // Meta Ads OAuth. Every Marketing API version before v24.0 was removed on
+  // 2026-06-09, hence the v25.0 default; override without a release when Meta
+  // ships the next one.
+  metaAppId: process.env.META_APP_ID ?? "",
   metaAppSecret: process.env.META_APP_SECRET ?? "",
+  metaApiVersion: process.env.META_API_VERSION ?? "v25.0",
+  // TikTok Ads stays a stub: its Marketing API needs a sandbox→production
+  // review plus a data-security audit, the most gated of the paid-social APIs.
   tiktokAppSecret: process.env.TIKTOK_APP_SECRET ?? "",
 
   // Admin allowlist — emails that may use the demo/test data tools. These tools
@@ -109,5 +115,9 @@ export const isKlaviyoOAuthConfigured =
   env.klaviyoClientId.length > 0 && env.klaviyoClientSecret.length > 0;
 
 /** True when Google OAuth (Google Analytics) is configured. */
+/** Meta Ads OAuth is live only once both halves of the app credential exist. */
+export const isMetaOAuthConfigured =
+  !!env.metaAppId && !!env.metaAppSecret;
+
 export const isGoogleOAuthConfigured =
   env.googleClientId.length > 0 && env.googleClientSecret.length > 0;

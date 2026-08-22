@@ -3,6 +3,7 @@ import {
   isStripeOAuthConfigured,
   isKlaviyoOAuthConfigured,
   isGoogleOAuthConfigured,
+  isMetaOAuthConfigured,
 } from "@/lib/env";
 import {
   buildStripeAuthorizeUrl,
@@ -18,6 +19,11 @@ import {
   buildGoogleAuthorizeUrl,
   exchangeGoogleCode,
 } from "@/services/integrations/google";
+import {
+  buildMetaAuthorizeUrl,
+  exchangeMetaCode,
+  syncMeta,
+} from "@/services/integrations/meta";
 
 /**
  * SERVER-ONLY. Registry of OAuth ("Se connecter avec …") providers.
@@ -51,6 +57,22 @@ export interface OAuthProviderDef {
 }
 
 export const OAUTH_PROVIDERS: Record<string, OAuthProviderDef> = {
+  // Meta Ads (Facebook + Instagram). Read-only: Nightflow reports on spend,
+  // it never runs campaigns, so ads_read is the whole ask.
+  meta: {
+    id: "meta",
+    label: "Meta Ads",
+    isConfigured: isMetaOAuthConfigured,
+    usesPkce: false,
+    buildAuthorizeUrl: (state) => buildMetaAuthorizeUrl(state),
+    exchangeCode: async (code) => {
+      const r = await exchangeMetaCode(code);
+      return r
+        ? { accessToken: r.accessToken, metadata: { expiresAt: r.expiresAt } }
+        : null;
+    },
+    sync: syncMeta,
+  },
   stripe: {
     id: "stripe",
     label: "Stripe",
