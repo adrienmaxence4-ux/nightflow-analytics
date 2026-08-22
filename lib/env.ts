@@ -75,6 +75,10 @@ export const env = {
   metaAppId: process.env.META_APP_ID ?? "",
   metaAppSecret: process.env.META_APP_SECRET ?? "",
   metaApiVersion: process.env.META_API_VERSION ?? "v25.0",
+  // Facebook Login for Business drives permissions and assets from a
+  // configuration created in the app dashboard — the authorize URL carries its
+  // id instead of a scope string. Public value, safe in a client-side URL.
+  metaLoginConfigId: process.env.META_LOGIN_CONFIG_ID ?? "",
   // TikTok Ads stays a stub: its Marketing API needs a sandbox→production
   // review plus a data-security audit, the most gated of the paid-social APIs.
   tiktokAppSecret: process.env.TIKTOK_APP_SECRET ?? "",

@@ -36,19 +36,32 @@ function metaRedirectUri(): string {
 /**
  * Read-only scope on purpose: Nightflow reports on spend, it does not run
  * campaigns. Asking for ads_management would widen App Review for nothing.
+ * Only used on the classic-login fallback — a Business configuration carries
+ * its own permission list.
  */
 const SCOPE = "ads_read";
 
+/**
+ * Facebook Login for Business does not take a scope string: permissions, the
+ * asset type (ad accounts) and the task level (ANALYZE) all live in a
+ * configuration created in the app dashboard, and the authorize URL just
+ * references its id. Falls back to classic scope-based login when no
+ * configuration is set, so the connector still works on a plain Login app.
+ */
 export function buildMetaAuthorizeUrl(state: string): string {
   const params = new URLSearchParams({
     client_id: env.metaAppId,
     redirect_uri: metaRedirectUri(),
     state,
-    scope: SCOPE,
     response_type: "code",
   });
+  if (env.metaLoginConfigId) params.set("config_id", env.metaLoginConfigId);
+  else params.set("scope", SCOPE);
   return `https://www.facebook.com/${V()}/dialog/oauth?${params}`;
 }
+
+/** True when the app authorises through a Business login configuration. */
+const usesBusinessLogin = () => !!env.metaLoginConfigId;
 
 interface TokenResponse {
   access_token?: string;
@@ -75,46 +88,64 @@ async function graphGet<T>(path: string, params: Record<string, string>): Promis
 }
 
 /**
- * Exchanges the OAuth code, then immediately upgrades the short-lived token to
- * a long-lived one (~60 days). Skipping that step would silently break every
- * connection an hour after it was made.
+ * Exchanges the OAuth code for the token Nightflow stores.
+ *
+ * Business login already returns a 60-day system user token, so it is used as
+ * is. Classic login returns a token valid for about an hour, which is upgraded
+ * to a long-lived one straight away — skipping that would silently break every
+ * connection within the hour.
  */
 export async function exchangeMetaCode(
   code: string
 ): Promise<{ accessToken: string; expiresAt: number | null } | null> {
-  const short = await graphGet<TokenResponse>("oauth/access_token", {
+  const granted = await graphGet<TokenResponse>("oauth/access_token", {
     client_id: env.metaAppId,
     client_secret: env.metaAppSecret,
     redirect_uri: metaRedirectUri(),
     code,
   });
-  if (!short?.access_token) return null;
+  if (!granted?.access_token) return null;
+
+  if (usesBusinessLogin()) {
+    return {
+      accessToken: granted.access_token,
+      expiresAt: granted.expires_in
+        ? Date.now() + granted.expires_in * 1000
+        : null,
+    };
+  }
 
   const long = await graphGet<TokenResponse>("oauth/access_token", {
     grant_type: "fb_exchange_token",
     client_id: env.metaAppId,
     client_secret: env.metaAppSecret,
-    fb_exchange_token: short.access_token,
+    fb_exchange_token: granted.access_token,
   });
-
-  const token = long?.access_token ?? short.access_token;
-  const expiresIn = long?.expires_in ?? short.expires_in;
+  const token = long?.access_token ?? granted.access_token;
+  const expiresIn = long?.expires_in ?? granted.expires_in;
   return {
     accessToken: token,
     expiresAt: expiresIn ? Date.now() + expiresIn * 1000 : null,
   };
 }
 
-/** Long-lived tokens can be re-extended before they lapse. */
+/**
+ * Re-extends the token before it lapses, server-side and with no customer
+ * interaction — which is what makes a 60-day expiry acceptable rather than a
+ * connection that dies every two months. Meta requires the expiry flag to be
+ * repeated on refresh for system user tokens.
+ */
 export async function refreshMetaToken(
   accessToken: string
 ): Promise<{ accessToken: string; expiresAt: number | null } | null> {
-  const r = await graphGet<TokenResponse>("oauth/access_token", {
+  const params: Record<string, string> = {
     grant_type: "fb_exchange_token",
     client_id: env.metaAppId,
     client_secret: env.metaAppSecret,
     fb_exchange_token: accessToken,
-  });
+  };
+  if (usesBusinessLogin()) params.set_token_expires_in_60_days = "true";
+  const r = await graphGet<TokenResponse>("oauth/access_token", params);
   if (!r?.access_token) return null;
   return {
     accessToken: r.access_token,

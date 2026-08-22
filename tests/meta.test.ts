@@ -165,3 +165,46 @@ describe("meta ads sync", () => {
     expect(summary.days).toBe(0);
   });
 });
+
+describe("meta authorize url", () => {
+  it("carries the business configuration id rather than a scope", async () => {
+    vi.resetModules();
+    vi.doMock("@/lib/env", () => ({
+      env: {
+        metaAppId: "app-1",
+        metaAppSecret: "secret",
+        metaApiVersion: "v25.0",
+        metaLoginConfigId: "4526835960968816",
+        siteUrl: "https://nightflow-analytics.vercel.app",
+      },
+    }));
+    const { buildMetaAuthorizeUrl } = await import("@/services/integrations/meta");
+    const url = buildMetaAuthorizeUrl("state-1");
+    expect(url).toContain("config_id=4526835960968816");
+    // A Business configuration carries its own permissions; sending a scope
+    // alongside it is what breaks the flow.
+    expect(url).not.toContain("scope=");
+    expect(url).toContain(
+      "redirect_uri=https%3A%2F%2Fnightflow-analytics.vercel.app%2Fapi%2Fintegrations%2Fmeta%2Foauth%2Fcallback"
+    );
+    vi.doUnmock("@/lib/env");
+  });
+
+  it("falls back to classic scope login when no configuration is set", async () => {
+    vi.resetModules();
+    vi.doMock("@/lib/env", () => ({
+      env: {
+        metaAppId: "app-1",
+        metaAppSecret: "secret",
+        metaApiVersion: "v25.0",
+        metaLoginConfigId: "",
+        siteUrl: "https://example.com",
+      },
+    }));
+    const { buildMetaAuthorizeUrl } = await import("@/services/integrations/meta");
+    const url = buildMetaAuthorizeUrl("state-1");
+    expect(url).toContain("scope=ads_read");
+    expect(url).not.toContain("config_id");
+    vi.doUnmock("@/lib/env");
+  });
+});
