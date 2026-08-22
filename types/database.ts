@@ -301,6 +301,16 @@ export type AppliedActionRow = {
   created_at: string;
 };
 
+export type DataDeletionRequestRow = {
+  code: string;
+  provider: string;
+  /** Opaque platform-scoped user id. Never an email. */
+  external_id: string;
+  deleted: Record<string, number>;
+  status: "completed" | "partial" | "failed";
+  created_at: string;
+};
+
 // ── Helper: build a Supabase-compatible table definition ──
 type Table<Row, Required extends keyof Row> = {
   Row: Row;
@@ -336,6 +346,7 @@ export interface Database {
       ai_analysis_history: Table<AiAnalysisRow, "store_id" | "kind">;
       ai_recommendations: Table<AiRecommendationRow, "store_id" | "title">;
       applied_actions: Table<AppliedActionRow, "store_id" | "user_id" | "kind" | "provider" | "summary">;
+      data_deletion_requests: Table<DataDeletionRequestRow, "code" | "provider" | "external_id">;
     };
     Views: Record<string, never>;
     Functions: {
