@@ -30,7 +30,8 @@ export type IntegrationSource =
   | "shipstation"
   | "mondialrelay"
   | "gorgias"
-  | "windsor";
+  | "windsor"
+  | "instagram";
 
 export type EventType =
   | "order"

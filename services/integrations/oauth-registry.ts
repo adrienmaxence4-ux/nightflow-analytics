@@ -4,6 +4,7 @@ import {
   isKlaviyoOAuthConfigured,
   isGoogleOAuthConfigured,
   isMetaOAuthConfigured,
+  isInstagramConfigured,
 } from "@/lib/env";
 import {
   buildStripeAuthorizeUrl,
@@ -24,6 +25,11 @@ import {
   exchangeMetaCode,
   syncMeta,
 } from "@/services/integrations/meta";
+import {
+  buildInstagramAuthorizeUrl,
+  exchangeInstagramCode,
+  syncInstagram,
+} from "@/services/integrations/instagram";
 
 /**
  * SERVER-ONLY. Registry of OAuth ("Se connecter avec …") providers.
@@ -72,6 +78,25 @@ export const OAUTH_PROVIDERS: Record<string, OAuthProviderDef> = {
         : null;
     },
     sync: syncMeta,
+  },
+  // Instagram organic. Its own app credentials, and no Facebook Page needed —
+  // see services/integrations/instagram.ts for why that matters.
+  instagram: {
+    id: "instagram",
+    label: "Instagram",
+    isConfigured: isInstagramConfigured,
+    usesPkce: false,
+    buildAuthorizeUrl: (state) => buildInstagramAuthorizeUrl(state),
+    exchangeCode: async (code) => {
+      const r = await exchangeInstagramCode(code);
+      return r
+        ? {
+            accessToken: r.accessToken,
+            metadata: { userId: r.userId, expiresAt: r.expiresAt },
+          }
+        : null;
+    },
+    sync: (accessToken) => syncInstagram(accessToken),
   },
   stripe: {
     id: "stripe",

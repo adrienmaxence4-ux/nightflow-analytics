@@ -11,6 +11,22 @@
  *  - "auto" (default) → Anthropic if its key is set, else GitHub, else mock.
  */
 
+/**
+ * Reads a variable by its canonical name, falling back to any variable whose
+ * name matches `loose`. Meta's console labels its credentials in the user's own
+ * language ("ID d'app Instagram"), and that label is what gets pasted into a
+ * hosting dashboard as a variable name — so the loose match saves a rename
+ * round-trip without the canonical name losing its status.
+ */
+function readEnv(canonical: string, loose: RegExp): string {
+  const exact = process.env[canonical];
+  if (exact?.trim()) return exact.trim();
+  for (const [key, value] of Object.entries(process.env)) {
+    if (loose.test(key) && value?.trim()) return value.trim();
+  }
+  return "";
+}
+
 export const env = {
   supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL ?? "",
   supabaseAnonKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "",
@@ -79,6 +95,18 @@ export const env = {
   // configuration created in the app dashboard — the authorize URL carries its
   // id instead of a scope string. Public value, safe in a client-side URL.
   metaLoginConfigId: process.env.META_LOGIN_CONFIG_ID ?? "",
+
+  // Instagram Login — a SEPARATE app from the Meta one, with its own id and
+  // secret. It is what reads organic Reels: insights on a professional account
+  // need no linked Facebook Page on this path, unlike the Facebook Login one.
+  instagramAppId: readEnv(
+    "INSTAGRAM_APP_ID",
+    /^(?=.*instagram)(?=.*(app.?id|id.?d.?app)).*$/i
+  ),
+  instagramAppSecret: readEnv(
+    "INSTAGRAM_APP_SECRET",
+    /^(?=.*instagram)(?=.*(secret|secr[eè]te)).*$/i
+  ),
   // TikTok Ads stays a stub: its Marketing API needs a sandbox→production
   // review plus a data-security audit, the most gated of the paid-social APIs.
   tiktokAppSecret: process.env.TIKTOK_APP_SECRET ?? "",
@@ -122,6 +150,10 @@ export const isKlaviyoOAuthConfigured =
 /** Meta Ads OAuth is live only once both halves of the app credential exist. */
 export const isMetaOAuthConfigured =
   !!env.metaAppId && !!env.metaAppSecret;
+
+/** Instagram Login is live once both halves of its own credential exist. */
+export const isInstagramConfigured =
+  !!env.instagramAppId && !!env.instagramAppSecret;
 
 export const isGoogleOAuthConfigured =
   env.googleClientId.length > 0 && env.googleClientSecret.length > 0;

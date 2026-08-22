@@ -3,6 +3,7 @@ import {
   isShopifyConfigured,
   isStripeOAuthConfigured,
   isMetaOAuthConfigured,
+  isInstagramConfigured,
   isKlaviyoOAuthConfigured,
   isGoogleOAuthConfigured,
 } from "@/lib/env";
@@ -30,6 +31,12 @@ import {
   refreshMetaToken,
   syncMeta,
 } from "@/services/integrations/meta";
+import {
+  buildInstagramAuthorizeUrl,
+  exchangeInstagramCode,
+  refreshInstagramToken,
+  syncInstagram,
+} from "@/services/integrations/instagram";
 import { refreshGoogleToken } from "@/services/integrations/google";
 import {
   normalizeShopifyOrder,
@@ -366,6 +373,38 @@ const meta: IntegrationConnector = {
   normalizeWebhook: () => [],
 };
 
+// ── Instagram organic (Instagram Login, no Facebook Page) ────────────────────
+const instagram: IntegrationConnector = {
+  ...keyedConnectorBase("instagram", "Instagram", "analytics"),
+  isConfigured: isInstagramConfigured,
+  usesPkce: false,
+  buildAuthorizeUrl: (state) => buildInstagramAuthorizeUrl(state),
+  exchangeCode: async (code) => {
+    const r = await exchangeInstagramCode(code);
+    return r
+      ? {
+          accessToken: r.accessToken,
+          refreshToken: null,
+          expiresAt: r.expiresAt,
+          metadata: { userId: r.userId },
+        }
+      : null;
+  },
+  // 60-day tokens, extended server-side so a connection made once survives.
+  refresh: async (tokens) => {
+    const r = await refreshInstagramToken(tokens.accessToken);
+    return r
+      ? { accessToken: r.accessToken, refreshToken: null, expiresAt: r.expiresAt }
+      : null;
+  },
+  fetchData: async () => [],
+  sync: (ctx) =>
+    syncWithCredential("instagram", ctx, async (token) => {
+      const synced = await syncInstagram(token);
+      return synced.orders;
+    }),
+};
+
 // ── TikTok Ads (still pending platform approval) ─────────────────────────────
 function adStub(
   source: "meta" | "tiktok",
@@ -407,6 +446,7 @@ const CONNECTORS: Record<IntegrationSource, IntegrationConnector> = {
   mondialrelay: MONDIAL_RELAY,
   gorgias: GORGIAS,
   windsor,
+  instagram,
 };
 
 /** Provider id (DB) → connector. Note: GA4 is stored under provider "google". */
@@ -427,6 +467,7 @@ const PROVIDER_TO_SOURCE: Record<string, IntegrationSource> = {
   mondialrelay: "mondialrelay",
   gorgias: "gorgias",
   windsor: "windsor",
+  instagram: "instagram",
 };
 
 export function getConnector(

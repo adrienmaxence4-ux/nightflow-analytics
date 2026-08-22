@@ -61,7 +61,7 @@ interface Payload {
   days: number;
   connected: boolean;
   /** Which connector produced the numbers below. */
-  source: "meta" | "windsor" | null;
+  source: "instagram" | "meta" | "windsor" | null;
   instagramError: string | null;
   posts: Post[];
   totals: {
@@ -146,12 +146,12 @@ export default function AdminReelsPage() {
                 <Plug className="h-4 w-4 text-neon-cyan" aria-hidden />
               </span>
               <p className="min-w-[240px] flex-1 text-[13px] leading-relaxed text-ink-dim">
-                Connecte <b className="text-white">Meta Ads</b> dans Intégrations
-                pour voir tes Reels ici. Ta connexion doit couvrir Instagram —
-                voir la note ci-dessous.
+                Connecte <b className="text-white">Instagram</b> dans Intégrations
+                pour voir tes Reels ici. Aucune Page Facebook n&apos;est
+                nécessaire.
               </p>
               <Link href="/integrations">
-                <Button variant="primary" size="sm">Connecter Meta</Button>
+                <Button variant="primary" size="sm">Connecter Instagram</Button>
               </Link>
             </Card>
           )}
@@ -190,8 +190,21 @@ export default function AdminReelsPage() {
             <h2 className="mb-3 flex flex-wrap items-center gap-2 text-[10px] font-bold tracking-[1.6px] text-ink-mut">
               PUBLICATIONS
               {data.source && (
-                <Badge variant={data.source === "meta" ? "cyan" : "violet"}>
-                  via {data.source === "meta" ? "Meta" : "Windsor"}
+                <Badge
+                  variant={
+                    data.source === "instagram"
+                      ? "pink"
+                      : data.source === "meta"
+                        ? "cyan"
+                        : "violet"
+                  }
+                >
+                  via{" "}
+                  {data.source === "instagram"
+                    ? "Instagram"
+                    : data.source === "meta"
+                      ? "Meta"
+                      : "Windsor"}
                 </Badge>
               )}
             </h2>

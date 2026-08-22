@@ -9,6 +9,7 @@ import {
   type InstagramPost,
 } from "@/services/integrations/windsor";
 import { fetchMetaInstagramPosts } from "@/services/integrations/meta";
+import { fetchInstagramPosts as fetchViaInstagramLogin } from "@/services/integrations/instagram";
 
 /**
  * GET /api/admin/reels — ADMIN ONLY.
@@ -53,12 +54,30 @@ export async function GET() {
   let posts: InstagramPost[] = [];
   let instagramError: string | null = null;
   let connected = false;
-  let source: "meta" | "windsor" | null = null;
+  let source: "instagram" | "meta" | "windsor" | null = null;
 
   if (storeId) {
     const db = supabase as unknown as SupabaseClient;
 
-    const metaTokens = await getStoredTokens(db, storeId, "meta");
+    // Instagram Login first: it is the only path that reads organic Reels on a
+    // professional account with no Facebook Page, which is the common case.
+    const igTokens = await getStoredTokens(db, storeId, "instagram");
+    if (igTokens) {
+      connected = true;
+      try {
+        const igPosts = await fetchViaInstagramLogin(igTokens.accessToken, DAYS);
+        if (igPosts) {
+          posts = igPosts;
+          source = "instagram";
+        } else {
+          instagramError = "Instagram n'a pas renvoyé de publications.";
+        }
+      } catch (e) {
+        instagramError = (e as Error).message.slice(0, 200);
+      }
+    }
+
+    const metaTokens = source ? null : await getStoredTokens(db, storeId, "meta");
     if (metaTokens) {
       connected = true;
       try {
@@ -73,7 +92,7 @@ export async function GET() {
           // The token is valid but carries no Instagram grant — say which
           // permissions are missing rather than showing an empty list.
           instagramError =
-            "Ta connexion Meta ne couvre pas Instagram. Ajoute instagram_basic, instagram_manage_insights et pages_show_list à la configuration de connexion, puis reconnecte.";
+            "Ta connexion Meta Ads ne couvre pas Instagram — c'est normal, ads_read ne donne accès qu'aux publicités. Connecte Instagram pour voir tes Reels.";
         }
       } catch (e) {
         instagramError = (e as Error).message.slice(0, 200);
