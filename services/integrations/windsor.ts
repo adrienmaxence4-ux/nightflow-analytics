@@ -300,3 +300,113 @@ export async function syncWindsor(
   // meaningful count is the number of paid channels found.
   return { orders: paid.length, revenueCents, days: days.size };
 }
+
+// ── Instagram organic ────────────────────────────────────────────────────────
+
+/**
+ * Fields for the Instagram connector. Deliberately post-level: the founder
+ * dashboard reports on what was published, not on the audience.
+ */
+const IG_FIELDS = [
+  "date",
+  "media_id",
+  "media_caption",
+  "media_permalink",
+  "media_type",
+  "media_product_type",
+  "media_views",
+  "media_like_count",
+  "media_comments_count",
+  "media_shares",
+  "media_saved",
+  "media_reach",
+].join(",");
+
+interface IgRow {
+  date?: string;
+  media_id?: string;
+  media_caption?: string;
+  media_permalink?: string;
+  media_type?: string;
+  media_product_type?: string;
+  media_views?: number | string | null;
+  media_like_count?: number | string | null;
+  media_comments_count?: number | string | null;
+  media_shares?: number | string | null;
+  media_saved?: number | string | null;
+  media_reach?: number | string | null;
+}
+
+/** One published post, as the admin Reels page renders it. */
+export interface InstagramPost {
+  id: string;
+  date: string;
+  caption: string;
+  permalink: string;
+  /** True for REELS; a feed image is reported separately rather than hidden. */
+  isReel: boolean;
+  views: number;
+  likes: number;
+  comments: number;
+  shares: number;
+  saves: number;
+  reach: number;
+  /** Tracking code found in the caption, when one was actually published. */
+  trackingCode: string | null;
+}
+
+const int = (v: unknown): number => Math.max(0, Math.round(num(v)));
+
+/**
+ * Finds a `?a=CODE` tracking link inside a caption. Nothing is inferred: a post
+ * that never carried a link gets null, because guessing which post drove a bio
+ * click would be inventing attribution that does not exist.
+ */
+export function trackingCodeInCaption(caption: string): string | null {
+  const m = caption.match(/[?&]a=([a-zA-Z0-9_-]{2,40})/);
+  return m ? m[1] : null;
+}
+
+/** Published posts with their engagement, newest first. */
+export async function fetchInstagramPosts(
+  key: string,
+  days = 90
+): Promise<InstagramPost[]> {
+  const apiKey = extractWindsorKey(key);
+  if (!apiKey) throw new Error("Clé Windsor.ai illisible.");
+
+  const to = new Date();
+  const from = new Date();
+  from.setDate(from.getDate() - days);
+
+  const rows = (await windsorGet(apiKey, "instagram", {
+    fields: IG_FIELDS,
+    date_from: isoDay(from),
+    date_to: isoDay(to),
+  })) as IgRow[] | null;
+  if (rows === null) {
+    throw new Error("Windsor.ai n'a pas répondu — vérifie ta clé API.");
+  }
+
+  return rows
+    .filter((r) => r.media_id)
+    .map((r): InstagramPost => {
+      const caption = String(r.media_caption ?? "");
+      return {
+        id: String(r.media_id),
+        date: String(r.date ?? ""),
+        caption,
+        permalink: String(r.media_permalink ?? ""),
+        isReel:
+          r.media_product_type === "REELS" || r.media_type === "REELS",
+        views: int(r.media_views),
+        likes: int(r.media_like_count),
+        comments: int(r.media_comments_count),
+        shares: int(r.media_shares),
+        saves: int(r.media_saved),
+        reach: int(r.media_reach),
+        trackingCode: trackingCodeInCaption(caption),
+      };
+    })
+    .sort((a, b) => b.date.localeCompare(a.date));
+}

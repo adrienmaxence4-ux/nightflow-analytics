@@ -3,7 +3,9 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   WINDSOR_CHANNELS,
   extractWindsorKey,
+  fetchInstagramPosts,
   syncWindsor,
+  trackingCodeInCaption,
   validateWindsorKey,
 } from "@/services/integrations/windsor";
 
@@ -272,5 +274,77 @@ describe("windsor sync", () => {
     expect(WINDSOR_CHANNELS).toContain("Google Ads");
     // No duplicates: several Windsor sources collapse onto one label.
     expect(new Set(WINDSOR_CHANNELS).size).toBe(WINDSOR_CHANNELS.length);
+  });
+});
+
+describe("instagram posts", () => {
+  it("reads a tracking code only when the caption really carries one", () => {
+    expect(
+      trackingCodeInCaption("Essai gratuit 👉 nightflow.app/?a=v2-fondateur #ia")
+    ).toBe("v2-fondateur");
+    expect(trackingCodeInCaption("Regarde ça &a=v3-demo plus loin")).toBe("v3-demo");
+    // "lien en bio" is the common case and must NOT be credited to a code:
+    // guessing which post drove a shared bio click invents attribution.
+    expect(trackingCodeInCaption("Essai gratuit, sans carte → lien en bio")).toBeNull();
+    expect(trackingCodeInCaption("")).toBeNull();
+  });
+
+  it("normalises posts, flags reels and sorts newest first", async () => {
+    mockFetch({
+      data: [
+        {
+          date: "2026-07-05",
+          media_id: "1",
+          media_caption: "Un post feed",
+          media_permalink: "https://instagram.com/p/aaa",
+          media_type: "IMAGE",
+          media_product_type: "FEED",
+          media_views: 27,
+          media_like_count: 2,
+          media_reach: 11,
+        },
+        {
+          date: "2026-08-21",
+          media_id: "2",
+          media_caption: "Un reel ?a=v5-notif",
+          media_permalink: "https://instagram.com/reel/bbb",
+          media_type: "REELS",
+          media_product_type: "REELS",
+          media_views: 95,
+          media_like_count: 4,
+          media_reach: 76,
+        },
+      ],
+    });
+    const posts = await fetchInstagramPosts("k");
+    expect(posts.map((p) => p.id)).toEqual(["2", "1"]);
+    expect(posts[0].isReel).toBe(true);
+    expect(posts[0].trackingCode).toBe("v5-notif");
+    expect(posts[1].isReel).toBe(false);
+    expect(posts[1].trackingCode).toBeNull();
+    expect(posts[0].views).toBe(95);
+  });
+
+  it("never returns a negative or fractional count", async () => {
+    mockFetch({
+      data: [
+        {
+          date: "2026-08-01",
+          media_id: "3",
+          media_views: -5,
+          media_like_count: "2.6",
+          media_reach: null,
+        },
+      ],
+    });
+    const posts = await fetchInstagramPosts("k");
+    expect(posts[0].views).toBe(0);
+    expect(posts[0].likes).toBe(3);
+    expect(posts[0].reach).toBe(0);
+  });
+
+  it("fails loudly rather than pretending there were no posts", async () => {
+    mockFetch({ error: "nope" }, false);
+    await expect(fetchInstagramPosts("k")).rejects.toThrow(/Windsor/);
   });
 });

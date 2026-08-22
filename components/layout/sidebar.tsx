@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BarChart3, Moon, Sparkles } from "lucide-react";
+import { BarChart3, Film, Moon, Sparkles } from "lucide-react";
 import { NAV_MAIN, NAV_SECONDARY, type NavItem } from "@/lib/nav";
 import { usePlan } from "@/hooks/use-plan";
 import { useIsAdmin } from "@/hooks/use-admin";
@@ -16,7 +16,11 @@ export function Sidebar() {
   const unread = useUnread();
   // Page de stats réservée au fondateur, ajoutée sans toucher à lib/nav.
   const secondaryItems: NavItem[] = isAdmin
-    ? [...NAV_SECONDARY, { href: "/admin", label: "Stats du site", icon: BarChart3 }]
+    ? [
+        ...NAV_SECONDARY,
+        { href: "/admin", label: "Stats du site", icon: BarChart3 },
+        { href: "/admin/reels", label: "Mes publications", icon: Film },
+      ]
     : NAV_SECONDARY;
   const badges: Record<string, number> = {
     "/notifications": unread.notifications,
