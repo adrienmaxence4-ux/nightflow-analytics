@@ -17,6 +17,13 @@ import { AI_MODEL } from "@/services/ai/client";
  */
 const CACHE_MS = 6 * 60 * 60 * 1000;
 
+/**
+ * Bump when the shape of a cached payload changes. A payload written before the
+ * bump is treated as stale, so a schema addition (executable actions, say)
+ * shows up straight away instead of waiting out someone's 6-hour cache.
+ */
+const CACHE_VERSION = 2;
+
 export async function GET(req: Request) {
   const refresh = new URL(req.url).searchParams.get("refresh") === "1";
   const ctx = await buildStoreContext();
@@ -34,6 +41,7 @@ export async function GET(req: Request) {
   ]);
 
   const body = {
+    v: CACHE_VERSION,
     source: insights.source,
     insights: insights.items,
     recommendations: recommendations.items,
@@ -54,6 +62,7 @@ export async function GET(req: Request) {
 }
 
 interface InsightsBody {
+  v?: number;
   source: "ai" | "mock";
   insights: unknown[];
   recommendations: unknown[];
@@ -74,6 +83,7 @@ async function readCache(storeId: string): Promise<InsightsBody | null> {
     | { payload: InsightsBody; created_at: string }
     | undefined;
   if (!row) return null;
+  if (row.payload?.v !== CACHE_VERSION) return null;
   if (Date.now() - new Date(row.created_at).getTime() > CACHE_MS) return null;
   return row.payload;
 }

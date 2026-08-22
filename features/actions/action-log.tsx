@@ -1,7 +1,14 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { AlertTriangle, Check, History, RotateCcw, Undo2 } from "lucide-react";
+import {
+  AlertTriangle,
+  Check,
+  FlaskConical,
+  History,
+  RotateCcw,
+  Undo2,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 
@@ -17,6 +24,8 @@ interface LoggedAction {
   summary: string;
   status: "applied" | "failed" | "undone" | "planned";
   reversible: boolean;
+  /** Applied to the demo catalogue rather than a real storefront. */
+  simulated: boolean;
   error: string | null;
   executedAt: string | null;
   createdAt: string;
@@ -67,9 +76,12 @@ export function ActionLog({ refreshKey = 0 }: { refreshKey?: number }) {
         body: JSON.stringify({ actionId: id }),
       });
       const json = (await res.json()) as { error?: string };
+      const undone = actions.find((a) => a.id === id);
       toast(
         res.ok
-          ? "Modification annulée — ta boutique est revenue à l'état initial."
+          ? undone?.simulated
+            ? "Simulation annulée — tes données de démo sont revenues à l'état initial."
+            : "Modification annulée — ta boutique est revenue à l'état initial."
           : json.error ?? "Annulation impossible.",
         res.ok ? "success" : "info"
       );
@@ -101,7 +113,15 @@ export function ActionLog({ refreshKey = 0 }: { refreshKey?: number }) {
             >
               <s.icon className={`h-4 w-4 flex-none ${s.tone}`} aria-hidden />
               <div className="min-w-0 flex-1">
-                <p className="truncate text-[13px] font-semibold text-ink">{a.summary}</p>
+                <p className="flex items-center gap-1.5 text-[13px] font-semibold text-ink">
+                  <span className="truncate">{a.summary}</span>
+                  {a.simulated && (
+                    <span className="inline-flex flex-none items-center gap-1 rounded-md bg-neon-violet/15 px-1.5 py-0.5 text-[9.5px] font-bold uppercase tracking-wider text-neon-violet">
+                      <FlaskConical className="h-2.5 w-2.5" aria-hidden />
+                      Démo
+                    </span>
+                  )}
+                </p>
                 <p className="mt-0.5 text-[11px] text-ink-mut">
                   {s.label} · {when(a.executedAt ?? a.createdAt)}
                   {a.error ? ` · ${a.error}` : ""}

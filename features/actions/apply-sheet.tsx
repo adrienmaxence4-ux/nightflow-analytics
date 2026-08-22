@@ -10,6 +10,7 @@ import {
   Plug,
   RotateCcw,
   ShieldCheck,
+  FlaskConical,
 } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -43,6 +44,8 @@ interface ActionPlan {
   changes: ActionChange[];
   warnings: string[];
   reversible: boolean;
+  /** The change lands on the demo catalogue, not on a real storefront. */
+  simulated: boolean;
 }
 
 type Phase = "planning" | "ready" | "applying" | "done" | "error";
@@ -157,7 +160,11 @@ export function ApplySheet({
       }
       setAppliedId(json.action.id);
       setPhase("done");
-      toast("Modification appliquée sur ta boutique ✨");
+      toast(
+        plan.simulated
+          ? "Simulation appliquée sur tes données de démo ✨"
+          : "Modification appliquée sur ta boutique ✨"
+      );
       onApplied?.();
     } catch {
       setError({ message: "Connexion perdue — réessaie.", code: "platform" });
@@ -179,7 +186,11 @@ export function ApplySheet({
         toast(json.error ?? "Annulation impossible.", "info");
         return;
       }
-      toast("Modification annulée — ta boutique est revenue à l'état initial.");
+      toast(
+        plan?.simulated
+          ? "Simulation annulée — tes données de démo sont revenues à l'état initial."
+          : "Modification annulée — ta boutique est revenue à l'état initial."
+      );
       onApplied?.();
       onClose();
     } catch {
@@ -208,9 +219,11 @@ export function ApplySheet({
                   ? "Vérification de ta boutique…"
                   : phase === "error"
                     ? "Aucune modification n'a été faite."
-                    : plan
-                      ? `Nightflow va écrire sur ${plan.providerLabel}.`
-                      : ""}
+                    : plan?.simulated
+                      ? "Simulation sur tes données de démonstration."
+                      : plan
+                        ? `Nightflow va écrire sur ${plan.providerLabel}.`
+                        : ""}
               </p>
             </div>
           </header>
@@ -245,6 +258,7 @@ export function ApplySheet({
 
           {(phase === "ready" || phase === "applying") && plan && (
             <div className="flex flex-col gap-4">
+              {plan.simulated && <SimulationNotice />}
               <p className="text-[13px] leading-relaxed text-ink-dim">{plan.intro}</p>
 
               {field && (
@@ -335,9 +349,13 @@ export function ApplySheet({
               <div className="flex gap-3 rounded-xl border border-neon-lime/35 bg-neon-lime/8 p-4">
                 <Check className="h-4 w-4 flex-none text-neon-lime" />
                 <p className="text-[13px] font-semibold leading-relaxed text-ink">
-                  C&apos;est fait — la modification est en ligne sur {plan.providerLabel}.
+                  {plan.simulated
+                    ? "C'est fait — la modification est appliquée sur tes données de démonstration."
+                    : `C'est fait — la modification est en ligne sur ${plan.providerLabel}.`}
                 </p>
               </div>
+
+              {plan.simulated && <SimulationNotice />}
 
               <ChangeList changes={plan.changes} />
 
@@ -357,6 +375,23 @@ export function ApplySheet({
         </div>
       )}
     </Sheet>
+  );
+}
+
+/**
+ * Says, in plain words, that no real shop is being touched. The simulation is
+ * only useful if nobody can mistake it for the real thing.
+ */
+function SimulationNotice() {
+  return (
+    <div className="flex gap-3 rounded-xl border border-neon-violet/40 bg-neon-violet/8 p-3.5">
+      <FlaskConical className="mt-0.5 h-4 w-4 flex-none text-neon-violet" aria-hidden />
+      <p className="text-[12px] leading-relaxed text-ink-dim">
+        <b className="text-neon-violet">Mode démonstration.</b> Aucune boutique
+        réelle n&apos;est connectée : la modification s&apos;applique à tes données
+        de démonstration, pour que tu voies exactement ce que Nightflow ferait.
+      </p>
+    </div>
   );
 }
 

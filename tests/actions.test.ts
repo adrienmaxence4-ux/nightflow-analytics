@@ -29,6 +29,7 @@ const product = (o: Partial<ProductRow>): ProductRow => ({
   sales: 40,
   revenue_cents: 120_000,
   revenue_share: 30,
+  published: true,
   created_at: "",
   updated_at: "",
   ...o,

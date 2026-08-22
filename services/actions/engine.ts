@@ -13,6 +13,8 @@ import {
 } from "@/services/actions/catalog";
 import { shopifyWriter } from "@/services/actions/adapters/shopify";
 import { wooWriter } from "@/services/actions/adapters/woocommerce";
+import { makeDemoWriter } from "@/services/actions/adapters/demo";
+import { isAdminEmail } from "@/lib/admin";
 import {
   ActionError,
   type CommerceWriter,
@@ -38,12 +40,12 @@ import type { AppliedActionRow, ProductRow } from "@/types/database";
  * explicit store_id filter).
  */
 
-const WRITERS: Record<ActionProvider, CommerceWriter> = {
+const WRITERS: Record<"shopify" | "woocommerce", CommerceWriter> = {
   shopify: shopifyWriter,
   woocommerce: wooWriter,
 };
 /** Shopify first: it's the richer API and the more common connection. */
-const PROVIDER_ORDER: ActionProvider[] = ["shopify", "woocommerce"];
+const PROVIDER_ORDER: ("shopify" | "woocommerce")[] = ["shopify", "woocommerce"];
 
 export interface ActionChange {
   label: string;
@@ -62,6 +64,8 @@ export interface ActionPlan {
   changes: ActionChange[];
   warnings: string[];
   reversible: boolean;
+  /** True when the change lands on the demo catalogue, not a real storefront. */
+  simulated: boolean;
   expiresAt: string;
 }
 
@@ -73,6 +77,7 @@ export interface AppliedAction {
   changes: ActionChange[];
   status: AppliedActionRow["status"];
   reversible: boolean;
+  simulated: boolean;
   error: string | null;
   executedAt: string | null;
   createdAt: string;
@@ -108,6 +113,8 @@ interface ActionContext {
   db: SupabaseClient;
   userId: string;
   storeId: string;
+  /** Only the project owner may fall back to the simulation writer. */
+  isAdmin: boolean;
 }
 
 /** Auth + store + plan gate. Everything below assumes a real, paying store. */
@@ -135,7 +142,12 @@ async function context(): Promise<Result<{ ctx: ActionContext }>> {
 
   return {
     ok: true,
-    ctx: { db: supabase as unknown as SupabaseClient, userId: user.id, storeId },
+    ctx: {
+      db: supabase as unknown as SupabaseClient,
+      userId: user.id,
+      storeId,
+      isAdmin: isAdminEmail(user.email),
+    },
   };
 }
 
@@ -152,12 +164,24 @@ async function resolveWriter(
     ((data as { provider: string }[] | null) ?? []).map((r) => r.provider)
   );
   const provider = PROVIDER_ORDER.find((p) => connected.has(p));
+
+  // A real storefront always wins. The simulation is a fallback for the owner
+  // only, so a customer without a connection is told to connect rather than
+  // handed a button that quietly edits Nightflow's own copy of their data.
   if (!provider) {
+    if (ctx.isAdmin) {
+      return {
+        ok: true,
+        writer: makeDemoWriter(ctx.db, ctx.storeId),
+        cred: { provider: "demo", token: "", metadata: {} },
+      };
+    }
     return fail(
       "no_provider",
       "Connecte Shopify ou WooCommerce pour que Nightflow puisse appliquer les recommandations."
     );
   }
+
   const tokens = await getStoredTokens(ctx.db, ctx.storeId, provider);
   if (!tokens) {
     return fail("no_provider", "Identifiants introuvables — reconnecte l'intégration.");
@@ -412,6 +436,7 @@ export async function planAction(
       changes: draft.changes,
       warnings: draft.warnings,
       reversible: def.reversible,
+      simulated: cred.provider === "demo",
       expiresAt: row.expires_at,
     },
   };
@@ -533,6 +558,7 @@ export async function executeAction(
       changes: row.changes,
       status: "applied",
       reversible: row.reversible,
+      simulated: cred.provider === "demo",
       error: null,
       executedAt,
       createdAt: row.created_at,
@@ -638,6 +664,7 @@ export async function undoAction(
       changes: row.changes,
       status: "undone",
       reversible: row.reversible,
+      simulated: cred.provider === "demo",
       error: null,
       executedAt: row.executed_at,
       createdAt: row.created_at,
@@ -667,6 +694,7 @@ export async function listActions(limit = 20): Promise<AppliedAction[]> {
     changes: r.changes ?? [],
     status: r.status,
     reversible: r.reversible,
+    simulated: r.provider === "demo",
     error: r.error,
     executedAt: r.executed_at,
     createdAt: r.created_at,

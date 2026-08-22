@@ -64,6 +64,8 @@ interface WooProduct {
   price?: string;
   stock_quantity?: number | null;
   manage_stock?: boolean;
+  /** "publish" is the only status visible on the storefront. */
+  status?: string;
 }
 interface WooOrder {
   id?: number;
@@ -152,6 +154,7 @@ export async function syncWoo(
         sales: agg.qty,
         revenue_cents: agg.rev,
         revenue_share: Number(((agg.rev / catalogueRevenue) * 100).toFixed(2)),
+        published: p.status === undefined ? true : p.status === "publish",
       };
     });
   if (productRows.length) {

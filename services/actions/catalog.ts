@@ -22,7 +22,12 @@ export type ActionKind =
   | "product.unpublish"
   | "discount.create";
 
-export type ActionProvider = "shopify" | "woocommerce";
+/**
+ * Where an action is carried out. "demo" is the simulation target (the store's
+ * own catalogue) — never a silent substitute for a real platform, see
+ * services/actions/adapters/demo.ts.
+ */
+export type ActionProvider = "shopify" | "woocommerce" | "demo";
 
 export const ACTION_KINDS: ActionKind[] = [
   "product.price.update",
@@ -66,7 +71,7 @@ export const ACTIONS: Record<ActionKind, ActionDef> = {
   "product.price.update": {
     kind: "product.price.update",
     label: "Appliquer le nouveau prix",
-    intro: "Nightflow va modifier le prix de ce produit sur ta boutique.",
+    intro: "Nightflow va modifier le prix de vente de ce produit.",
     icon: "🏷️",
     needsProduct: true,
     reversible: true,
@@ -74,7 +79,7 @@ export const ACTIONS: Record<ActionKind, ActionDef> = {
   "product.stock.set": {
     kind: "product.stock.set",
     label: "Mettre à jour le stock",
-    intro: "Nightflow va corriger la quantité en stock sur ta boutique.",
+    intro: "Nightflow va corriger la quantité en stock de ce produit.",
     icon: "📦",
     needsProduct: true,
     reversible: true,
@@ -83,7 +88,7 @@ export const ACTIONS: Record<ActionKind, ActionDef> = {
     kind: "product.unpublish",
     label: "Masquer le produit",
     intro:
-      "Nightflow va retirer ce produit de la vitrine. Il reste dans ton catalogue et peut être republié en un clic.",
+      "Nightflow va retirer ce produit de la vitrine. Il reste dans le catalogue et peut être republié en un clic.",
     icon: "🙈",
     needsProduct: true,
     reversible: true,
@@ -91,7 +96,7 @@ export const ACTIONS: Record<ActionKind, ActionDef> = {
   "discount.create": {
     kind: "discount.create",
     label: "Créer le code promo",
-    intro: "Nightflow va créer ce code de réduction sur ta boutique.",
+    intro: "Nightflow va créer ce code de réduction.",
     icon: "🎁",
     needsProduct: false,
     reversible: true,

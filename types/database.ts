@@ -57,6 +57,8 @@ export type ProductRow = {
   sales: number;
   revenue_cents: number;
   revenue_share: number;
+  /** Visible on the storefront. False when hidden/draft. */
+  published: boolean;
   created_at: string;
   updated_at: string;
 }

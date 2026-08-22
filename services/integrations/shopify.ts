@@ -81,6 +81,8 @@ interface ShopifyVariant {
 interface ShopifyProduct {
   id: number;
   title: string;
+  /** "active" | "draft" | "archived" — only "active" is on the storefront. */
+  status?: string;
   variants?: ShopifyVariant[];
 }
 interface ShopifyLineItem {
@@ -184,6 +186,7 @@ export async function syncShopify(
       sales: agg.qty,
       revenue_cents: agg.rev,
       revenue_share: Number(((agg.rev / totalRev) * 100).toFixed(2)),
+      published: p.status === undefined ? true : p.status === "active",
     };
   });
 
