@@ -33,33 +33,41 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Question trop longue" }, { status: 413 });
   }
 
-  // Burst protection + plan-based daily AI quota (cost control).
+  // Every path below this point makes a real, metered AI call. The chat is
+  // only ever rendered from the logged-in app (features/copilot/copilot-chat),
+  // so an anonymous caller has no legitimate reason to reach it — and without
+  // this gate, rateLimit() below only keys off user.id and silently does
+  // nothing for a request with no session, leaving the route wide open to an
+  // unauthenticated script that burns the AI quota in a tight loop.
   const supabaseForQuota = createClient();
-  if (supabaseForQuota) {
-    const {
-      data: { user },
-    } = await supabaseForQuota.auth.getUser();
-    if (user) {
-      if (!rateLimit(`copilot:${user.id}`, 8, 60_000)) {
-        return NextResponse.json(RATE_LIMITED, { status: 429 });
-      }
-      const { plan } = await getUserSubscription();
-      if (!plan.aiUnlimited) {
-        const quota = Math.max(plan.aiPerDay, 3); // free keeps a small taste (3/day)
-        const used = await countTodayQuestions(supabaseForQuota, user.id);
-        if (used >= quota) {
-          return NextResponse.json({
-            answer:
-              plan.id === "scale"
-                ? "Quota atteint — réessaie demain."
-                : `Tu as utilisé tes ${quota} questions IA du jour. Passe en ${
-                    plan.id === "pro" ? "Scale pour l'IA illimitée" : "Pro pour 20 questions/jour"
-                  } — ou reviens demain 🌙`,
-            source: "quota",
-            conversationId: null,
-          });
-        }
-      }
+  if (!supabaseForQuota) {
+    return NextResponse.json({ error: "offline" }, { status: 503 });
+  }
+  const {
+    data: { user },
+  } = await supabaseForQuota.auth.getUser();
+  if (!user) {
+    return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+  }
+
+  if (!rateLimit(`copilot:${user.id}`, 8, 60_000)) {
+    return NextResponse.json(RATE_LIMITED, { status: 429 });
+  }
+  const { plan } = await getUserSubscription();
+  if (!plan.aiUnlimited) {
+    const quota = Math.max(plan.aiPerDay, 3); // free keeps a small taste (3/day)
+    const used = await countTodayQuestions(supabaseForQuota, user.id);
+    if (used >= quota) {
+      return NextResponse.json({
+        answer:
+          plan.id === "scale"
+            ? "Quota atteint — réessaie demain."
+            : `Tu as utilisé tes ${quota} questions IA du jour. Passe en ${
+                plan.id === "pro" ? "Scale pour l'IA illimitée" : "Pro pour 20 questions/jour"
+              } — ou reviens demain 🌙`,
+        source: "quota",
+        conversationId: null,
+      });
     }
   }
 

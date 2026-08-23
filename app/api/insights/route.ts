@@ -25,6 +25,20 @@ const CACHE_MS = 6 * 60 * 60 * 1000;
 const CACHE_VERSION = 2;
 
 export async function GET(req: Request) {
+  // Same gate as /api/copilot, for the same reason: this is three metered AI
+  // calls per hit (insights, recommendations, summary), and when no user is
+  // signed in buildStoreContext() falls back to demo data with storeId=null —
+  // which also skips the 6h cache below, so every anonymous hit was a fresh,
+  // uncached triple AI call with no rate limit anywhere in front of it.
+  const supabase = createClient();
+  if (!supabase) return NextResponse.json({ error: "offline" }, { status: 503 });
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+  }
+
   const refresh = new URL(req.url).searchParams.get("refresh") === "1";
   const ctx = await buildStoreContext();
 
