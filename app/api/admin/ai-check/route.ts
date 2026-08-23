@@ -14,18 +14,23 @@ import { resolveProvider } from "@/services/ai/anthropic";
  * mocked Copilot survived in production unnoticed.
  *
  * A present key is NOT proof the AI works — an exhausted credit balance, a
- * revoked key and a wrong model all fail the same silent way, because
+ * revoked token and a wrong model all fail the same silent way, because
  * callClaudeText swallows every error and returns null by design. So this
- * endpoint makes a real one-token call and reports what the provider actually
- * said. That is the whole point: checking configuration alone would have
- * reported "prêt" while every answer was fake.
+ * endpoint makes a real one-token call against whichever provider is actually
+ * resolved, and reports what that provider said. Checking configuration alone
+ * would have reported "prêt" while every answer was fake.
  *
  * NEVER returns a key. Presence and length only.
  */
 export const dynamic = "force-dynamic";
 
-/** A real, minimal call. The cheapest honest answer available. */
-async function probeAnthropic(): Promise<{ ok: boolean; detail: string }> {
+interface Probe {
+  ok: boolean;
+  detail: string;
+}
+
+/** A real, minimal Claude call. The cheapest honest answer available. */
+async function probeAnthropic(): Promise<Probe> {
   const client = getAnthropic();
   if (!client) return { ok: false, detail: "Clé absente — aucun appel tenté." };
   try {
@@ -44,6 +49,49 @@ async function probeAnthropic(): Promise<{ ok: boolean; detail: string }> {
   }
 }
 
+/**
+ * The same real call against GitHub Models. Its free tier fails in ways a
+ * config check cannot see — a token without the `models` permission returns
+ * 401, and the daily allowance returns 429 — so it is probed exactly like
+ * Claude rather than assumed working.
+ */
+async function probeGithub(): Promise<Probe> {
+  if (!isGithubConfigured) {
+    return { ok: false, detail: "Token absent — aucun appel tenté." };
+  }
+  try {
+    const res = await fetch(`${env.githubEndpoint}/chat/completions`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${env.githubToken}`,
+      },
+      body: JSON.stringify({
+        model: env.githubModel,
+        max_tokens: 1,
+        messages: [{ role: "user", content: "ping" }],
+      }),
+      signal: AbortSignal.timeout(30_000),
+    });
+    if (!res.ok) {
+      const body = await res.text().catch(() => "");
+      const hint =
+        res.status === 401
+          ? " — le token n'a probablement pas la permission « Models »."
+          : res.status === 429
+            ? " — quota gratuit atteint, il se recharge tout seul."
+            : "";
+      return {
+        ok: false,
+        detail: `${res.status} — ${body.slice(0, 300)}${hint}`,
+      };
+    }
+    return { ok: true, detail: `Appel réel réussi sur ${env.githubModel}.` };
+  } catch (err) {
+    return { ok: false, detail: String(err).slice(0, 300) };
+  }
+}
+
 export async function GET() {
   const supabase = createClient();
   if (!supabase) return NextResponse.json({ error: "offline" }, { status: 503 });
@@ -58,24 +106,22 @@ export async function GET() {
   const anthropic = env.anthropicKey;
   const github = env.githubToken;
 
-  const probe =
+  // Only the resolved provider is probed — that is the one actually answering
+  // customers. Probing the other would report a health nobody is relying on.
+  const probe: Probe =
     provider === "anthropic"
       ? await probeAnthropic()
-      : {
-          ok: provider !== "none",
-          detail:
-            provider === "github"
-              ? "Fournisseur GitHub Models — non sondé ici."
-              : "Aucun fournisseur résolu.",
-        };
+      : provider === "github"
+        ? await probeGithub()
+        : { ok: false, detail: "Aucun fournisseur résolu." };
 
   return NextResponse.json({
     provider,
     working: probe.ok,
     verdict: probe.ok
-      ? "Le Copilot interroge le modèle et raisonne sur les vraies données de la boutique."
+      ? `Le Copilot interroge ${provider === "github" ? "GitHub Models" : "Claude"} et raisonne sur les vraies données de la boutique.`
       : provider === "none"
-        ? "Aucun fournisseur IA configuré — le Copilot sert des réponses pré-écrites. Ajoute GITHUB_TOKEN (gratuit) ou ANTHROPIC_API_KEY dans Vercel, puis redéploie."
+        ? "Aucun fournisseur IA configuré — le Copilot sert des réponses pré-écrites. Ajoute GITHUB_MODELS_TOKEN (gratuit, sans carte) ou recharge ANTHROPIC_API_KEY, puis redéploie."
         : `La clé est bien lue, mais l'appel échoue — le Copilot sert donc des réponses pré-écrites. Réponse du fournisseur : ${probe.detail}`,
     probe: probe.detail,
     // AI_PROVIDER decides which key is even looked at, so a key that is present
@@ -83,20 +129,20 @@ export async function GET() {
     aiProvider: env.aiProvider,
     checks: [
       {
+        name: "GITHUB_MODELS_TOKEN",
+        ok: isGithubConfigured,
+        value: github ? `${github.length} caractères` : "(vide)",
+        detail: isGithubConfigured
+          ? `Palier gratuit GitHub Models, modèle ${env.githubModel}. Préféré automatiquement quand AI_PROVIDER vaut « auto ».`
+          : "Absent — le palier gratuit ne sera pas utilisé. C'est le repli sans carte quand Claude est à court de crédits.",
+      },
+      {
         name: "ANTHROPIC_API_KEY",
         ok: isAiConfigured,
         value: anthropic ? `${anthropic.length} caractères` : "(vide)",
         detail: isAiConfigured
           ? `Présente. Modèle visé : ${AI_MODEL}.`
           : "Absente — Claude ne sera pas appelé.",
-      },
-      {
-        name: "GITHUB_TOKEN",
-        ok: isGithubConfigured,
-        value: github ? `${github.length} caractères` : "(vide)",
-        detail: isGithubConfigured
-          ? `Palier gratuit GitHub Models, modèle ${env.githubModel}.`
-          : "Absent — le palier gratuit ne sera pas utilisé. C'est le repli sans carte si Claude est à court de crédits.",
       },
     ],
   });
