@@ -49,7 +49,10 @@ export const env = {
   geminiEndpoint:
     process.env.GEMINI_ENDPOINT ??
     "https://generativelanguage.googleapis.com/v1beta/openai",
-  geminiModel: process.env.GEMINI_MODEL ?? "gemini-2.5-flash",
+  // Google retires model names on its own schedule and answers 404 with the
+  // replacement name, so this default is expected to move; GEMINI_MODEL
+  // overrides it without a release.
+  geminiModel: process.env.GEMINI_MODEL ?? "gemini-3.6-flash",
 
   // Shopify OAuth (Dev Dashboard app: Client ID + Client secret)
   shopifyClientId:
