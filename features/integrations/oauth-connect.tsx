@@ -12,6 +12,8 @@ import {
   SyncButton,
 } from "@/features/integrations/connector-ui";
 import { useConnection } from "@/features/integrations/use-connection";
+import { useIsAdmin } from "@/hooks/use-admin";
+import { Badge } from "@/components/ui/badge";
 
 /**
  * One-click OAuth connector ("Se connecter avec Stripe"). No API key: the user
@@ -27,6 +29,13 @@ export interface OAuthConnectProps {
   connectedHint: string;
   /** Show the manual "Synchroniser" button (false for live-data providers). */
   showSync?: boolean;
+  /**
+   * The platform grants this connector standard access only: it works for the
+   * app owner and fails for everyone else until Meta approves advanced access.
+   * Rather than hide it — the roadmap is worth showing — the card says so and
+   * the button is inert for anyone but the owner.
+   */
+  reviewPending?: boolean;
 }
 
 /**
@@ -52,10 +61,15 @@ export function OAuthConnect({
   description,
   connectedHint,
   showSync = true,
+  reviewPending = false,
 }: OAuthConnectProps) {
   const toast = useToast();
+  const isAdmin = useIsAdmin();
   const connection = useConnection(provider);
   const { status, busy } = connection;
+  // Standard access covers accounts with a role on the app — in practice, the
+  // owner. Everyone else would hit an opaque platform error mid-flow.
+  const locked = reviewPending && !isAdmin;
 
   // Surface the result of the OAuth redirect (?stripe=connected|error|…).
   useEffect(() => {
@@ -83,12 +97,20 @@ export function OAuthConnect({
       <div className="flex flex-wrap items-center gap-4">
         <ConnectorLogo accent={accent}>{logo}</ConnectorLogo>
         <div className="min-w-[180px] flex-1">
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <h3 className="text-[16px] font-extrabold">{name}</h3>
-            <StatusPill state={status.state} />
+            {locked ? (
+              <Badge variant="violet">Validation Meta en cours</Badge>
+            ) : (
+              <StatusPill state={status.state} />
+            )}
           </div>
           <p className="text-[12px] text-ink-mut">
-            {status.connected ? connectedHint : description}
+            {locked
+              ? `${description} Meta doit encore valider Nightflow pour les comptes tiers — en attendant, la carte « Régies publicitaires » couvre les mêmes données.`
+              : status.connected
+                ? connectedHint
+                : description}
           </p>
           <ConnectionNotes
             status={status}
@@ -96,7 +118,15 @@ export function OAuthConnect({
           />
         </div>
 
-        {status.state === "not_connected" ? (
+        {locked ? (
+          <button
+            disabled
+            title="Disponible une fois la validation Meta obtenue"
+            className="flex-none cursor-not-allowed rounded-xl border border-glass-border bg-glass px-5 py-2.5 text-[13px] font-bold text-ink-mut"
+          >
+            Bientôt
+          </button>
+        ) : status.state === "not_connected" ? (
           <PrimaryButton onClick={connect} className="flex items-center gap-2 px-5">
             Se connecter avec {name}
           </PrimaryButton>
