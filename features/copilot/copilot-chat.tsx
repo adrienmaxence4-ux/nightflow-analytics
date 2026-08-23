@@ -31,6 +31,12 @@ function contextualSuggestions(
 interface Msg {
   role: "user" | "ai";
   text: string;
+  /**
+   * True when the answer came from the keyword fallback rather than a model.
+   * A canned answer reads exactly like a real one, so it is labelled: an
+   * unmarked fallback is how a mocked Copilot goes unnoticed.
+   */
+  fallback?: boolean;
 }
 
 export function CopilotChat({ className }: { className?: string }) {
@@ -83,6 +89,9 @@ export function CopilotChat({ className }: { className?: string }) {
     setBusy(true);
 
     let answer = "";
+    // Quota and rate-limit replies are real messages, not fallbacks, so only
+    // "mock" earns the label.
+    let fallback = false;
     try {
       const res = await fetch("/api/copilot", {
         method: "POST",
@@ -91,16 +100,21 @@ export function CopilotChat({ className }: { className?: string }) {
       });
       const data = (await res.json().catch(() => null)) as {
         answer?: string;
+        source?: string;
         conversationId?: string | null;
       } | null;
       if (data?.conversationId) setConvId(data.conversationId);
       if (typeof data?.answer === "string") answer = data.answer.trim();
+      fallback = data?.source === "mock";
     } catch {
       /* offline or route down — fall through to the deterministic answer */
     }
 
-    if (!answer) answer = await askCopilot(text);
-    setMessages((m) => [...m, { role: "ai", text: answer }]);
+    if (!answer) {
+      answer = await askCopilot(text);
+      fallback = true;
+    }
+    setMessages((m) => [...m, { role: "ai", text: answer, fallback }]);
     setBusy(false);
   };
 
@@ -133,6 +147,11 @@ export function CopilotChat({ className }: { className?: string }) {
               }`}
             >
               {m.text}
+              {m.fallback && (
+                <span className="mt-1.5 block text-[10px] font-bold text-neon-amber">
+                  Réponse hors-ligne — l&apos;IA n&apos;est pas configurée
+                </span>
+              )}
             </div>
           </div>
         ))}
