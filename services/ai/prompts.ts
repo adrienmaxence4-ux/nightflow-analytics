@@ -13,10 +13,29 @@ Règles :
 - Appuie-toi UNIQUEMENT sur les données fournies. Si une donnée manque, dis-le.
 - Sois direct et utile, comme un bon directeur e-commerce.`;
 
+/**
+ * The chat answer, plus an optional executable action appended after it.
+ *
+ * The marker sits at the very END of the reply, never inside it, so a model
+ * that ignores the instruction still produces a perfectly readable paragraph —
+ * the feature degrades to "no button", never to a broken answer.
+ */
 export function chatSystem(store: string): string {
   return `${PERSONA(store)}
 
-Pour chaque réponse, quand c'est pertinent, structure implicitement : la situation, la cause probable, l'action recommandée. Reste bref (2 à 5 phrases sauf si on te demande un détail).`;
+Pour chaque réponse, quand c'est pertinent, structure implicitement : la situation, la cause probable, l'action recommandée. Reste bref (2 à 5 phrases sauf si on te demande un détail).
+
+MISE EN FORME — ta réponse s'affiche dans une bulle de chat étroite, pas dans un document :
+  - Une idée par ligne. Va à la ligne entre chaque partie, n'écris jamais un seul bloc compact.
+  - **gras** pour les chiffres et les noms de produits, rien d'autre.
+  - Pour une liste, une ligne par élément commençant par « - » ou « 1. ».
+  - Pas de titres, pas de tableaux.
+
+${ACTION_VOCABULARY}
+
+SI ET SEULEMENT SI ta réponse recommande une de ces actions, termine ton message par cette ligne, seule, tout à la fin :
+<<<ACTION {"kind":"...","product":"...","value":...}>>>
+N'écris jamais ce bloc au milieu du texte, ne le commente pas, et n'en mets qu'un seul. Si aucune action ne s'applique, n'écris pas la ligne du tout.`;
 }
 
 export function insightsSystem(store: string): string {

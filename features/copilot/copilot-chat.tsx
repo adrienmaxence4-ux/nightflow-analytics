@@ -1,9 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Send, Sparkles } from "lucide-react";
+import { Send, Sparkles, Zap } from "lucide-react";
 import { Card } from "@/components/ui/card";
+import { RichText } from "@/components/ui/rich-text";
+import { ApplySheet } from "@/features/actions/apply-sheet";
 import { askCopilot } from "@/services/copilot.service";
+import type { SuggestedAction } from "@/types";
 
 const SUGGESTIONS = [
   "Pourquoi mes ventes ont baissé ?",
@@ -37,6 +40,12 @@ interface Msg {
    * unmarked fallback is how a mocked Copilot goes unnoticed.
    */
   fallback?: boolean;
+  /**
+   * Present when the server matched the answer to something Nightflow can
+   * execute. Already resolved against the real catalogue — the model's raw
+   * proposal never reaches this far.
+   */
+  action?: SuggestedAction | null;
 }
 
 export function CopilotChat({ className }: { className?: string }) {
@@ -52,6 +61,8 @@ export function CopilotChat({ className }: { className?: string }) {
   // Returned by the API on the first exchange; sending it back keeps the whole
   // thread in one conversation instead of starting a new one per question.
   const [convId, setConvId] = useState<string | null>(null);
+  // The action whose confirmation sheet is open, if any.
+  const [pending, setPending] = useState<SuggestedAction | null>(null);
 
   // Tailor the suggested questions to the user's real products.
   useEffect(() => {
@@ -92,6 +103,7 @@ export function CopilotChat({ className }: { className?: string }) {
     // Quota and rate-limit replies are real messages, not fallbacks, so only
     // "mock" earns the label.
     let fallback = false;
+    let action: SuggestedAction | null = null;
     try {
       const res = await fetch("/api/copilot", {
         method: "POST",
@@ -101,11 +113,13 @@ export function CopilotChat({ className }: { className?: string }) {
       const data = (await res.json().catch(() => null)) as {
         answer?: string;
         source?: string;
+        action?: SuggestedAction | null;
         conversationId?: string | null;
       } | null;
       if (data?.conversationId) setConvId(data.conversationId);
       if (typeof data?.answer === "string") answer = data.answer.trim();
       fallback = data?.source === "mock";
+      action = data?.action ?? null;
     } catch {
       /* offline or route down — fall through to the deterministic answer */
     }
@@ -114,7 +128,7 @@ export function CopilotChat({ className }: { className?: string }) {
       answer = await askCopilot(text);
       fallback = true;
     }
-    setMessages((m) => [...m, { role: "ai", text: answer, fallback }]);
+    setMessages((m) => [...m, { role: "ai", text: answer, fallback, action }]);
     setBusy(false);
   };
 
@@ -146,11 +160,21 @@ export function CopilotChat({ className }: { className?: string }) {
                   : "border border-glass-border bg-glass-2 text-ink"
               }`}
             >
-              {m.text}
+              {m.role === "ai" ? <RichText>{m.text}</RichText> : m.text}
               {m.fallback && (
                 <span className="mt-1.5 block text-[10px] font-bold text-neon-amber">
                   Réponse hors-ligne — l&apos;IA n&apos;a pas répondu
                 </span>
+              )}
+              {m.action && (
+                <button
+                  type="button"
+                  onClick={() => setPending(m.action ?? null)}
+                  className="mt-3 flex min-h-tap w-full items-center justify-center gap-2 rounded-md bg-gradient-to-r from-neon-cyan to-neon-cyansoft px-3 text-[12px] font-bold text-night-950 shadow-glow transition duration-base ease-out hover:brightness-110 active:translate-y-px"
+                >
+                  <Zap className="h-3.5 w-3.5" aria-hidden />
+                  {m.action.label}
+                </button>
               )}
             </div>
           </div>
@@ -202,6 +226,14 @@ export function CopilotChat({ className }: { className?: string }) {
           </button>
         </div>
       </div>
+      {/* Confirmation, dry-run and undo all live in the sheet — the button
+          above only opens it, so a click can never write on its own. */}
+      <ApplySheet
+        action={pending}
+        sourceRef="copilot-chat"
+        open={!!pending}
+        onClose={() => setPending(null)}
+      />
     </Card>
   );
 }

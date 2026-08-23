@@ -2,6 +2,9 @@ import { NextResponse } from "next/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { answerCopilotQuestion } from "@/services/ai/copilot";
 import { buildStoreContext } from "@/services/ai/store-context";
+import { resolveAiAction } from "@/services/actions/suggest";
+import type { ProductRow } from "@/types/database";
+import type { SuggestedAction } from "@/types";
 import { createClient } from "@/lib/supabase/server";
 import { rateLimit, RATE_LIMITED } from "@/lib/rate-limit";
 import { getUserSubscription } from "@/services/billing/subscription";
@@ -61,7 +64,23 @@ export async function POST(req: Request) {
   }
 
   const ctx = await buildStoreContext();
-  const { answer, source } = await answerCopilotQuestion(question, ctx);
+  const { answer, source, hint } = await answerCopilotQuestion(question, ctx);
+
+  // The model may name an action; it never gets to say what it touches. Every
+  // target is re-resolved against this store's real catalogue, so an invented
+  // product yields no button rather than a write to the wrong thing.
+  let action: SuggestedAction | null = null;
+  if (hint && ctx.storeId && supabaseForQuota) {
+    try {
+      const { data } = await supabaseForQuota
+        .from("products")
+        .select("*")
+        .eq("store_id", ctx.storeId);
+      action = resolveAiAction(hint, (data as ProductRow[] | null) ?? []);
+    } catch {
+      /* no button is always safe */
+    }
+  }
 
   // Persist best-effort — never let a storage hiccup break the chat.
   let convId: string | null = conversationId ?? null;
@@ -71,7 +90,7 @@ export async function POST(req: Request) {
     /* ignore persistence errors */
   }
 
-  return NextResponse.json({ answer, source, conversationId: convId });
+  return NextResponse.json({ answer, source, action, conversationId: convId });
 }
 
 /** Counts the user's questions asked since local midnight (DB = exact across instances). */
