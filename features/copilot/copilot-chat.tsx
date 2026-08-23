@@ -149,7 +149,7 @@ export function CopilotChat({ className }: { className?: string }) {
               {m.text}
               {m.fallback && (
                 <span className="mt-1.5 block text-[10px] font-bold text-neon-amber">
-                  Réponse hors-ligne — l&apos;IA n&apos;est pas configurée
+                  Réponse hors-ligne — l&apos;IA n&apos;a pas répondu
                 </span>
               )}
             </div>
