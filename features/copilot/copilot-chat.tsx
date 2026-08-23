@@ -43,6 +43,9 @@ export function CopilotChat({ className }: { className?: string }) {
   const [q, setQ] = useState("");
   const [busy, setBusy] = useState(false);
   const [suggestions, setSuggestions] = useState<string[]>(SUGGESTIONS);
+  // Returned by the API on the first exchange; sending it back keeps the whole
+  // thread in one conversation instead of starting a new one per question.
+  const [convId, setConvId] = useState<string | null>(null);
 
   // Tailor the suggested questions to the user's real products.
   useEffect(() => {
@@ -60,12 +63,43 @@ export function CopilotChat({ className }: { className?: string }) {
     };
   }, []);
 
+  /**
+   * Asks the real Copilot, which reasons over this store's own products,
+   * campaigns, daily metrics and Instagram posts.
+   *
+   * `askCopilot` stays as the fallback and nothing more. It answers from
+   * keywords with no knowledge of the store, so it is what a broken network
+   * degrades to — never the normal path. Wiring the chat straight to it was
+   * the reason a question about Instagram came back talking about Klaviyo.
+   *
+   * Quota and rate-limit replies arrive as a normal `answer`, so the body is
+   * read whatever the status: those messages are the point, not an error to
+   * swallow.
+   */
   const send = async (text: string) => {
     if (!text.trim() || busy) return;
     setMessages((m) => [...m, { role: "user", text }]);
     setQ("");
     setBusy(true);
-    const answer = await askCopilot(text);
+
+    let answer = "";
+    try {
+      const res = await fetch("/api/copilot", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ question: text, conversationId: convId }),
+      });
+      const data = (await res.json().catch(() => null)) as {
+        answer?: string;
+        conversationId?: string | null;
+      } | null;
+      if (data?.conversationId) setConvId(data.conversationId);
+      if (typeof data?.answer === "string") answer = data.answer.trim();
+    } catch {
+      /* offline or route down — fall through to the deterministic answer */
+    }
+
+    if (!answer) answer = await askCopilot(text);
     setMessages((m) => [...m, { role: "ai", text: answer }]);
     setBusy(false);
   };
