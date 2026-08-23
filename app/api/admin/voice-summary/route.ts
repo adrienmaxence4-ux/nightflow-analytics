@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { env } from "@/lib/env";
+import { secureEquals } from "@/lib/secure-compare";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { PLANS } from "@/lib/plans";
 import type { SubscriptionRow } from "@/types/database";
@@ -17,10 +18,8 @@ export const dynamic = "force-dynamic";
 const DAY_MS = 86_400_000;
 
 function authorized(req: Request): boolean {
-  return (
-    !!env.cronSecret &&
-    req.headers.get("authorization") === `Bearer ${env.cronSecret}`
-  );
+  const header = req.headers.get("authorization") ?? "";
+  return !!env.cronSecret && secureEquals(header, `Bearer ${env.cronSecret}`);
 }
 
 /** "3 visiteurs" / "1 visiteur" — French agreement, spoken aloud. */

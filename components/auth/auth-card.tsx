@@ -137,6 +137,20 @@ export function AuthCard({ mode }: { mode: "login" | "signup" }) {
               ? "Se connecter"
               : "Créer mon compte"}
         </Button>
+
+        {!isLogin && (
+          <p className="mt-1 text-center text-[11px] leading-relaxed text-ink-mut">
+            En créant un compte, vous acceptez les{" "}
+            <Link href="/conditions" className="underline hover:text-ink-dim">
+              conditions d&apos;utilisation
+            </Link>{" "}
+            et la{" "}
+            <Link href="/confidentialite" className="underline hover:text-ink-dim">
+              politique de confidentialité
+            </Link>
+            .
+          </p>
+        )}
       </form>
 
       {demoMode && (

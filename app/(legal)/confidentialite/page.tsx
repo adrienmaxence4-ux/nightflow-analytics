@@ -8,7 +8,7 @@ export default function ConfidentialitePage() {
   return (
     <>
       <h1>Politique de confidentialité</h1>
-      <p className="updated">Dernière mise à jour : 24 juin 2026</p>
+      <p className="updated">Dernière mise à jour : 24 août 2026</p>
 
       <p>
         Nightflow Analytics («&nbsp;Nightflow&nbsp;», «&nbsp;nous&nbsp;») aide
@@ -87,12 +87,42 @@ export default function ConfidentialitePage() {
         <a href="mailto:adrienmaxence4@gmail.com">adrienmaxence4@gmail.com</a>.
       </p>
 
-      <h2>7. Sous-traitants</h2>
+      <h2>7. Cookies et traceurs</h2>
+      <p>
+        Nightflow ne dépose <b>aucun cookie</b> de mesure d&apos;audience ou de
+        publicité. Le seul compteur de visite du site utilise un identifiant
+        aléatoire stocké dans le <b>stockage local de votre navigateur</b>{" "}
+        (localStorage), jamais un cookie&nbsp;: il n&apos;est pas envoyé à
+        chaque requête, ne traverse aucun domaine tiers, et ne contient ni
+        adresse IP ni donnée personnelle. Les cookies techniques que nous
+        posons (session de connexion, et un jeton temporaire de 10 minutes
+        pendant la connexion d&apos;une intégration) sont strictement
+        nécessaires au fonctionnement du service et ne demandent pas de
+        consentement. Pour faire supprimer les statistiques associées à votre
+        navigateur, écrivez-nous.
+      </p>
+
+      <h2>8. Sous-traitants</h2>
       <ul>
         <li><b>Supabase</b> — base de données & authentification.</li>
         <li><b>Vercel</b> — hébergement de l&apos;application.</li>
         <li><b>Stripe</b> — paiement des abonnements.</li>
-        <li><b>Anthropic</b> — génération des analyses IA.</li>
+        <li>
+          <b>Google (Gemini) et Anthropic (Claude)</b> — génération des
+          analyses IA. Un résumé chiffré et anonyme de votre activité leur est
+          transmis ; il n&apos;est utilisé par aucun des deux pour entraîner
+          leurs modèles.
+        </li>
+        <li>
+          <b>Meta / Instagram</b> — uniquement si vous connectez votre compte
+          Instagram ou Meta Ads&nbsp;: nous lisons les statistiques de vos
+          publications et de vos campagnes, jamais les données de vos clients.
+        </li>
+        <li>
+          <b>Windsor.ai</b> — uniquement si vous connectez une régie
+          publicitaire via ce connecteur&nbsp;: dépenses et revenus attribués
+          par canal.
+        </li>
       </ul>
     </>
   );

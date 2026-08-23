@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { env } from "@/lib/env";
+import { secureEquals } from "@/lib/secure-compare";
 import { createAdminClient } from "@/lib/supabase/admin";
 import {
   claimDueJobs,
@@ -22,7 +23,8 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
 function authorized(req: Request): boolean {
-  return !!env.cronSecret && req.headers.get("authorization") === `Bearer ${env.cronSecret}`;
+  const header = req.headers.get("authorization") ?? "";
+  return !!env.cronSecret && secureEquals(header, `Bearer ${env.cronSecret}`);
 }
 
 async function handle(req: Request) {

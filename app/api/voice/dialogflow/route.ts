@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { env } from "@/lib/env";
+import { secureEquals } from "@/lib/secure-compare";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { PLANS } from "@/lib/plans";
 import type { SubscriptionRow } from "@/types/database";
@@ -34,14 +35,14 @@ const plural = (n: number, one: string) => `${n} ${one}${n > 1 ? "s" : ""}`;
 
 function autorise(req: Request): boolean {
   if (!env.cronSecret) return false;
-  const entete = req.headers.get("x-nightflow-secret");
-  if (entete === env.cronSecret) return true;
+  const entete = req.headers.get("x-nightflow-secret") ?? "";
+  if (secureEquals(entete, env.cronSecret)) return true;
   // Dialogflow propose aussi Basic Auth : on l'accepte (mot de passe = secret).
   const basic = req.headers.get("authorization") ?? "";
   if (basic.startsWith("Basic ")) {
     try {
       const [, mdp] = atob(basic.slice(6)).split(":");
-      return mdp === env.cronSecret;
+      return secureEquals(mdp ?? "", env.cronSecret);
     } catch {
       return false;
     }
