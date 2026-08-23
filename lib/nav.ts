@@ -4,6 +4,7 @@ import {
   LineChart,
   Package,
   Megaphone,
+  Film,
   Sparkles,
   Bell,
   Settings,
@@ -23,6 +24,7 @@ export const NAV_MAIN: NavItem[] = [
   { label: "Analytics", href: "/analytics", icon: LineChart },
   { label: "Products", href: "/products", icon: Package },
   { label: "Marketing", href: "/marketing", icon: Megaphone },
+  { label: "Publications", href: "/social", icon: Film },
   { label: "AI Copilot", href: "/copilot", icon: Sparkles },
 ];
 

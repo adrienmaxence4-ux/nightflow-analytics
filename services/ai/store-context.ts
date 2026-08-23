@@ -1,5 +1,11 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 import { CAMPAIGNS, PRODUCTS, RANGE_DATA, STORE } from "@/services/mock/data";
+import {
+  buildSocialOverview,
+  emptyOverview,
+  type SocialOverview,
+} from "@/services/social/overview";
 import type {
   CampaignRow,
   MetricDailyRow,
@@ -34,7 +40,7 @@ export async function buildStoreContext(): Promise<StoreContext> {
           .limit(1);
         const store = (stores?.[0] as StoreRow | undefined) ?? null;
         if (store) {
-          const [products, campaigns, metrics] = await Promise.all([
+          const [products, campaigns, metrics, social] = await Promise.all([
             supabase.from("products").select("*").eq("store_id", store.id),
             supabase.from("campaigns").select("*").eq("store_id", store.id),
             supabase
@@ -43,6 +49,14 @@ export async function buildStoreContext(): Promise<StoreContext> {
               .eq("store_id", store.id)
               .order("date", { ascending: false })
               .limit(14),
+            // Organic social is often the only thing bringing people in. Without
+            // it the Copilot reasons about an empty funnel and blames the store.
+            // A social outage must never cost the user their whole context, so
+            // it degrades to "not connected" rather than throwing.
+            buildSocialOverview(
+              supabase as unknown as SupabaseClient,
+              store.id
+            ).catch(() => emptyOverview()),
           ]);
           const prods = (products.data as ProductRow[] | null) ?? [];
           if (prods.length > 0) {
@@ -54,7 +68,8 @@ export async function buildStoreContext(): Promise<StoreContext> {
                 store,
                 prods,
                 (campaigns.data as CampaignRow[] | null) ?? [],
-                (metrics.data as MetricDailyRow[] | null) ?? []
+                (metrics.data as MetricDailyRow[] | null) ?? [],
+                social
               ),
             };
           }
@@ -76,11 +91,66 @@ function euros(cents: number): string {
   return `€${Math.round(cents / 100).toLocaleString("fr-FR")}`;
 }
 
+/** Enough of a caption to recognise the post, never the whole thing. */
+function excerpt(caption: string): string {
+  const line = caption.split("\n").find((l) => l.trim().length > 0) ?? "";
+  const clean = line.trim();
+  return clean.length > 70 ? `${clean.slice(0, 70)}…` : clean;
+}
+
+/** How many posts the AI sees — enough to spot a pattern, not enough to drown. */
+const MAX_SOCIAL_POSTS = 12;
+
+/**
+ * The social block, written so the AI can compare posts with each other but
+ * cannot claim one produced a sale. That boundary is the whole point: views and
+ * revenue are measured by different systems, and the only bridge between them
+ * is a tracking code the merchant has to put in the caption themselves. Stating
+ * the gap explicitly is what stops a plausible-sounding fabrication.
+ */
+export function formatSocialContext(social: SocialOverview): string[] {
+  if (!social.connected) {
+    return [
+      "\nRÉSEAUX SOCIAUX : aucun compte social connecté. N'avance aucun chiffre de vues, de portée ou d'audience.",
+    ];
+  }
+  if (social.posts.length === 0) {
+    return [
+      `\nRÉSEAUX SOCIAUX : compte connecté, mais aucune publication sur les ${social.days} derniers jours.`,
+    ];
+  }
+
+  const t = social.totals;
+  const lines = [
+    `\nRÉSEAUX SOCIAUX — Instagram, ${social.days} derniers jours (valeurs réelles) :`,
+    `${t.posts} publication(s) dont ${t.reels} Reel(s) — ${t.views} vue(s), ${t.reach} compte(s) touché(s), ${t.likes} like(s).`,
+  ];
+
+  for (const p of social.posts.slice(0, MAX_SOCIAL_POSTS)) {
+    const visits =
+      p.visits == null
+        ? "aucun lien de suivi"
+        : `${p.visits} visite(s) via le lien ${p.trackingCode}`;
+    lines.push(
+      `- ${p.date} · ${p.isReel ? "Reel" : "Post"} · ${p.views} vues, ${p.reach} touchés, ${p.likes} likes, engagement ${p.engagementRate}% · « ${excerpt(p.caption)} » · ${visits}`
+    );
+  }
+
+  if (social.attribution.postsWithoutCode > 0) {
+    lines.push(
+      `ATTRIBUTION : ${social.attribution.postsWithoutCode} publication(s) sur ${t.posts} ne portent aucun lien de suivi. Pour celles-là il est IMPOSSIBLE de savoir combien de visiteurs ou de ventes elles ont amenés — ne relie jamais ces publications à un chiffre d'affaires, même approximatif. Tu peux en revanche les comparer entre elles (vues, portée, engagement) et recommander d'ajouter un lien « ?a=CODE » distinct dans chaque légende pour rendre l'attribution mesurable.`
+    );
+  }
+
+  return lines;
+}
+
 function formatRealContext(
   store: StoreRow,
   products: ProductRow[],
   campaigns: CampaignRow[],
-  metrics: MetricDailyRow[]
+  metrics: MetricDailyRow[],
+  social: SocialOverview
 ): string {
   const lines: string[] = [`Boutique : ${store.name} (devise ${store.currency})`];
 
@@ -118,6 +188,8 @@ function formatRealContext(
       );
     }
   }
+
+  lines.push(...formatSocialContext(social));
 
   if (metrics.length) {
     lines.push("\nMÉTRIQUES QUOTIDIENNES (récent → ancien) :");

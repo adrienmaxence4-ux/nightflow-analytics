@@ -74,7 +74,7 @@ export default function IntegrationsPage() {
               logo="📸"
               accent="from-pink-500 to-orange-400"
               description="Connexion en un clic — vues, likes et portée de vos Reels. Aucune Page Facebook requise."
-              connectedHint="Statistiques de vos publications visibles dans Mes publications."
+              connectedHint="Vues, portée et engagement visibles dans Publications."
               showSync={false}
               reviewPending
             />

@@ -15,8 +15,7 @@ const TITLES: Record<string, string> = {
   ...Object.fromEntries([...NAV_MAIN, ...NAV_SECONDARY].map((n) => [n.href, n.label])),
   // Admin routes live outside the nav arrays (they are added to the sidebar
   // only for the owner), so their titles are declared here.
-  "/admin": "Stats du site",
-  "/admin/reels": "Mes publications",
+  "/admin": "Stats du site",
 };
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {

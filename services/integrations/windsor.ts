@@ -149,11 +149,26 @@ async function windsorGet(
       signal: AbortSignal.timeout(TIMEOUT_MS),
     });
     if (!res.ok) {
-      console.error(`[windsor] ${res.status} on ${connector}`);
+      // The body carries Windsor's own reason (expired trial, unknown field,
+      // revoked key). Logging only the status turned every one of those into
+      // the same unhelpful "cle invalide".
+      const detail = await res.text().catch(() => "");
+      console.error(
+        `[windsor] ${res.status} on ${connector} ${detail.slice(0, 200)}`
+      );
       return null;
     }
-    const json = (await res.json()) as { data?: WindsorRow[] };
-    return Array.isArray(json?.data) ? json.data : null;
+    // Windsor has shipped more than one envelope: `{data}`, `{result}`, and a
+    // bare array. Accepting all three costs nothing, and reading only one of
+    // them made a perfectly valid key look invalid.
+    const json = (await res.json()) as
+      | { data?: WindsorRow[]; result?: WindsorRow[] }
+      | WindsorRow[];
+    if (Array.isArray(json)) return json;
+    if (Array.isArray(json?.data)) return json.data;
+    if (Array.isArray(json?.result)) return json.result;
+    console.error(`[windsor] unexpected response shape on ${connector}`);
+    return null;
   } catch (e) {
     console.error(`[windsor] request failed on ${connector}`, e);
     return null;
