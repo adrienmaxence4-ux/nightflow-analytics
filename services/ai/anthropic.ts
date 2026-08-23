@@ -1,5 +1,5 @@
 import { AI_MODEL, getAnthropic, logAiError } from "./client";
-import { env, isAiConfigured, isGithubConfigured } from "@/lib/env";
+import { env, isAiConfigured, isGeminiConfigured } from "@/lib/env";
 
 /**
  * SERVER-ONLY provider-agnostic wrappers around chat completion, with built-in
@@ -7,36 +7,58 @@ import { env, isAiConfigured, isGithubConfigured } from "@/lib/env";
  * failure they return null so callers fall back to the rule-based engine and
  * the UI is never blocked.
  *
- * Provider is chosen by AI_PROVIDER (github | anthropic | auto).
+ * Provider is chosen by AI_PROVIDER (gemini | anthropic | auto).
+ *
+ * GitHub Models used to live here. It was retired on 2026-07-30 and its
+ * endpoint now answers 410 for everyone, so it is gone rather than left as a
+ * dead option — while it existed, "auto" preferred it, which meant a retired
+ * service silently shadowed a working Claude key and every answer quietly
+ * became canned text. Gemini's free tier replaces it.
  */
 
-type Provider = "github" | "anthropic" | "none";
+export type Provider = "gemini" | "anthropic" | "none";
 
-export function resolveProvider(): Provider {
+/**
+ * Providers that can actually be called, best first.
+ *
+ * "auto" puts the free tier first for cost control, which is only safe because
+ * callClaudeText walks the whole chain: a provider that is out of quota or out
+ * of credit hands off to the next one instead of taking the request down with
+ * it. That handoff is the entire reason this returns a list and not a value.
+ */
+export function providerChain(): Exclude<Provider, "none">[] {
   const p = env.aiProvider;
-  if (p === "github") return isGithubConfigured ? "github" : "none";
-  if (p === "anthropic") return isAiConfigured ? "anthropic" : "none";
-  // auto: prefer the FREE GitHub Models tier when its token is configured;
-  // the paid Anthropic key is the fallback (cost control by default).
-  if (isGithubConfigured) return "github";
-  if (isAiConfigured) return "anthropic";
-  return "none";
+  if (p === "gemini") return isGeminiConfigured ? ["gemini"] : [];
+  if (p === "anthropic") return isAiConfigured ? ["anthropic"] : [];
+
+  const chain: Exclude<Provider, "none">[] = [];
+  if (isGeminiConfigured) chain.push("gemini");
+  if (isAiConfigured) chain.push("anthropic");
+  return chain;
 }
 
-/** Single text completion. Returns the assistant text, or null on failure. */
+/** The provider a request would hit first. Used for diagnostics and /health. */
+export function resolveProvider(): Provider {
+  return providerChain()[0] ?? "none";
+}
+
+/**
+ * Single text completion. Returns the assistant text, or null when every
+ * configured provider failed.
+ */
 export async function callClaudeText(
   system: string,
   user: string,
   maxTokens = 1024
 ): Promise<string | null> {
-  switch (resolveProvider()) {
-    case "anthropic":
-      return callAnthropic(system, user, maxTokens);
-    case "github":
-      return callGithub(system, user, maxTokens);
-    default:
-      return null;
+  for (const provider of providerChain()) {
+    const text =
+      provider === "anthropic"
+        ? await callAnthropic(system, user, maxTokens)
+        : await callGemini(system, user, maxTokens);
+    if (text && text.trim()) return text;
   }
+  return null;
 }
 
 /** Completion constrained to JSON, parsed defensively. */
@@ -79,21 +101,21 @@ async function callAnthropic(
   }
 }
 
-// ── GitHub Models (OpenAI-compatible, free tier) ──
-async function callGithub(
+// ── Google Gemini (OpenAI-compatible surface, free tier) ──
+async function callGemini(
   system: string,
   user: string,
   maxTokens: number
 ): Promise<string | null> {
   try {
-    const res = await fetch(`${env.githubEndpoint}/chat/completions`, {
+    const res = await fetch(`${env.geminiEndpoint}/chat/completions`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${env.githubToken}`,
+        Authorization: `Bearer ${env.geminiKey}`,
       },
       body: JSON.stringify({
-        model: env.githubModel,
+        model: env.geminiModel,
         max_tokens: maxTokens,
         messages: [
           { role: "system", content: system },
@@ -104,7 +126,7 @@ async function callGithub(
     });
     if (!res.ok) {
       const detail = await res.text().catch(() => "");
-      console.error(`[AI:github] ${res.status} ${detail.slice(0, 200)}`);
+      console.error(`[AI:gemini] ${res.status} ${detail.slice(0, 200)}`);
       return null;
     }
     const data = (await res.json()) as {
@@ -112,7 +134,7 @@ async function callGithub(
     };
     return data.choices?.[0]?.message?.content ?? null;
   } catch (err) {
-    logAiError("github", err);
+    logAiError("gemini", err);
     return null;
   }
 }

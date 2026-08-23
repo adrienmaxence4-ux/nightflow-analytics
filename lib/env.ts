@@ -6,9 +6,13 @@
  * you add keys (here or in Vercel project settings), the real services light up.
  *
  * AI providers (pick one via AI_PROVIDER):
- *  - "github"    → GitHub Models (FREE, for testing) — needs GITHUB_MODELS_TOKEN
- *  - "anthropic" → Claude (paid, for production)      — needs ANTHROPIC_API_KEY
- *  - "auto" (default) → Anthropic if its key is set, else GitHub, else mock.
+ *  - "gemini"    → Google Gemini (free tier, no card) — needs GEMINI_API_KEY
+ *  - "anthropic" → Claude (paid, best quality)        — needs ANTHROPIC_API_KEY
+ *  - "auto" (default) → tries the free provider first, then Claude, then mock.
+ *
+ * GitHub Models was the free option until it was retired on 2026-07-30; its
+ * endpoint now answers 410 for everyone, so it was removed rather than left as
+ * a trap that shadows a working key.
  */
 
 /**
@@ -40,12 +44,12 @@ export const env = {
   // AI provider selection
   aiProvider: (process.env.AI_PROVIDER ?? "auto").toLowerCase(),
 
-  // GitHub Models (free tier — OpenAI-compatible)
-  githubToken:
-    process.env.GITHUB_MODELS_TOKEN ?? process.env.GITHUB_TOKEN ?? "",
-  githubEndpoint:
-    process.env.GITHUB_MODELS_ENDPOINT ?? "https://models.github.ai/inference",
-  githubModel: process.env.GITHUB_MODEL ?? "openai/gpt-4o-mini",
+  // Google Gemini (free tier — OpenAI-compatible surface)
+  geminiKey: process.env.GEMINI_API_KEY ?? process.env.GOOGLE_API_KEY ?? "",
+  geminiEndpoint:
+    process.env.GEMINI_ENDPOINT ??
+    "https://generativelanguage.googleapis.com/v1beta/openai",
+  geminiModel: process.env.GEMINI_MODEL ?? "gemini-2.5-flash",
 
   // Shopify OAuth (Dev Dashboard app: Client ID + Client secret)
   shopifyClientId:
@@ -128,11 +132,11 @@ export const isSupabaseConfigured =
 /** True when the Anthropic (Claude) key is configured. */
 export const isAiConfigured = env.anthropicKey.length > 0;
 
-/** True when a GitHub Models token is configured. */
-export const isGithubConfigured = env.githubToken.length > 0;
+/** True when a Google Gemini key is configured. */
+export const isGeminiConfigured = env.geminiKey.length > 0;
 
 /** True when ANY AI provider is usable. */
-export const isAiEnabled = isAiConfigured || isGithubConfigured;
+export const isAiEnabled = isAiConfigured || isGeminiConfigured;
 
 /** True when Shopify OAuth credentials are configured. */
 export const isShopifyConfigured =

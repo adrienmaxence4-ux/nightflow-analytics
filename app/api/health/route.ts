@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { isSupabaseConfigured } from "@/lib/env";
+import { env, isSupabaseConfigured } from "@/lib/env";
 import { resolveProvider } from "@/services/ai/anthropic";
 import { AI_MODEL } from "@/services/ai/client";
 
@@ -12,7 +12,12 @@ export async function GET() {
     mode: isSupabaseConfigured ? "live" : "demo",
     ai: provider === "none" ? "mock" : "live",
     aiProvider: provider,
-    aiModel: provider === "anthropic" ? AI_MODEL : provider === "github" ? "github-models" : null,
+    aiModel:
+      provider === "anthropic"
+        ? AI_MODEL
+        : provider === "gemini"
+          ? env.geminiModel
+          : null,
     timestamp: new Date().toISOString(),
   });
 }
