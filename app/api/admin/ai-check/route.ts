@@ -4,7 +4,7 @@ import { env, isAiConfigured, isGeminiConfigured } from "@/lib/env";
 import { createClient } from "@/lib/supabase/server";
 import { isAdminEmail } from "@/lib/admin";
 import { AI_MODEL, getAnthropic } from "@/services/ai/client";
-import { providerChain, resolveProvider } from "@/services/ai/anthropic";
+import { geminiBody, providerChain, resolveProvider } from "@/services/ai/anthropic";
 
 /**
  * GET /api/admin/ai-check — ADMIN ONLY.
@@ -72,11 +72,10 @@ async function probeGemini(): Promise<Probe> {
         "Content-Type": "application/json",
         Authorization: `Bearer ${env.geminiKey}`,
       },
-      body: JSON.stringify({
-        model: env.geminiModel,
-        max_tokens: 1,
-        messages: [{ role: "user", content: "ping" }],
-      }),
+      // The real request body, not a simplified one — a probe that drops
+      // reasoning_effort or the token headroom would pass while the actual
+      // call still truncates or gets rejected.
+      body: JSON.stringify(geminiBody("Réponds en un mot.", "ping", 1)),
       signal: AbortSignal.timeout(30_000),
     });
     if (!res.ok) {
@@ -95,10 +94,23 @@ async function probeGemini(): Promise<Probe> {
         detail: `${res.status} — ${body.slice(0, 300)}${hint}`,
       };
     }
+    const data = (await res.json().catch(() => null)) as {
+      choices?: { message?: { content?: string }; finish_reason?: string }[];
+    } | null;
+    const choice = data?.choices?.[0];
+    // A 200 with an empty answer is the thinking-budget failure, and it is the
+    // one that looks like success. It gets its own verdict.
+    if (choice?.finish_reason === "length" && !choice?.message?.content) {
+      return {
+        provider: "gemini",
+        ok: false,
+        detail: `200 mais réponse vide — la réflexion a consommé tout le budget. Baisse GEMINI_REASONING_EFFORT (actuel : ${env.geminiReasoningEffort}).`,
+      };
+    }
     return {
       provider: "gemini",
       ok: true,
-      detail: `Appel réel réussi sur ${env.geminiModel}.`,
+      detail: `Appel réel réussi sur ${env.geminiModel} (raisonnement : ${env.geminiReasoningEffort}).`,
     };
   } catch (err) {
     return { provider: "gemini", ok: false, detail: String(err).slice(0, 300) };

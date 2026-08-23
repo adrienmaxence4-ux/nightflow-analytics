@@ -102,6 +102,29 @@ async function callAnthropic(
 }
 
 // ── Google Gemini (OpenAI-compatible surface, free tier) ──
+
+/**
+ * The request body, shared with the admin probe so the probe proves the real
+ * call rather than a simplified cousin of it.
+ *
+ * Gemini bills thinking tokens to the same allowance as the answer: once
+ * thoughts + answer reach max_tokens, generation stops mid-sentence. On a
+ * non-trivial question the model will spend nearly the whole budget thinking,
+ * so the caller's budget is tripled AND the reasoning effort is bounded. Either
+ * alone still truncates.
+ */
+export function geminiBody(system: string, user: string, maxTokens: number) {
+  return {
+    model: env.geminiModel,
+    max_tokens: Math.max(maxTokens * 3, 3072),
+    reasoning_effort: env.geminiReasoningEffort,
+    messages: [
+      { role: "system", content: system },
+      { role: "user", content: user },
+    ],
+  };
+}
+
 async function callGemini(
   system: string,
   user: string,
@@ -114,14 +137,7 @@ async function callGemini(
         "Content-Type": "application/json",
         Authorization: `Bearer ${env.geminiKey}`,
       },
-      body: JSON.stringify({
-        model: env.geminiModel,
-        max_tokens: maxTokens,
-        messages: [
-          { role: "system", content: system },
-          { role: "user", content: user },
-        ],
-      }),
+      body: JSON.stringify(geminiBody(system, user, maxTokens)),
       signal: AbortSignal.timeout(60_000),
     });
     if (!res.ok) {
@@ -130,9 +146,18 @@ async function callGemini(
       return null;
     }
     const data = (await res.json()) as {
-      choices?: { message?: { content?: string } }[];
+      choices?: { message?: { content?: string }; finish_reason?: string }[];
     };
-    return data.choices?.[0]?.message?.content ?? null;
+    const choice = data.choices?.[0];
+    // Truncation is the failure mode this provider actually has, and it looks
+    // like a complete answer that simply stops. Logging it keeps a future
+    // regression visible instead of shipping half-sentences to users.
+    if (choice?.finish_reason === "length") {
+      console.error(
+        `[AI:gemini] réponse tronquée (finish_reason=length) — augmente le budget ou baisse GEMINI_REASONING_EFFORT`
+      );
+    }
+    return choice?.message?.content ?? null;
   } catch (err) {
     logAiError("gemini", err);
     return null;

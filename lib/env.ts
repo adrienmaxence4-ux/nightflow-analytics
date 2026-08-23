@@ -53,6 +53,11 @@ export const env = {
   // replacement name, so this default is expected to move; GEMINI_MODEL
   // overrides it without a release.
   geminiModel: process.env.GEMINI_MODEL ?? "gemini-3.6-flash",
+  // Gemini charges thinking tokens to the SAME budget as the answer, so an
+  // unbounded reasoning effort silently eats the reply and the user gets a
+  // sentence that stops mid-word. "low" keeps some reasoning without starving
+  // the output; "none" is available on models that allow disabling it.
+  geminiReasoningEffort: process.env.GEMINI_REASONING_EFFORT ?? "low",
 
   // Shopify OAuth (Dev Dashboard app: Client ID + Client secret)
   shopifyClientId:
