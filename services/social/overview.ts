@@ -160,12 +160,33 @@ async function fetchCodes(): Promise<CodeStat[]> {
   return [...byCode.values()].sort((a, b) => b.visits - a.visits);
 }
 
+/**
+ * Instagram charges one API call PER POST for insights, so a 6-post account
+ * costs 7 round trips. That was fine when only the Publications page asked for
+ * it; now the Copilot's context does too, and a single visit to /copilot fans
+ * out into the chat, the insights and the recommendations — every one of them
+ * rebuilding the same snapshot.
+ *
+ * A short TTL collapses that burst into one fetch. It is deliberately per
+ * instance and in memory: serverless will hold several, which is fine, because
+ * the goal is killing the fan-out within one page load, not a shared cache.
+ * Ten minutes is well under the pace at which post metrics actually move.
+ */
+const CACHE_TTL_MS = 10 * 60 * 1000;
+const cache = new Map<string, { at: number; value: SocialOverview }>();
+
 export async function buildSocialOverview(
   db: SupabaseClient,
   storeId: string | null,
   opts: { withVisits?: boolean } = {}
 ): Promise<SocialOverview> {
   if (!storeId) return emptyOverview();
+
+  // Keyed on withVisits: the two variants carry different data, and serving
+  // the customer's copy to the owner would silently hide the visit column.
+  const key = `${storeId}:${opts.withVisits ? "1" : "0"}`;
+  const hit = cache.get(key);
+  if (hit && Date.now() - hit.at < CACHE_TTL_MS) return hit.value;
 
   const [{ posts, source, connected, error }, codes] = await Promise.all([
     fetchPosts(db, storeId),
@@ -186,7 +207,7 @@ export async function buildSocialOverview(
 
   const withCode = enriched.filter((p) => p.trackingCode).length;
 
-  return {
+  const overview: SocialOverview = {
     days: SOCIAL_DAYS,
     connected,
     source,
@@ -206,4 +227,9 @@ export async function buildSocialOverview(
       postsWithoutCode: enriched.length - withCode,
     },
   };
+
+  // A failed fetch is not cached: it would turn a transient Instagram hiccup
+  // into ten minutes of "aucune publication" for a merchant who has plenty.
+  if (source) cache.set(key, { at: Date.now(), value: overview });
+  return overview;
 }
