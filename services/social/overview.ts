@@ -140,12 +140,12 @@ async function fetchPosts(
 async function fetchCodes(): Promise<CodeStat[]> {
   const admin = createAdminClient();
   if (!admin) return [];
-  const since = new Date();
-  since.setDate(since.getDate() - SOCIAL_DAYS);
-  const { data } = await admin
-    .from("ad_visits")
-    .select("code, date")
-    .gte("date", since.toISOString().slice(0, 10));
+  // Deliberately unbounded, unlike the posts list above: "Visites" is meant
+  // to read as the total since the link was created, not a rolling window.
+  // A tracking code outlives the 90-day post window this page otherwise uses
+  // — capping it here would silently drop a link's early visits the moment
+  // it turned three months old, with no sign anything had been cut.
+  const { data } = await admin.from("ad_visits").select("code, date");
   const rows = (data as { code: string; date: string }[] | null) ?? [];
   const byCode = new Map<string, CodeStat>();
   for (const r of rows) {
