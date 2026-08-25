@@ -194,10 +194,14 @@ export async function validateInstagramToken(accessToken: string): Promise<boole
 /**
  * Published posts with their engagement, newest first. Insights are fetched per
  * media because Instagram does not return them in the list call.
+ *
+ * Bounded by count (MAX_POSTS), not by age: a merchant's post from six months
+ * ago is still a real post with real engagement, and dropping it from the page
+ * the moment it crossed some day count would hide history for no reason — the
+ * API call itself already caps the cost at MAX_POSTS regardless.
  */
 export async function fetchInstagramPosts(
-  accessToken: string,
-  days = DAYS
+  accessToken: string
 ): Promise<InstagramPost[] | null> {
   const media = await igGet<{ data?: MediaRow[] }>("me/media", {
     fields:
@@ -207,15 +211,9 @@ export async function fetchInstagramPosts(
   });
   if (!media?.data) return null;
 
-  const since = Date.now() - days * 86_400_000;
-  const recent = media.data.filter((m) => {
-    if (!m.id) return false;
-    const t = m.timestamp ? Date.parse(m.timestamp) : NaN;
-    return Number.isNaN(t) ? true : t >= since;
-  });
-
   const posts: InstagramPost[] = [];
-  for (const m of recent) {
+  for (const m of media.data) {
+    if (!m.id) continue;
     const insights = await igGet<{ data?: InsightRow[] }>(`${m.id}/insights`, {
       metric: METRICS,
       access_token: accessToken,
@@ -250,7 +248,9 @@ export async function fetchInstagramPosts(
 export async function syncInstagram(
   accessToken: string
 ): Promise<{ orders: number; revenueCents: number; days: number }> {
-  const posts = await fetchInstagramPosts(accessToken, DAYS);
+  const posts = await fetchInstagramPosts(accessToken);
   if (posts === null) throw new Error("Instagram n'a pas répondu.");
+  // `days` here just labels the sync summary shown on the Integrations page
+  // ("dernière synchro : X jours"); it no longer bounds which posts were read.
   return { orders: posts.length, revenueCents: 0, days: DAYS };
 }

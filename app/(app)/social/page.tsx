@@ -61,7 +61,7 @@ interface CodeStat {
 }
 
 interface Payload {
-  days: number;
+  postLimit: number;
   connected: boolean;
   source: "instagram" | "meta" | "windsor" | null;
   error: string | null;
@@ -138,7 +138,7 @@ export default function SocialPage() {
             <Stat icon={Film} label="Publications" value={`${data.totals.posts}`}
               sub={`dont ${data.totals.reels} Reels`} tone="#3df2ff" />
             <Stat icon={Eye} label="Vues" value={nf(data.totals.views)}
-              sub={`${data.days} derniers jours`} tone="#9a6bff" />
+              sub={`${data.postLimit} dernières publications`} tone="#9a6bff" />
             <Stat icon={Heart} label="Likes" value={nf(data.totals.likes)}
               sub={`${nf(data.totals.reach)} comptes touchés`} tone="#ff5cae" />
             {isAdmin ? (
@@ -248,7 +248,7 @@ export default function SocialPage() {
             {data.posts.length === 0 ? (
               <Card className="p-6 text-center text-[13px] text-ink-mut">
                 {data.connected
-                  ? `Aucune publication sur les ${data.days} derniers jours.`
+                  ? "Aucune publication trouvée."
                   : "Rien à afficher tant qu'aucun compte n'est connecté."}
               </Card>
             ) : (

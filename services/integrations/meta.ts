@@ -373,10 +373,13 @@ function metric(rows: IgInsightRow[] | undefined, name: string): number {
 /**
  * Published posts with their engagement, newest first. Insights are fetched per
  * media because Instagram does not expose them in the list call.
+ *
+ * Bounded by count (maxPosts), not by age — see the equivalent function in
+ * services/integrations/instagram.ts for why: the fetch itself already caps
+ * the cost, so discarding older posts on top of that only hides history.
  */
 export async function fetchMetaInstagramPosts(
   accessToken: string,
-  days = 90,
   maxPosts = 30
 ): Promise<MetaInstagramPost[] | null> {
   const igId = await findInstagramAccountId(accessToken);
@@ -390,15 +393,9 @@ export async function fetchMetaInstagramPosts(
   });
   if (!media?.data) return null;
 
-  const since = Date.now() - days * 86_400_000;
-  const recent = media.data.filter((m) => {
-    if (!m.id) return false;
-    const t = m.timestamp ? Date.parse(m.timestamp) : NaN;
-    return Number.isNaN(t) ? true : t >= since;
-  });
-
   const posts: MetaInstagramPost[] = [];
-  for (const m of recent) {
+  for (const m of media.data) {
+    if (!m.id) continue;
     const insights = await graphGet<{ data?: IgInsightRow[] }>(
       `${m.id}/insights`,
       { access_token: accessToken, metric: IG_METRICS }

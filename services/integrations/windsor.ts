@@ -382,10 +382,18 @@ export function trackingCodeInCaption(caption: string): string | null {
   return m ? m[1] : null;
 }
 
-/** Published posts with their engagement, newest first. */
+/**
+ * Published posts with their engagement, newest first.
+ *
+ * Unlike the direct Instagram/Meta connectors, this queries an external
+ * analytics API that requires an explicit date range on every call — there is
+ * no post-count cap to fall back on. A year is generous enough to cover a
+ * merchant's real history without asking Windsor for an unbounded range on
+ * every page load.
+ */
 export async function fetchInstagramPosts(
   key: string,
-  days = 90
+  days = 365
 ): Promise<InstagramPost[]> {
   const apiKey = extractWindsorKey(key);
   if (!apiKey) throw new Error("Clé Windsor.ai illisible.");

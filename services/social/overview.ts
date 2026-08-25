@@ -23,7 +23,15 @@ import { fetchInstagramPosts as fetchViaInstagramLogin } from "@/services/integr
  * reads like failure.
  */
 
-export const SOCIAL_DAYS = 90;
+/**
+ * What actually bounds the posts list: how many, not how old. Matches
+ * MAX_POSTS in services/integrations/instagram.ts — both connectors already
+ * cap the fetch there, so this is a description of that cap, not a second one.
+ */
+export const SOCIAL_POST_LIMIT = 30;
+
+/** Windsor is the one source that needs an explicit date range per request. */
+const WINDSOR_LOOKBACK_DAYS = 365;
 
 export type SocialSource = "instagram" | "meta" | "windsor";
 
@@ -42,7 +50,8 @@ export interface CodeStat {
 }
 
 export interface SocialOverview {
-  days: number;
+  /** How many posts the list can hold, not a time window — see SOCIAL_POST_LIMIT. */
+  postLimit: number;
   connected: boolean;
   source: SocialSource | null;
   error: string | null;
@@ -61,7 +70,7 @@ export interface SocialOverview {
 
 export function emptyOverview(): SocialOverview {
   return {
-    days: SOCIAL_DAYS,
+    postLimit: SOCIAL_POST_LIMIT,
     connected: false,
     source: null,
     error: null,
@@ -94,7 +103,7 @@ async function fetchPosts(
   if (ig) {
     connected = true;
     try {
-      const posts = await fetchViaInstagramLogin(ig.accessToken, SOCIAL_DAYS);
+      const posts = await fetchViaInstagramLogin(ig.accessToken);
       if (posts) return { posts, source: "instagram", connected, error: null };
       error = "Instagram n'a pas renvoyé de publications.";
     } catch (e) {
@@ -106,7 +115,7 @@ async function fetchPosts(
   if (meta) {
     connected = true;
     try {
-      const posts = await fetchMetaInstagramPosts(meta.accessToken, SOCIAL_DAYS);
+      const posts = await fetchMetaInstagramPosts(meta.accessToken);
       if (posts) return { posts, source: "meta", connected, error: null };
       // A valid token with no Instagram grant — name the gap instead of
       // showing an empty list that looks like "you posted nothing".
@@ -121,7 +130,7 @@ async function fetchPosts(
   if (windsor) {
     connected = true;
     try {
-      const posts = await fetchViaWindsor(windsor.accessToken, SOCIAL_DAYS);
+      const posts = await fetchViaWindsor(windsor.accessToken, WINDSOR_LOOKBACK_DAYS);
       return { posts, source: "windsor", connected, error: null };
     } catch (e) {
       error = (e as Error).message.slice(0, 200);
@@ -208,7 +217,7 @@ export async function buildSocialOverview(
   const withCode = enriched.filter((p) => p.trackingCode).length;
 
   const overview: SocialOverview = {
-    days: SOCIAL_DAYS,
+    postLimit: SOCIAL_POST_LIMIT,
     connected,
     source,
     error,

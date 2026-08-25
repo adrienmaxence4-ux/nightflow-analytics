@@ -116,13 +116,13 @@ export function formatSocialContext(social: SocialOverview): string[] {
   }
   if (social.posts.length === 0) {
     return [
-      `\nRÉSEAUX SOCIAUX : compte connecté, mais aucune publication sur les ${social.days} derniers jours.`,
+      "\nRÉSEAUX SOCIAUX : compte connecté, mais aucune publication trouvée.",
     ];
   }
 
   const t = social.totals;
   const lines = [
-    `\nRÉSEAUX SOCIAUX — Instagram, ${social.days} derniers jours (valeurs réelles) :`,
+    `\nRÉSEAUX SOCIAUX — Instagram, ${social.postLimit} dernières publications (valeurs réelles) :`,
     `${t.posts} publication(s) dont ${t.reels} Reel(s) — ${t.views} vue(s), ${t.reach} compte(s) touché(s), ${t.likes} like(s).`,
   ];
 
