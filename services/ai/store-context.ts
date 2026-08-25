@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
+import { isAdminEmail } from "@/lib/admin";
 import { CAMPAIGNS, PRODUCTS, RANGE_DATA, STORE } from "@/services/mock/data";
 import {
   buildSocialOverview,
@@ -26,6 +27,54 @@ export interface StoreContext {
   storeId: string | null;
 }
 
+/**
+ * Fetches products/campaigns/metrics/social for a resolved store and formats
+ * them — shared by the cookie-authenticated path below and by
+ * buildStoreContextForStore, which a trusted server-to-server caller (no
+ * browser session, no cookies) uses to reach the same real context.
+ */
+async function buildContextForResolvedStore(
+  db: SupabaseClient,
+  store: StoreRow,
+  withVisits: boolean
+): Promise<StoreContext | null> {
+  const [products, campaigns, metrics, social] = await Promise.all([
+    db.from("products").select("*").eq("store_id", store.id),
+    db.from("campaigns").select("*").eq("store_id", store.id),
+    db
+      .from("metrics_daily")
+      .select("*")
+      .eq("store_id", store.id)
+      .order("date", { ascending: false })
+      .limit(14),
+    // Organic social is often the only thing bringing people in. Without it
+    // the Copilot reasons about an empty funnel and blames the store. A
+    // social outage must never cost the user their whole context, so it
+    // degrades to "not connected" rather than throwing.
+    //
+    // withVisits mirrors the exact boundary /api/social/route.ts already
+    // draws: tracking-code visit counts are Nightflow's own site analytics,
+    // meaningful only for the owner — never for a future customer's chat.
+    buildSocialOverview(db, store.id, { withVisits }).catch(() =>
+      emptyOverview()
+    ),
+  ]);
+  const prods = (products.data as ProductRow[] | null) ?? [];
+  if (prods.length === 0) return null;
+  return {
+    storeName: store.name,
+    source: "db",
+    storeId: store.id,
+    summary: formatRealContext(
+      store,
+      prods,
+      (campaigns.data as CampaignRow[] | null) ?? [],
+      (metrics.data as MetricDailyRow[] | null) ?? [],
+      social
+    ),
+  };
+}
+
 export async function buildStoreContext(): Promise<StoreContext> {
   const supabase = createClient();
   if (supabase) {
@@ -40,39 +89,12 @@ export async function buildStoreContext(): Promise<StoreContext> {
           .limit(1);
         const store = (stores?.[0] as StoreRow | undefined) ?? null;
         if (store) {
-          const [products, campaigns, metrics, social] = await Promise.all([
-            supabase.from("products").select("*").eq("store_id", store.id),
-            supabase.from("campaigns").select("*").eq("store_id", store.id),
-            supabase
-              .from("metrics_daily")
-              .select("*")
-              .eq("store_id", store.id)
-              .order("date", { ascending: false })
-              .limit(14),
-            // Organic social is often the only thing bringing people in. Without
-            // it the Copilot reasons about an empty funnel and blames the store.
-            // A social outage must never cost the user their whole context, so
-            // it degrades to "not connected" rather than throwing.
-            buildSocialOverview(
-              supabase as unknown as SupabaseClient,
-              store.id
-            ).catch(() => emptyOverview()),
-          ]);
-          const prods = (products.data as ProductRow[] | null) ?? [];
-          if (prods.length > 0) {
-            return {
-              storeName: store.name,
-              source: "db",
-              storeId: store.id,
-              summary: formatRealContext(
-                store,
-                prods,
-                (campaigns.data as CampaignRow[] | null) ?? [],
-                (metrics.data as MetricDailyRow[] | null) ?? [],
-                social
-              ),
-            };
-          }
+          const ctx = await buildContextForResolvedStore(
+            supabase as unknown as SupabaseClient,
+            store,
+            isAdminEmail(user.email)
+          );
+          if (ctx) return ctx;
         }
       }
     } catch {
@@ -85,6 +107,28 @@ export async function buildStoreContext(): Promise<StoreContext> {
     storeId: null,
     summary: formatDemoContext(),
   };
+}
+
+/**
+ * Same real context, resolved without a browser session — for a trusted
+ * server-to-server caller (a scheduled automation, never a customer-facing
+ * route) that already knows which store it means. `db` must be the
+ * service-role client: there is no user JWT here for RLS to key off.
+ */
+export async function buildStoreContextForStore(
+  db: SupabaseClient,
+  storeId: string
+): Promise<StoreContext | null> {
+  const { data: stores } = await db
+    .from("stores")
+    .select("*")
+    .eq("id", storeId)
+    .limit(1);
+  const store = (stores?.[0] as StoreRow | undefined) ?? null;
+  if (!store) return null;
+  // The only caller is the admin's own automation endpoint (CRON_SECRET
+  // gated) — always the owner asking about their own store, so always true.
+  return buildContextForResolvedStore(db, store, true);
 }
 
 function euros(cents: number): string {
