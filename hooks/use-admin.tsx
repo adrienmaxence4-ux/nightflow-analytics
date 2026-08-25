@@ -20,7 +20,13 @@ export function useIsAdmin(): boolean {
           if (j.admin) {
             localStorage.setItem("nf_no_track", "1");
             // One-time purge of any visits already counted from this browser.
-            if (!localStorage.getItem("nf_purged")) {
+            // Versioned ("v2"): the original purge only cleaned site_visits,
+            // never ad_visits, so a browser that already ran it once left its
+            // own ad-tracking-code clicks in place forever. Bumping the flag
+            // re-fires the purge exactly once more for those browsers, now
+            // that /api/track's forget handler covers both tables — it is a
+            // no-op for anyone running this for the first time.
+            if (!localStorage.getItem("nf_purged_v2")) {
               const vid = localStorage.getItem("nf_vid");
               if (vid) {
                 fetch("/api/track", {
@@ -30,6 +36,7 @@ export function useIsAdmin(): boolean {
                 }).catch(() => {});
               }
               localStorage.setItem("nf_purged", "1");
+              localStorage.setItem("nf_purged_v2", "1");
             }
           } else {
             localStorage.removeItem("nf_no_track");

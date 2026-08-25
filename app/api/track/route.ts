@@ -29,6 +29,12 @@ export async function POST(req: Request) {
   // "forget" — purge des visites de ce navigateur. C'est une SUPPRESSION via
   // la clé service-role : on exige d'être admin connecté, sinon n'importe qui
   // connaissant un vid pourrait effacer des lignes de statistiques.
+  //
+  // Les deux tables doivent être purgées, pas seulement site_visits : un clic
+  // de l'admin sur son propre lien de suivi (`?a=CODE`) depuis un navigateur
+  // qui ne s'est pas encore identifié comme admin écrit aussi dans ad_visits,
+  // et cette ligne gonflait silencieusement les stats d'un post pour toujours
+  // — le nettoyage rétroactif ne rattrapait jamais ce cas.
   if (forget) {
     const supabase = createClient();
     const {
@@ -39,10 +45,9 @@ export async function POST(req: Request) {
     }
     const admin = createAdminClient();
     if (admin) {
-      await (admin as unknown as SupabaseClient)
-        .from("site_visits")
-        .delete()
-        .eq("vid", vid);
+      const db = admin as unknown as SupabaseClient;
+      await db.from("site_visits").delete().eq("vid", vid);
+      await db.from("ad_visits").delete().eq("vid", vid);
     }
     return NextResponse.json({ ok: true, forgotten: true });
   }
