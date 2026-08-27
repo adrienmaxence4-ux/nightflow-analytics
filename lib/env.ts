@@ -97,6 +97,13 @@ export const env = {
   // retry). Vercel Cron sends it as a Bearer token.
   cronSecret: process.env.CRON_SECRET ?? "",
 
+  // Inworld TTS — French voice-over. Used by the ads pipeline (scripts/ads)
+  // AND by /api/automation/tts, which the Auto-Growth routine calls to voice
+  // its Reel scripts. The key is a base64-encoded credential pair, passed
+  // verbatim in an `Authorization: Basic` header.
+  inworldKey: process.env.INWORLD_API_KEY ?? "",
+  inworldVoice: process.env.INWORLD_VOICE ?? "Étienne",
+
   // Meta Ads OAuth. Every Marketing API version before v24.0 was removed on
   // 2026-06-09, hence the v25.0 default; override without a release when Meta
   // ships the next one.
@@ -142,6 +149,9 @@ export const isAiConfigured = env.anthropicKey.length > 0;
 
 /** True when a Google Gemini key is configured. */
 export const isGeminiConfigured = env.geminiKey.length > 0;
+
+/** True when Inworld TTS is configured (French voice-over). */
+export const isInworldConfigured = env.inworldKey.length > 0;
 
 /** True when ANY AI provider is usable. */
 export const isAiEnabled = isAiConfigured || isGeminiConfigured;

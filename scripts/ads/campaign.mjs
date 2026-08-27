@@ -186,8 +186,9 @@ mkdirSync(OUT_DIR, { recursive: true });
 const list = ordered();
 console.log(`🎬 Campagne du ${TODAY} → ${OUT_DIR}`);
 const PROVIDER_LABEL = {
+  inworld: "🎙 Voix off : Inworld TTS (voix FR native « Étienne »)",
   elevenlabs: "🎙 Voix off : ElevenLabs (qualité studio)",
-  windows: "🎙 Voix off : voix Windows locale (robotique — pas de clé ElevenLabs)",
+  windows: "🎙 Voix off : voix Windows locale (robotique — pas de clé cloud)",
   none: "🔇 Voix off : indisponible ici — vidéos muettes",
 };
 console.log(
