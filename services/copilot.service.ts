@@ -10,6 +10,11 @@ export function getAnalysisCards(): AnalysisCard[] {
   return ANALYSIS_CARDS;
 }
 
+/** Rule-based recommendations — the fallback when the AI call is slow or down. */
+export function getRecommendations(): Recommendation[] {
+  return RECOMMENDATIONS;
+}
+
 /** Insights grouped by the Copilot's three reading lenses. */
 export function getGroupedInsights() {
   return {

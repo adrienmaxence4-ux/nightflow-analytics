@@ -19,6 +19,7 @@ import { useAuth } from "@/hooks/use-auth";
 import {
   getAnalysisCards,
   getGroupedInsights,
+  getRecommendations,
 } from "@/services/copilot.service";
 import { generateStoreReport } from "@/services/report.service";
 import type {
@@ -92,9 +93,24 @@ export default function CopilotPage() {
   const { reset: resetDrawer } = drawerCopilot;
   useEffect(() => resetDrawer(), [openAnalysis?.id, resetDrawer]);
 
-  // Real AI insights; fall back to the mock only if the AI is unavailable.
+  // Real AI insights; fall back to the rule-based engine if the AI is
+  // unavailable — or just slow. /api/insights fans out to three metered model
+  // calls, so on an uncached hit it can take 20–40s; without a bound here the
+  // Analyses and Actions panels sit on skeletons that whole time. After a short
+  // grace period we fill them from the rule-based engine; a later AI response
+  // still upgrades the panels in place.
   useEffect(() => {
     let alive = true;
+
+    const fillFromRules = () => {
+      if (!alive || insightsCache) return;
+      setGroups(getGroupedInsights());
+      setAnalyses(getAnalysisCards());
+      setRecos((r) => (r.length ? r : getRecommendations()));
+      setLoadingInsights(false);
+    };
+    const grace = setTimeout(fillFromRules, 12_000);
+
     fetch("/api/insights")
       .then((r) => (r.ok ? r.json() : null))
       .then((data: { insights?: Insight[]; recommendations?: Recommendation[] } | null) => {
@@ -112,6 +128,7 @@ export default function CopilotPage() {
         } else if (!insightsCache) {
           setGroups(getGroupedInsights());
           setAnalyses(getAnalysisCards());
+          setRecos((r) => (r.length ? r : getRecommendations()));
         }
         setLoadingInsights(false);
       })
@@ -119,10 +136,14 @@ export default function CopilotPage() {
         if (!alive) return;
         setGroups(getGroupedInsights());
         setAnalyses(getAnalysisCards());
+        setRecos((r) => (r.length ? r : getRecommendations()));
         setLoadingInsights(false);
-      });
+      })
+      .finally(() => clearTimeout(grace));
+
     return () => {
       alive = false;
+      clearTimeout(grace);
     };
   }, []);
 

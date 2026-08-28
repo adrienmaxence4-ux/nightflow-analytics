@@ -2,6 +2,7 @@
 
 import { useCallback, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { RichText } from "@/components/ui/rich-text";
 import { askCopilot } from "@/services/copilot.service";
 
 /**
@@ -64,7 +65,7 @@ export function CopilotAnswer({
                 ))}
               </span>
             ) : (
-              <p className="whitespace-pre-line">{answer}</p>
+              <RichText>{answer ?? ""}</RichText>
             )}
           </div>
         </motion.div>
