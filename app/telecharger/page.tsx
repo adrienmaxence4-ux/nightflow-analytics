@@ -57,7 +57,7 @@ const STEPS = [
   {
     n: 2,
     title: "Lancez-le",
-    body: "L'assistant d'installation s'ouvre. Il vous demande où installer et si vous voulez un raccourci sur le bureau.",
+    body: "Windows demande une autorisation administrateur (installation pour tous les comptes, dans Program Files). L'assistant vous laisse ensuite choisir le dossier et le raccourci bureau.",
   },
   {
     n: 3,
@@ -174,8 +174,9 @@ export default function TelechargerPage() {
         <TriangleAlert className="h-4 w-4 flex-none text-neon-pinksoft" />
         <div className="text-[13px] leading-relaxed text-ink-dim">
           <b className="text-white">Windows affichera un avertissement bleu</b> à
-          la première ouverture : l&apos;app n&apos;est pas encore signée par un
-          certificat. Cliquez sur{" "}
+          la première ouverture, et la fenêtre d&apos;autorisation indiquera
+          «&nbsp;Éditeur inconnu&nbsp;» : l&apos;app n&apos;est pas encore signée
+          par un certificat. Cliquez sur{" "}
           <span className="font-semibold text-white">
             « Informations complémentaires »
           </span>{" "}
