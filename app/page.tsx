@@ -34,6 +34,7 @@ export default function LandingPage() {
         <nav className="ml-auto hidden items-center gap-6 text-[13px] font-semibold text-ink-dim sm:flex">
           <a href="#fonctionnalites" className="hover:text-white">Fonctionnalités</a>
           <a href="#tarifs" className="hover:text-white">Tarifs</a>
+          <Link href="/telecharger" className="hover:text-white">Télécharger</Link>
           <Link href="/login" className="hover:text-white">Se connecter</Link>
         </nav>
         <Link

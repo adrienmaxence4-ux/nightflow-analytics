@@ -33,8 +33,6 @@ yarn-error.log*
 
 .vercel
 
-# desktop app build artifacts
-desktop/node_modules
-desktop/dist
-desktop/build
-desktop/
+# Electron desktop app — lives at the repo root, not part of the Next build.
+# Anchored with a leading slash so it doesn't also swallow app/api/desktop/.
+/desktop/
