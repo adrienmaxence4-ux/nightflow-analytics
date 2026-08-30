@@ -56,13 +56,13 @@ const STEPS = [
   },
   {
     n: 2,
-    title: "Lancez-le",
-    body: "Windows demande une autorisation administrateur (installation pour tous les comptes, dans Program Files). L'assistant vous laisse ensuite choisir le dossier et le raccourci bureau.",
+    title: "Double-cliquez",
+    body: "Pas d'assistant, pas de fenêtre à remplir : Nightflow s'installe pour votre compte et se lance tout seul. Un raccourci est ajouté au bureau et au menu Démarrer.",
   },
   {
     n: 3,
-    title: "Ouvrez Nightflow et connectez-vous",
-    body: "Cochez « Lancer Nightflow Analytics » à la fin. Connectez-vous une fois — l'agent démarrera ensuite avec Windows.",
+    title: "Connectez-vous une fois",
+    body: "Email ou Google, dans la fenêtre qui s'ouvre. Ensuite l'agent démarre avec Windows et surveille en fond.",
   },
 ];
 
@@ -174,9 +174,8 @@ export default function TelechargerPage() {
         <TriangleAlert className="h-4 w-4 flex-none text-neon-pinksoft" />
         <div className="text-[13px] leading-relaxed text-ink-dim">
           <b className="text-white">Windows affichera un avertissement bleu</b> à
-          la première ouverture, et la fenêtre d&apos;autorisation indiquera
-          «&nbsp;Éditeur inconnu&nbsp;» : l&apos;app n&apos;est pas encore signée
-          par un certificat. Cliquez sur{" "}
+          la première ouverture : l&apos;app n&apos;est pas encore signée par un
+          certificat éditeur. Cliquez sur{" "}
           <span className="font-semibold text-white">
             « Informations complémentaires »
           </span>{" "}
@@ -184,7 +183,7 @@ export default function TelechargerPage() {
           <span className="font-semibold text-white">
             « Exécuter quand même »
           </span>
-          . C&apos;est le même installateur que celui lié ci-dessus.
+          . Une seule fois — Windows retient ensuite votre choix.
         </div>
       </div>
 
