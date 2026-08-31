@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { headers } from "next/headers";
 import { LandingThemeToggle } from "@/components/landing/theme-toggle-landing";
 
 /**
@@ -13,13 +14,18 @@ export default function AuthLayout({
 }: {
   children: React.ReactNode;
 }) {
+  const nonce = headers().get("x-nonce") ?? undefined;
   return (
     <div
       id="auth-root"
       data-theme="sombre"
       className="flex min-h-screen flex-col items-center justify-center gap-6 px-4 py-10 text-ink [background:linear-gradient(180deg,#0d1219,#08090c_60%)] data-[theme=clair]:[background:linear-gradient(180deg,var(--panel),var(--bg)_60%)]"
     >
-      <script dangerouslySetInnerHTML={{ __html: AUTH_THEME_SCRIPT }} />
+      <script
+        nonce={nonce}
+        suppressHydrationWarning
+        dangerouslySetInnerHTML={{ __html: AUTH_THEME_SCRIPT }}
+      />
 
       <div className="flex w-full max-w-[480px] justify-end">
         <LandingThemeToggle rootId="auth-root" />

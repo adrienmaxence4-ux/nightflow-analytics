@@ -27,20 +27,94 @@ function bypassesMaintenance(pathname: string): boolean {
 }
 
 /**
- * Refreshes the Supabase auth session on every request when configured.
- * FAIL-OPEN by design: if Supabase is slow or unreachable, we skip the refresh
- * and serve the page anyway (a previous outage turned this call into a
- * MIDDLEWARE_INVOCATION_TIMEOUT that 504'd the whole site). Auth remains
- * enforced downstream — every API route checks auth.getUser() itself and RLS
- * guards all data — so skipping a refresh is always safe.
+ * Route segments that require a signed-in user. The `(app)` group plus
+ * onboarding. Everything else (landing, /login, /signup, /auth, legal pages,
+ * /telecharger, /maintenance) is public. Kept as an allowlist of prefixes so a
+ * new public page is never accidentally gated and a new private page is never
+ * accidentally exposed by a regex slip.
+ */
+const PROTECTED_PREFIXES = [
+  "/dashboard",
+  "/analytics",
+  "/billing",
+  "/copilot",
+  "/integrations",
+  "/marketing",
+  "/notifications",
+  "/products",
+  "/settings",
+  "/social",
+  "/admin",
+  "/onboarding",
+];
+
+function isProtectedPath(pathname: string): boolean {
+  return PROTECTED_PREFIXES.some(
+    (p) => pathname === p || pathname.startsWith(`${p}/`)
+  );
+}
+
+const isDev = process.env.NODE_ENV !== "production";
+
+/**
+ * Per-request CSP with a nonce instead of `script-src 'unsafe-inline'`, so a
+ * stolen/injected inline <script> won't run (the Supabase session cookies are
+ * readable by JS, so an XSS would otherwise mean token theft). Next.js reads the
+ * nonce from this request header and stamps it onto its own bootstrap scripts;
+ * the three app inline theme-scripts read it from `headers()` and pass `nonce=`.
+ * `'strict-dynamic'` lets those trusted scripts pull in the rest of the bundle.
+ */
+function buildCsp(nonce: string): string {
+  return [
+    "default-src 'self'",
+    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${isDev ? " 'unsafe-eval'" : ""}`,
+    "style-src 'self' 'unsafe-inline'",
+    "img-src 'self' data: blob: https:",
+    "font-src 'self' data:",
+    "connect-src 'self' https: wss:",
+    "frame-src 'self'",
+    "frame-ancestors 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+    "object-src 'none'",
+    "upgrade-insecure-requests",
+  ].join("; ");
+}
+
+/**
+ * Refreshes the Supabase auth session on every request when configured, and
+ * redirects anonymous visitors away from the private (`(app)`) routes.
+ *
+ * FAIL-OPEN by design: if Supabase is slow or unreachable, we skip BOTH the
+ * refresh and the redirect and serve the request anyway (a previous outage
+ * turned this call into a MIDDLEWARE_INVOCATION_TIMEOUT that 504'd the whole
+ * site). The page guard only fires on a POSITIVE "no session" answer — a failed
+ * or timed-out auth check never locks anyone out. Data stays safe regardless:
+ * every API route re-checks auth.getUser() and RLS guards every table.
  */
 export async function middleware(request: NextRequest) {
+  // Nonce for this request's CSP. Injected into the request headers so Next.js
+  // stamps it on its bootstrap scripts, and echoed on the response CSP header.
+  // A random UUID is unpredictable per-response — all a CSP nonce needs.
+  const nonce = crypto.randomUUID();
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set("x-nonce", nonce);
+  const csp = buildCsp(nonce);
+  requestHeaders.set("content-security-policy", csp);
+
+  const withCsp = (res: NextResponse): NextResponse => {
+    res.headers.set("content-security-policy", csp);
+    return res;
+  };
+
   if (!SUPABASE_URL || !SUPABASE_ANON) {
-    return NextResponse.next();
+    return withCsp(NextResponse.next({ request: { headers: requestHeaders } }));
   }
 
-  let response = NextResponse.next({ request });
+  let response = NextResponse.next({ request: { headers: requestHeaders } });
   let userEmail: string | null = null;
+  // null = we never got a definitive answer (error/timeout) → fail open.
+  let hasSession: boolean | null = null;
 
   try {
     const supabase = createServerClient(SUPABASE_URL, SUPABASE_ANON, {
@@ -54,7 +128,7 @@ export async function middleware(request: NextRequest) {
           cookiesToSet.forEach(({ name, value }) =>
             request.cookies.set(name, value)
           );
-          response = NextResponse.next({ request });
+          response = NextResponse.next({ request: { headers: requestHeaders } });
           cookiesToSet.forEach(({ name, value, options }) =>
             response.cookies.set(name, value, options)
           );
@@ -71,26 +145,44 @@ export async function middleware(request: NextRequest) {
     const raced = (await Promise.race([
       supabase.auth.getUser(),
       new Promise((resolve) => setTimeout(() => resolve(null), AUTH_TIMEOUT_MS + 500)),
-    ])) as { data?: { user?: { email?: string | null } | null } } | null;
-    userEmail = raced?.data?.user?.email ?? null;
+    ])) as
+      | { data?: { user?: { email?: string | null } | null }; error?: unknown }
+      | null;
+    if (raced) {
+      // getUser() returned (even {user: null, error: ...}) → a definitive read.
+      hasSession = !!raced.data?.user;
+      userEmail = raced.data?.user?.email ?? null;
+    }
   } catch (e) {
-    // Fail open: log and serve the request without a session refresh.
+    // Fail open: log and serve the request without a session refresh / guard.
     console.error("[middleware] session refresh skipped:", e);
+  }
+
+  const pathname = request.nextUrl.pathname;
+
+  // ── Auth guard ── a positive "no session" on a private route → /login.
+  // Never redirect on an inconclusive check (hasSession === null).
+  if (hasSession === false && isProtectedPath(pathname)) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/login";
+    url.search = `?next=${encodeURIComponent(pathname)}`;
+    return withCsp(NextResponse.redirect(url));
   }
 
   // ── Maintenance mode ── block everyone except admins; login/API stay open so
   // the owner can always get back in and switch it off. Fail-open (see helper).
-  const pathname = request.nextUrl.pathname;
   if (!bypassesMaintenance(pathname)) {
     const isAdmin = !!userEmail && ADMIN_EMAILS.includes(userEmail.toLowerCase());
     if (!isAdmin && (await isMaintenanceOn())) {
       const url = request.nextUrl.clone();
       url.pathname = "/maintenance";
-      return NextResponse.rewrite(url);
+      return withCsp(
+        NextResponse.rewrite(url, { request: { headers: requestHeaders } })
+      );
     }
   }
 
-  return response;
+  return withCsp(response);
 }
 
 export const config = {

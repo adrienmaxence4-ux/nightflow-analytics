@@ -54,7 +54,12 @@ export async function GET(req: Request) {
   const db = supabase as unknown as SupabaseClient;
 
   // Ensure a store exists (create one named after the shop on first connect).
-  const existingStore = await supabase.from("stores").select("id").limit(1);
+  const existingStore = await supabase
+    .from("stores")
+    .select("id")
+    .eq("owner_id", user.id)
+    .order("created_at", { ascending: true })
+    .limit(1);
   let storeId =
     (existingStore.data?.[0] as { id: string } | undefined)?.id ?? null;
   if (!storeId) {

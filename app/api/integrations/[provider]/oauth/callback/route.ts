@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { env } from "@/lib/env";
 import { createClient } from "@/lib/supabase/server";
+import { ownedStoreId } from "@/lib/store";
 import { encryptToken } from "@/lib/integrations/crypto";
 import { getOAuthProvider } from "@/services/integrations/oauth-registry";
 
@@ -24,9 +25,12 @@ export async function GET(
   req: Request,
   { params }: { params: { provider: string } }
 ) {
+  // `params.provider` is a URL path segment — encode it before it goes into the
+  // redirect query, so a crafted segment can't inject extra params.
+  const provider = encodeURIComponent(params.provider);
   const err = (reason: string) =>
     NextResponse.redirect(
-      `${env.siteUrl}/integrations?${params.provider}=error&reason=${reason}`
+      `${env.siteUrl}/integrations?${provider}=error&reason=${reason}`
     );
 
   const def = getOAuthProvider(params.provider);
@@ -58,8 +62,7 @@ export async function GET(
     return NextResponse.redirect(`${env.siteUrl}/login?next=/integrations`);
   }
 
-  const { data: store } = await supabase.from("stores").select("id").limit(1);
-  const storeId = (store?.[0] as { id: string } | undefined)?.id;
+  const storeId = await ownedStoreId(supabase, user.id);
   if (!storeId) return err("store");
 
   const db = supabase as unknown as SupabaseClient;

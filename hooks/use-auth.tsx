@@ -16,9 +16,18 @@ interface AuthContextValue {
   loading: boolean;
   demoMode: boolean;
   signIn: (email: string, password: string) => Promise<{ error?: string }>;
-  signUp: (email: string, password: string) => Promise<{ error?: string }>;
+  signUp: (
+    email: string,
+    password: string
+  ) => Promise<{ error?: string; needsConfirmation?: boolean }>;
   signInWithGoogle: () => Promise<{ error?: string; redirecting?: boolean }>;
   signOut: () => Promise<void>;
+  /** Sends a password-reset email (Supabase recovery link → /update-password). */
+  resetPassword: (email: string) => Promise<{ error?: string }>;
+  /** Sets a new password for the current session, then revokes other sessions. */
+  updatePassword: (password: string) => Promise<{ error?: string }>;
+  /** Revokes every session for this user, on all devices. */
+  signOutEverywhere: () => Promise<{ error?: string }>;
 }
 
 const DEMO_USER: AppUser = {
@@ -40,7 +49,12 @@ const AuthContext = createContext<AuthContextValue>({
   signUp: async () => ({}),
   signInWithGoogle: async () => ({}),
   signOut: async () => {},
+  resetPassword: async () => ({}),
+  updatePassword: async () => ({}),
+  signOutEverywhere: async () => ({}),
 });
+
+const MIN_PASSWORD = 10;
 
 export function useAuth() {
   return useContext(AuthContext);
@@ -109,10 +123,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(u);
         return {};
       }
+      if (password.length < MIN_PASSWORD) {
+        return { error: `Mot de passe : ${MIN_PASSWORD} caractères minimum.` };
+      }
       const supabase = createClient();
       if (!supabase) return { error: "Supabase non configuré" };
-      const { error } = await supabase.auth.signUp({ email, password });
-      return error ? { error: error.message } : {};
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
+      });
+      if (error) return { error: error.message };
+      // No session back → the project requires email confirmation. Don't pretend
+      // the user is in; the page shows "check your inbox" instead of redirecting.
+      return { needsConfirmation: !data.session };
     },
     [demoMode]
   );
@@ -149,6 +173,49 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(null);
   }, [demoMode]);
 
+  const resetPassword = useCallback(
+    async (email: string) => {
+      if (demoMode) return {};
+      const supabase = createClient();
+      if (!supabase) return { error: "Supabase non configuré" };
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/auth/callback?type=recovery`,
+      });
+      return error ? { error: error.message } : {};
+    },
+    [demoMode]
+  );
+
+  const updatePassword = useCallback(
+    async (password: string) => {
+      if (demoMode) return {};
+      if (password.length < MIN_PASSWORD) {
+        return { error: `Mot de passe : ${MIN_PASSWORD} caractères minimum.` };
+      }
+      const supabase = createClient();
+      if (!supabase) return { error: "Supabase non configuré" };
+      const { error } = await supabase.auth.updateUser({ password });
+      if (error) return { error: error.message };
+      // A password change must not leave old sessions alive elsewhere.
+      await supabase.auth.signOut({ scope: "others" });
+      return {};
+    },
+    [demoMode]
+  );
+
+  const signOutEverywhere = useCallback(async () => {
+    if (demoMode) {
+      window.localStorage.removeItem(STORAGE_KEY);
+      setUser(null);
+      return {};
+    }
+    const supabase = createClient();
+    if (!supabase) return { error: "Supabase non configuré" };
+    const { error } = await supabase.auth.signOut({ scope: "global" });
+    setUser(null);
+    return error ? { error: error.message } : {};
+  }, [demoMode]);
+
   return (
     <AuthContext.Provider
       value={{
@@ -159,6 +226,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         signUp,
         signInWithGoogle,
         signOut,
+        resetPassword,
+        updatePassword,
+        signOutEverywhere,
       }}
     >
       {children}

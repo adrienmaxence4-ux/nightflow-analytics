@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
+import { ownedStoreId } from "@/lib/store";
 
 /**
  * POST /api/profile   body: { storeName?: string }
@@ -23,19 +24,18 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
   }
 
-  const name = storeName?.trim();
+  const name = storeName?.trim().slice(0, 120);
   if (!name) {
     return NextResponse.json({ error: "Nom de boutique manquant" }, { status: 400 });
   }
 
-  const { data: store } = await supabase.from("stores").select("id").limit(1);
-  const storeId = (store?.[0] as { id: string } | undefined)?.id;
+  const storeId = await ownedStoreId(supabase, user.id);
   if (!storeId) {
     return NextResponse.json({ error: "Aucune boutique" }, { status: 404 });
   }
 
   const db = supabase as unknown as SupabaseClient;
-  await db.from("stores").update({ name }).eq("id", storeId);
+  await db.from("stores").update({ name }).eq("id", storeId).eq("owner_id", user.id);
 
   return NextResponse.json({ ok: true, storeName: name });
 }

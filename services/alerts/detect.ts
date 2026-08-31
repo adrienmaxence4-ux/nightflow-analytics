@@ -87,7 +87,12 @@ export async function loadStoreSignals(): Promise<StoreSignals | null> {
   } = await supabase.auth.getUser();
   if (!user) return null;
 
-  const { data: stores } = await supabase.from("stores").select("*").limit(1);
+  const { data: stores } = await supabase
+    .from("stores")
+    .select("*")
+    .eq("owner_id", user.id)
+    .order("created_at", { ascending: true })
+    .limit(1);
   const store = (stores?.[0] as StoreRow | undefined) ?? null;
   if (!store) return null;
 

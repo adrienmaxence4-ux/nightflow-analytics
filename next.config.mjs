@@ -1,29 +1,9 @@
 /** @type {import('next').NextConfig} */
 
-const isDev = process.env.NODE_ENV !== "production";
-
-// Content-Security-Policy. Pragmatic but protective: locks framing/objects,
-// keeps scripts to same-origin (+inline for Next's bootstrap; +eval only in dev
-// for React Fast Refresh), and allows the network calls the app actually makes
-// (Supabase REST + realtime over wss, image CDNs, OAuth redirects are top-level
-// navigations so they don't need connect-src).
-const csp = [
-  "default-src 'self'",
-  `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""}`,
-  "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data: blob: https:",
-  "font-src 'self' data:",
-  "connect-src 'self' https: wss:",
-  "frame-src 'self'",
-  "frame-ancestors 'none'",
-  "base-uri 'self'",
-  "form-action 'self'",
-  "object-src 'none'",
-  "upgrade-insecure-requests",
-].join("; ");
-
+// Content-Security-Policy is set per-request in middleware.ts (nonce-based
+// script-src — no 'unsafe-inline'). It can't live here because the nonce
+// changes every response. The rest of the security headers are static:
 const securityHeaders = [
-  { key: "Content-Security-Policy", value: csp },
   {
     key: "Strict-Transport-Security",
     value: "max-age=63072000; includeSubDomains; preload",

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
+import { ownedStoreId } from "@/lib/store";
 
 /**
  * POST /api/integrations/shopify/disconnect
@@ -18,8 +19,7 @@ export async function POST() {
     return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
   }
 
-  const { data: store } = await supabase.from("stores").select("id").limit(1);
-  const storeId = (store?.[0] as { id: string } | undefined)?.id;
+  const storeId = await ownedStoreId(supabase, user.id);
   if (!storeId) return NextResponse.json({ ok: true });
 
   const db = supabase as unknown as SupabaseClient;

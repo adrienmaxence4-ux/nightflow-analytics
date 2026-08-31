@@ -14,3 +14,47 @@ major_version = 15
 [db.seed]
 enabled = true
 sql_paths = ["./seed.sql"]
+
+# ───────────────────────────────────────────────
+# Auth — kept in version control so the security-relevant settings are
+# reviewable and reproducible, not just live dashboard state.
+# Apply to the linked project with:  supabase config push
+# (Only the keys the CLI supports live here. Leaked-password / HaveIBeenPwned
+#  protection has no config.toml key yet — it stays a dashboard toggle:
+#  Authentication → Attack Protection → "Leaked password protection".)
+# ───────────────────────────────────────────────
+[auth]
+site_url = "https://nightflow-analytics.vercel.app"
+additional_redirect_urls = [
+  "http://localhost:3000/auth/callback",
+  "https://nightflow-analytics.vercel.app/auth/callback",
+]
+# Recovery / confirmation links are short-lived.
+jwt_expiry = 3600
+# Refresh tokens rotate; a reused (stolen) one revokes the whole family.
+enable_refresh_token_rotation = true
+refresh_token_reuse_interval = 10
+# No 6-char passwords (F7). "lower_upper_letters_digits" | ".._symbols" | ""
+minimum_password_length = 10
+password_requirements = "lower_upper_letters_digits"
+
+[auth.email]
+# Email ownership must be proven before an account is usable — closes the
+# "register as victim@corp.com" hole (F6).
+enable_confirmations = true
+double_confirm_changes = true
+# Changing the password requires a fresh login first.
+secure_password_change = true
+# Keep the stricter values the project already had (CLI defaults are looser).
+max_frequency = "60s"
+otp_length = 8
+otp_expiry = 3600
+
+# MFA — the project had TOTP enrolment on; config push would otherwise reset it
+# to the CLI default (off). Keep it on (audit recommendation, esp. for admin).
+[auth.mfa]
+max_enrolled_factors = 10
+
+[auth.mfa.totp]
+enroll_enabled = true
+verify_enabled = true

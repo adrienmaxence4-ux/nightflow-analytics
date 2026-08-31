@@ -62,6 +62,26 @@ describe("signed_request", () => {
     const sig = crypto.createHmac("sha256", SECRET).update(encoded).digest();
     expect(parseSignedRequest(`${b64url(sig)}.${encoded}`, SECRET)).toBeNull();
   });
+
+  it("accepts a recently-issued request", () => {
+    const now = Math.floor(Date.now() / 1000);
+    const r = parseSignedRequest(sign({ user_id: "1", issued_at: now - 30 }), SECRET);
+    expect(r?.user_id).toBe("1");
+  });
+
+  it("refuses a replayed (stale) request even with a valid signature", () => {
+    const old = Math.floor(Date.now() / 1000) - 3600;
+    expect(
+      parseSignedRequest(sign({ user_id: "1", issued_at: old }), SECRET)
+    ).toBeNull();
+  });
+
+  it("refuses a request whose `expires` is in the past", () => {
+    const past = Math.floor(Date.now() / 1000) - 60;
+    expect(
+      parseSignedRequest(sign({ user_id: "1", expires: past }), SECRET)
+    ).toBeNull();
+  });
 });
 
 describe("deletion code", () => {

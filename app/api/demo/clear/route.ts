@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
+import { ownedStoreId } from "@/lib/store";
 import { isAdminEmail } from "@/lib/admin";
 
 /**
@@ -36,8 +37,7 @@ export async function POST() {
     );
   }
 
-  const { data: store } = await supabase.from("stores").select("id").limit(1);
-  const storeId = (store?.[0] as { id: string } | undefined)?.id;
+  const storeId = await ownedStoreId(supabase, user.id);
   if (!storeId) return NextResponse.json({ ok: true, cleared: false });
 
   const db = supabase as unknown as SupabaseClient;

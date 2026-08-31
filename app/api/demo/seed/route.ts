@@ -31,10 +31,12 @@ export async function POST() {
 
   const db = supabase as unknown as SupabaseClient;
 
-  // 1. Get or create the store
+  // 1. Get or create the store (this user's own)
   const { data: existing } = await supabase
     .from("stores")
     .select("id")
+    .eq("owner_id", user.id)
+    .order("created_at", { ascending: true })
     .limit(1);
   let storeId = (existing?.[0] as { id: string } | undefined)?.id ?? null;
 

@@ -68,8 +68,13 @@ export async function POST(req: Request) {
 
   const db = supabase as unknown as SupabaseClient;
 
-  // Store — create one if the admin has none yet.
-  const { data: storeRows } = await supabase.from("stores").select("id").limit(1);
+  // Store — create one if the admin has none yet (their own).
+  const { data: storeRows } = await supabase
+    .from("stores")
+    .select("id")
+    .eq("owner_id", user.id)
+    .order("created_at", { ascending: true })
+    .limit(1);
   let storeId = (storeRows?.[0] as { id: string } | undefined)?.id ?? null;
   if (!storeId) {
     const { data: created } = await db

@@ -16,6 +16,7 @@ export function AuthCard({ mode }: { mode: "login" | "signup" }) {
   const [busy, setBusy] = useState(false);
   const [googleBusy, setGoogleBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
 
   const isLogin = mode === "login";
 
@@ -23,11 +24,28 @@ export function AuthCard({ mode }: { mode: "login" | "signup" }) {
     e.preventDefault();
     setBusy(true);
     setError(null);
-    const fn = isLogin ? signIn : signUp;
-    const { error } = await fn(email || "demo@nightflow.app", password || "demo1234");
+    setNotice(null);
+
+    // Only demo mode gets the click-through defaults; a real project always
+    // requires a real email + password.
+    const mail = demoMode ? email || "demo@nightflow.app" : email.trim();
+    const pass = demoMode ? password || "demo1234" : password;
+    if (!demoMode && (!mail || !pass)) {
+      setBusy(false);
+      setError("Renseigne ton adresse email et ton mot de passe.");
+      return;
+    }
+
+    const res = isLogin ? await signIn(mail, pass) : await signUp(mail, pass);
     setBusy(false);
-    if (error) {
-      setError(error);
+    if (res.error) {
+      setError(res.error);
+      return;
+    }
+    if (!isLogin && "needsConfirmation" in res && res.needsConfirmation) {
+      setNotice(
+        "Compte créé. Ouvre le lien de confirmation qu'on vient de t'envoyer par email pour activer l'accès."
+      );
       return;
     }
     toast(isLogin ? "Connexion réussie" : "Compte créé");
@@ -105,8 +123,16 @@ export function AuthCard({ mode }: { mode: "login" | "signup" }) {
           />
         </label>
         <label className="block">
-          <span className="mb-2 block text-[16px] font-semibold text-ink2">
+          <span className="mb-2 flex items-baseline justify-between text-[16px] font-semibold text-ink2">
             Mot de passe
+            {isLogin && (
+              <Link
+                href="/forgot-password"
+                className="text-[14px] font-medium text-accent-text hover:underline"
+              >
+                Mot de passe oublié ?
+              </Link>
+            )}
           </span>
           <input
             type="password"
@@ -114,13 +140,24 @@ export function AuthCard({ mode }: { mode: "login" | "signup" }) {
             onChange={(e) => setPassword(e.target.value)}
             placeholder="••••••••"
             autoComplete={isLogin ? "current-password" : "new-password"}
+            minLength={isLogin ? undefined : 10}
             className={fieldClass}
           />
+          {!isLogin && (
+            <span className="mt-1.5 block text-[13px] text-ink3">
+              10 caractères minimum. Évite un mot de passe déjà utilisé ailleurs.
+            </span>
+          )}
         </label>
 
         {error && (
           <div className="rounded-[10px] border border-bad/40 bg-bad-bg px-3 py-2 text-[15px] text-bad">
             {error}
+          </div>
+        )}
+        {notice && (
+          <div className="rounded-[10px] border border-accent/40 bg-panel2 px-3 py-2 text-[15px] text-ink2">
+            {notice}
           </div>
         )}
 

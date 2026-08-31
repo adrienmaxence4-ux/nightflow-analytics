@@ -11,9 +11,46 @@ import { useAuth } from "@/hooks/use-auth";
 
 export default function SettingsPage() {
   const toast = useToast();
-  const { user } = useAuth();
+  const { user, updatePassword, signOutEverywhere } = useAuth();
   const [storeName, setStoreName] = useState("");
   const [saving, setSaving] = useState(false);
+  const [pw, setPw] = useState("");
+  const [pw2, setPw2] = useState("");
+  const [pwBusy, setPwBusy] = useState(false);
+  const [outBusy, setOutBusy] = useState(false);
+
+  const changePassword = async () => {
+    if (pwBusy) return;
+    if (pw !== pw2) {
+      toast("Les deux mots de passe ne correspondent pas.", "info");
+      return;
+    }
+    setPwBusy(true);
+    try {
+      const { error } = await updatePassword(pw);
+      if (error) {
+        toast(error, "info");
+        return;
+      }
+      setPw("");
+      setPw2("");
+      toast("Mot de passe changé — les autres appareils ont été déconnectés.", "success");
+    } finally {
+      setPwBusy(false);
+    }
+  };
+
+  const disconnectEverywhere = async () => {
+    if (outBusy) return;
+    setOutBusy(true);
+    try {
+      const { error } = await signOutEverywhere();
+      if (error) toast(error, "info");
+      else window.location.href = "/login";
+    } finally {
+      setOutBusy(false);
+    }
+  };
 
   useEffect(() => {
     if (user?.store) setStoreName(user.store);
@@ -81,6 +118,56 @@ export default function SettingsPage() {
           <Button size="lg" className="mt-7" onClick={saveProfile} disabled={saving}>
             {saving ? "Enregistrement…" : "Enregistrer"}
           </Button>
+        </section>
+
+        {/* Sécurité */}
+        <section className="panel p-7 min-[900px]:col-span-2">
+          <h2 className="mb-1 font-display text-title">Sécurité</h2>
+          <p className="mb-5 mt-1 text-[16px] leading-relaxed text-ink3">
+            Changer le mot de passe déconnecte automatiquement les autres
+            appareils.
+          </p>
+          <div className="grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(240px,1fr))]">
+            <div>
+              <label className={fieldLabel} htmlFor="new-pw">
+                Nouveau mot de passe
+              </label>
+              <Input
+                id="new-pw"
+                type="password"
+                value={pw}
+                minLength={10}
+                autoComplete="new-password"
+                placeholder="10 caractères minimum"
+                onChange={(e) => setPw(e.target.value)}
+              />
+            </div>
+            <div>
+              <label className={fieldLabel} htmlFor="new-pw2">
+                Confirmer
+              </label>
+              <Input
+                id="new-pw2"
+                type="password"
+                value={pw2}
+                minLength={10}
+                autoComplete="new-password"
+                placeholder="Retape le mot de passe"
+                onChange={(e) => setPw2(e.target.value)}
+              />
+            </div>
+          </div>
+          <div className="mt-5 flex flex-wrap gap-3">
+            <Button
+              onClick={changePassword}
+              disabled={pwBusy || pw.length < 10 || pw2.length < 10}
+            >
+              {pwBusy ? "…" : "Changer le mot de passe"}
+            </Button>
+            <Button variant="ghost" onClick={disconnectEverywhere} disabled={outBusy}>
+              {outBusy ? "…" : "Déconnecter tous les appareils"}
+            </Button>
+          </div>
         </section>
 
         {/* Affichage */}

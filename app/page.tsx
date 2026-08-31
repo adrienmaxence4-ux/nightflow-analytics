@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { headers } from "next/headers";
 import {
   ArrowRight,
   BellRing,
@@ -78,13 +79,18 @@ const FAQ: [string, string][] = [
 ];
 
 export default function LandingPage() {
+  const nonce = headers().get("x-nonce") ?? undefined;
   return (
     <div
       id="landing-root"
       data-theme="sombre"
       className="min-h-screen text-ink [background:linear-gradient(180deg,#0d1219,#08090c_55%)] data-[theme=clair]:[background:linear-gradient(180deg,var(--panel),var(--bg)_55%)]"
     >
-      <script dangerouslySetInnerHTML={{ __html: LANDING_THEME_SCRIPT }} />
+      <script
+        nonce={nonce}
+        suppressHydrationWarning
+        dangerouslySetInnerHTML={{ __html: LANDING_THEME_SCRIPT }}
+      />
       <div className="mx-auto w-full max-w-[1160px] px-6">
         {/* ── Nav ── */}
         <header className="flex flex-wrap items-center gap-6 py-6">

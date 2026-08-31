@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { ownedStore } from "@/lib/store";
 import type {
   BarDatum,
   Campaign,
@@ -44,8 +45,7 @@ async function getStore(): Promise<{
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return null;
-  const { data } = await supabase.from("stores").select("*").limit(1);
-  const store = (data?.[0] as StoreRow | undefined) ?? null;
+  const store = await ownedStore<StoreRow>(supabase, user.id);
   return store ? { supabase, store } : null;
 }
 

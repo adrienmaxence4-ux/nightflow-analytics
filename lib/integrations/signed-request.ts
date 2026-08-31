@@ -19,6 +19,9 @@ export interface SignedRequest {
   user_id?: string;
 }
 
+/** How long a signed_request stays acceptable when it carries `issued_at`. */
+const MAX_AGE_SEC = 600;
+
 function fromBase64Url(input: string): Buffer {
   return Buffer.from(input.replace(/-/g, "+").replace(/_/g, "/"), "base64");
 }
@@ -46,12 +49,30 @@ export function parseSignedRequest(
   if (provided.length !== expected.length) return null;
   if (!crypto.timingSafeEqual(provided, expected)) return null;
 
+  let payload: SignedRequest;
   try {
-    const payload = JSON.parse(fromBase64Url(encodedPayload).toString("utf8"));
-    return payload as SignedRequest;
+    payload = JSON.parse(
+      fromBase64Url(encodedPayload).toString("utf8")
+    ) as SignedRequest;
   } catch {
     return null;
   }
+
+  // Freshness: reject a stale/replayed request. Meta signs `issued_at` (and
+  // sometimes `expires`); a captured value must not stay valid forever.
+  const nowSec = Math.floor(Date.now() / 1000);
+  if (typeof payload.expires === "number" && payload.expires > 0 && payload.expires < nowSec) {
+    return null;
+  }
+  if (
+    typeof payload.issued_at === "number" &&
+    payload.issued_at > 0 &&
+    nowSec - payload.issued_at > MAX_AGE_SEC
+  ) {
+    return null;
+  }
+
+  return payload;
 }
 
 /** Short, unambiguous code a person can quote back. No lookalike characters. */
