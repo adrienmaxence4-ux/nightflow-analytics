@@ -1,7 +1,12 @@
 import type { Config } from "tailwindcss";
 
+/**
+ * Couleurs sémantiques uniquement — chacune pointe vers une CSS custom
+ * property posée dans `app/globals.css`. La bascule clair/sombre se fait donc
+ * sans variante `dark:` : c'est l'attribut `data-theme` qui redéfinit la
+ * variable. Ne jamais rajouter ici une couleur en dur.
+ */
 const config: Config = {
-  darkMode: "class",
   content: [
     "./app/**/*.{ts,tsx}",
     "./components/**/*.{ts,tsx}",
@@ -10,57 +15,44 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        // Fonds ciel de nuit
-        night: {
-          950: "#070B1A",
-          900: "#0B1026",
-          850: "#0E1430",
-          800: "#111827",
+        bg: "var(--bg)",
+        panel: "var(--panel)",
+        panel2: "var(--panel2)",
+        line: "var(--line)",
+        ink: "var(--ink)",
+        ink2: "var(--ink2)",
+        ink3: "var(--ink3)",
+        accent: {
+          DEFAULT: "var(--accent)",
+          ink: "var(--accent-ink)",
+          text: "var(--accent-text)",
         },
-        // Accents néon
-        neon: {
-          cyan: "#3df2ff",
-          cyansoft: "#7af4ff",
-          pink: "#ff5cae",
-          pinksoft: "#ff8fcb",
-          violet: "#9a6bff",
-          lime: "#7dffb0",
-          amber: "#ffcc66",
-        },
-        ink: {
-          DEFAULT: "#eaf0ff", // 17.6:1 sur night-950
-          dim: "#a7b0d8", //  9.0:1
-          // Était #6b73a3 → 4.22:1, sous le minimum WCAG AA de 4.5:1.
-          // #7b84b0 mesure 5.3:1 en restant nettement en retrait.
-          mut: "#7b84b0",
-        },
-        glass: {
-          DEFAULT: "rgba(20,24,52,0.55)",
-          2: "rgba(28,32,68,0.45)",
-          border: "rgba(140,160,255,0.14)",
-          hi: "rgba(160,200,255,0.35)",
-        },
+        cool: { DEFAULT: "var(--cool)", bg: "var(--cool-bg)" },
+        good: { DEFAULT: "var(--good)", bg: "var(--good-bg)" },
+        bad: { DEFAULT: "var(--bad)", bg: "var(--bad-bg)" },
+        warn: { DEFAULT: "var(--warn)", bg: "var(--warn-bg)" },
       },
-      // Échelle typographique — 5 tailles pour toute l'app.
-      // Au-delà, la hiérarchie cesse d'être lisible.
+      // Échelle typographique — base 18px, plancher 15px.
       fontSize: {
-        display: ["36px", { lineHeight: "1", letterSpacing: "-0.025em", fontWeight: "800" }],
-        title: ["22px", { lineHeight: "1.25", letterSpacing: "-0.015em", fontWeight: "800" }],
-        head: ["16px", { lineHeight: "1.35", letterSpacing: "-0.005em", fontWeight: "700" }],
-        body: ["14px", { lineHeight: "1.55" }],
-        label: ["12px", { lineHeight: "1.4", letterSpacing: "0.02em", fontWeight: "600" }],
+        display: ["30px", { lineHeight: "1.1", letterSpacing: "-0.02em", fontWeight: "800" }],
+        stat: ["52px", { lineHeight: "1.05", letterSpacing: "-0.02em", fontWeight: "800" }],
+        title: ["24px", { lineHeight: "1.2", letterSpacing: "-0.015em", fontWeight: "800" }],
+        head: ["19px", { lineHeight: "1.4", fontWeight: "700" }],
+        body: ["18px", { lineHeight: "1.6" }],
+        small: ["17px", { lineHeight: "1.6" }],
+        label: ["15px", { lineHeight: "1.4", letterSpacing: "0.01em", fontWeight: "600" }],
       },
       borderRadius: {
+        DEFAULT: "var(--r-md)",
         sm: "var(--r-sm)",
         md: "var(--r-md)",
         lg: "var(--r-lg)",
-        xl: "var(--r-lg)",
+        xl: "var(--r-xl)",
         "2xl": "var(--r-xl)",
+        pill: "var(--r-pill)",
       },
       boxShadow: {
-        glow: "0 0 24px rgba(61,242,255,0.35)",
-        "glow-pink": "0 0 24px rgba(255,92,174,0.35)",
-        premium: "0 18px 50px -18px rgba(0,0,0,0.75)",
+        card: "var(--shadow)",
       },
       transitionDuration: {
         fast: "var(--dur-fast)",
@@ -74,28 +66,12 @@ const config: Config = {
         in: "var(--ease-in)",
       },
       fontFamily: {
-        sans: ["var(--font-inter)", "Inter", "system-ui", "sans-serif"],
+        sans: ["var(--font-sans)", "system-ui", "sans-serif"],
+        display: ["var(--font-display)", "var(--font-sans)", "sans-serif"],
       },
-      // Cible tactile minimale (44px) utilisable comme min-h-tap / min-w-tap.
+      // Cible tactile minimale (48px) : min-h-tap / min-w-tap.
       spacing: {
-        tap: "44px",
-      },
-      keyframes: {
-        spinslow: { to: { transform: "rotate(360deg)" } },
-        pulsedot: { "0%,100%": { opacity: "1" }, "50%": { opacity: "0.3" } },
-        drift: {
-          "0%": { filter: "hue-rotate(0deg) saturate(1)" },
-          "100%": { filter: "hue-rotate(18deg) saturate(1.15)" },
-        },
-        shimmer: {
-          "100%": { transform: "translateX(100%)" },
-        },
-      },
-      animation: {
-        spinslow: "spinslow 6s linear infinite",
-        pulsedot: "pulsedot 1.6s ease-in-out infinite",
-        drift: "drift 22s ease-in-out infinite alternate",
-        shimmer: "shimmer 1.6s infinite",
+        tap: "48px",
       },
     },
   },

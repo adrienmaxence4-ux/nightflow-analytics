@@ -1,16 +1,30 @@
 import type { Metadata, Viewport } from "next";
-import { Inter } from "next/font/google";
+import { Public_Sans, Archivo } from "next/font/google";
 import "./globals.css";
 import { Providers } from "@/components/providers";
-import { Starfield } from "@/components/layout/starfield";
 import { VisitTracker } from "@/components/visit-tracker";
 import { VipCapture } from "@/components/vip-capture";
 
-const inter = Inter({
+const publicSans = Public_Sans({
   subsets: ["latin"],
-  variable: "--font-inter",
+  weight: ["400", "500", "600", "700", "800"],
+  variable: "--font-sans",
   display: "swap",
 });
+
+const archivo = Archivo({
+  subsets: ["latin"],
+  weight: ["500", "600", "700", "800"],
+  variable: "--font-display",
+  display: "swap",
+});
+
+/**
+ * Pose `data-theme` sur <html> avant l'hydratation pour éviter le flash de
+ * thème. Défaut : clair (l'app). La landing et la connexion forcent le sombre
+ * localement via un conteneur `data-theme="sombre"`.
+ */
+const themeScript = `try{var t=localStorage.getItem('nightflow:theme');document.documentElement.setAttribute('data-theme',t==='sombre'?'sombre':'clair')}catch(e){document.documentElement.setAttribute('data-theme','clair')}`;
 
 export const metadata: Metadata = {
   metadataBase: new URL(
@@ -41,7 +55,10 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#070B1A",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#e7e0d1" },
+    { media: "(prefers-color-scheme: dark)", color: "#08090c" },
+  ],
   width: "device-width",
   initialScale: 1,
 };
@@ -52,9 +69,16 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="fr" className={inter.variable}>
+    <html
+      lang="fr"
+      data-theme="clair"
+      className={`${publicSans.variable} ${archivo.variable}`}
+      suppressHydrationWarning
+    >
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+      </head>
       <body className="min-h-screen">
-        <Starfield />
         <VisitTracker />
         <VipCapture />
         <Providers>{children}</Providers>
