@@ -27,23 +27,23 @@ export function Topbar({
   const store = user?.store ?? "MoonStore";
 
   return (
-    <header className="sticky top-0 z-30 flex flex-wrap items-center gap-4 border-b border-line bg-panel px-4 py-3.5 min-[900px]:px-8">
-      <div className="min-w-0">
-        <div className="truncate text-[16px] text-ink3">
+    <header className="sticky top-0 z-30 flex items-center gap-3 border-b border-line bg-panel px-4 py-3 min-[900px]:gap-4 min-[900px]:px-8 min-[900px]:py-3.5">
+      <div className="min-w-0 flex-1">
+        <div className="truncate text-[15px] text-ink3 min-[900px]:text-[16px]">
           {greeting()}
           {user?.name ? ` ${user.name}` : ""} — {store}
         </div>
-        <h1 className="truncate font-display text-[30px] font-extrabold tracking-[-0.015em]">
+        <h1 className="truncate font-display text-[24px] font-extrabold tracking-[-0.015em] min-[900px]:text-[30px]">
           {title}
         </h1>
       </div>
 
-      <div className="ml-auto flex flex-wrap items-center gap-3">
+      <div className="flex flex-none items-center gap-2 min-[900px]:gap-3">
         <ThemeToggle />
 
         <Link
           href="/notifications"
-          className="relative grid h-tap w-tap place-items-center rounded-[12px] border border-line bg-panel2 text-ink transition duration-base ease-out hover:brightness-95"
+          className="relative grid h-tap w-tap flex-none place-items-center rounded-[12px] border border-line bg-panel2 text-ink transition duration-base ease-out hover:brightness-95"
           aria-label={unread > 0 ? `Alertes, ${unread} non lues` : "Alertes"}
         >
           <Bell className="h-[22px] w-[22px]" strokeWidth={2} aria-hidden />
@@ -57,9 +57,10 @@ export function Topbar({
         <button
           type="button"
           onClick={() => router.push("/integrations")}
-          className="inline-flex min-h-tap items-center gap-2.5 rounded-[12px] bg-accent px-5 text-[17px] font-bold text-accent-ink transition duration-base ease-out hover:brightness-95"
+          aria-label="Connecter une boutique"
+          className="inline-flex h-tap flex-none items-center justify-center gap-2.5 rounded-[12px] bg-accent px-0 text-[17px] font-bold text-accent-ink transition duration-base ease-out hover:brightness-95 sm:px-5"
         >
-          <Plus className="h-5 w-5" strokeWidth={2.4} aria-hidden />
+          <Plus className="h-5 w-5 flex-none max-sm:mx-3.5" strokeWidth={2.4} aria-hidden />
           <span className="hidden sm:inline">Connecter une boutique</span>
         </button>
       </div>

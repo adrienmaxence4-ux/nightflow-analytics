@@ -80,8 +80,8 @@ export default function AnalyticsPage() {
     <PageTransition>
       <DemoBanner source={source} onSeeded={() => load(range)} />
 
-      <div className="flex flex-wrap items-center gap-4">
-        <p className="max-w-[70ch] text-body text-ink2">
+      <div className="flex flex-wrap items-center gap-3">
+        <p className="basis-full text-body text-ink2 min-[900px]:mr-auto min-[900px]:max-w-[70ch] min-[900px]:basis-auto">
           Ce que vos visiteurs font sur la boutique : d&apos;où ils viennent, sur quel
           appareil, et à quelle étape ils abandonnent.
         </p>

@@ -110,15 +110,15 @@ export default function DashboardPage() {
           loadRange(range);
         }}
       />
-      <div className="flex flex-wrap items-center gap-4">
-        <div>
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="basis-full min-[900px]:mr-auto min-[900px]:basis-auto">
           <h2 className="font-display text-title">Vue d&apos;ensemble</h2>
-          <div className="mt-1 text-small text-ink3">{data.sub}</div>
+          <div className="mt-1 text-[15px] text-ink3 min-[900px]:text-[17px]">{data.sub}</div>
         </div>
         <RangeToggle value={range} onChange={setRange} />
         <button
           onClick={refresh}
-          className="inline-flex min-h-tap items-center gap-2.5 rounded-[12px] border border-line bg-panel px-4 text-label font-semibold text-ink transition duration-base ease-out hover:bg-panel2"
+          className="inline-flex h-tap items-center gap-2 rounded-[12px] border border-line bg-panel px-4 text-label font-semibold text-ink transition duration-base ease-out hover:bg-panel2"
         >
           <RefreshCw className="h-[18px] w-[18px]" aria-hidden />
           Actualiser
@@ -128,7 +128,7 @@ export default function DashboardPage() {
             onClick={seedSample}
             disabled={seeding}
             title="Admin — remplit la boutique avec des ventes/visiteurs de test"
-            className="inline-flex min-h-tap items-center gap-2.5 rounded-[12px] border border-line bg-panel px-4 text-label font-semibold text-ink transition duration-base ease-out hover:bg-panel2 disabled:opacity-60"
+            className="inline-flex h-tap items-center gap-2 rounded-[12px] border border-line bg-panel px-4 text-label font-semibold text-ink transition duration-base ease-out hover:bg-panel2 disabled:opacity-60"
           >
             <FlaskConical className="h-[18px] w-[18px]" aria-hidden />
             {seeding ? "Génération…" : "Données de test"}

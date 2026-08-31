@@ -12,12 +12,14 @@ const OPTIONS: { value: Range; label: string }[] = [
 export function RangeToggle({
   value,
   onChange,
+  className,
 }: {
   value: Range;
   onChange: (r: Range) => void;
+  className?: string;
 }) {
   return (
-    <div className="ml-auto flex gap-1.5 rounded-[12px] border border-line bg-panel p-1.5">
+    <div className={cn("flex gap-1.5 rounded-[12px] border border-line bg-panel p-1.5", className)}>
       {OPTIONS.map((o) => {
         const active = value === o.value;
         return (

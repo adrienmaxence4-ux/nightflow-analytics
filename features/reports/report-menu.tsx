@@ -88,11 +88,11 @@ export function ReportMenu() {
         disabled={busy !== null}
         aria-haspopup="menu"
         aria-expanded={open}
-        className="flex items-center gap-1.5 rounded-xl bg-accent px-3.5 py-2 text-[15px] font-bold text-accent-ink transition hover:brightness-95 disabled:opacity-60"
+        className="inline-flex h-tap items-center gap-2 rounded-[12px] border border-line bg-panel px-4 text-label font-semibold text-ink transition hover:bg-panel2 disabled:opacity-60"
       >
-        <FileText className="h-3.5 w-3.5" />
+        <FileText className="h-[18px] w-[18px]" aria-hidden />
         {busy ? `Génération ${busy.toUpperCase()}…` : "Générer un rapport"}
-        <ChevronDown className={`h-3.5 w-3.5 transition ${open ? "rotate-180" : ""}`} />
+        <ChevronDown className={`h-[18px] w-[18px] transition ${open ? "rotate-180" : ""}`} aria-hidden />
       </button>
 
       {open &&
