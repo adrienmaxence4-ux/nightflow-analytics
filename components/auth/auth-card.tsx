@@ -49,7 +49,7 @@ export function AuthCard({ mode }: { mode: "login" | "signup" }) {
   };
 
   const fieldClass =
-    "w-full min-h-[56px] rounded-[12px] border border-line bg-[#08090c] px-4 text-[18px] text-ink outline-none transition placeholder:text-ink3 focus-visible:border-accent";
+    "w-full min-h-[56px] rounded-[12px] border border-line bg-panel2 px-4 text-[18px] text-ink outline-none transition placeholder:text-ink3 focus-visible:border-accent";
 
   return (
     <div className="fade-up w-full max-w-[480px] rounded-xl border border-line bg-panel p-10 text-ink">
@@ -92,7 +92,7 @@ export function AuthCard({ mode }: { mode: "login" | "signup" }) {
 
       <form onSubmit={submit} className="flex flex-col gap-4">
         <label className="block">
-          <span className="mb-2 block text-[16px] font-semibold text-[#c8c2b6]">
+          <span className="mb-2 block text-[16px] font-semibold text-ink2">
             Adresse email
           </span>
           <input
@@ -105,7 +105,7 @@ export function AuthCard({ mode }: { mode: "login" | "signup" }) {
           />
         </label>
         <label className="block">
-          <span className="mb-2 block text-[16px] font-semibold text-[#c8c2b6]">
+          <span className="mb-2 block text-[16px] font-semibold text-ink2">
             Mot de passe
           </span>
           <input

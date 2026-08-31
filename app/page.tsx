@@ -12,6 +12,10 @@ import {
   TriangleAlert,
 } from "lucide-react";
 import { PLAN_LIST, formatEuro } from "@/lib/plans";
+import { LandingThemeToggle } from "@/components/landing/theme-toggle-landing";
+
+/** Applique la préférence clair/sombre de la landing avant le premier rendu. */
+const LANDING_THEME_SCRIPT = `try{if(localStorage.getItem('nightflow:landing-theme')==='clair'){document.getElementById('landing-root').setAttribute('data-theme','clair')}}catch(e){}`;
 
 /**
  * Landing publique — la porte d'entrée des visiteurs non connectés.
@@ -76,9 +80,11 @@ const FAQ: [string, string][] = [
 export default function LandingPage() {
   return (
     <div
+      id="landing-root"
       data-theme="sombre"
-      className="min-h-screen text-ink [background:linear-gradient(180deg,#0d1219,#08090c_55%)]"
+      className="min-h-screen text-ink [background:linear-gradient(180deg,#0d1219,#08090c_55%)] data-[theme=clair]:[background:linear-gradient(180deg,var(--panel),var(--bg)_55%)]"
     >
+      <script dangerouslySetInnerHTML={{ __html: LANDING_THEME_SCRIPT }} />
       <div className="mx-auto w-full max-w-[1160px] px-6">
         {/* ── Nav ── */}
         <header className="flex flex-wrap items-center gap-6 py-6">
@@ -94,6 +100,7 @@ export default function LandingPage() {
             <a href="#fonctionnalites" className="text-ink hover:text-accent-text">Ce que ça fait</a>
             <a href="#tarifs" className="text-ink hover:text-accent-text">Tarifs</a>
             <a href="#questions" className="text-ink hover:text-accent-text">Questions</a>
+            <LandingThemeToggle />
             <Link
               href="/login"
               className="inline-flex min-h-tap items-center rounded-[12px] border border-cool px-5 text-[17px] font-semibold text-ink transition hover:border-accent"
@@ -119,7 +126,7 @@ export default function LandingPage() {
               Arrêtez de fixer des chiffres.{" "}
               <span className="text-accent">Sachez quoi faire.</span>
             </h1>
-            <p className="fade-up-2 mt-6 max-w-[36ch] text-[21px] leading-relaxed text-[#c8c2b6]">
+            <p className="fade-up-2 mt-6 max-w-[36ch] text-[21px] leading-relaxed text-ink2">
               Nightflow connecte votre boutique et vous dit en français clair{" "}
               <b className="text-ink">ce qui se passe</b>,{" "}
               <b className="text-ink">pourquoi</b>, et{" "}
@@ -159,7 +166,7 @@ export default function LandingPage() {
                 ["Commandes", "142", "+8,1 %", "text-good"],
                 ["Conversion", "2,1 %", "−14 %", "text-bad"],
               ].map(([l, v, d, tone]) => (
-                <div key={l} className="rounded-[12px] border border-line bg-[#08090c] p-4">
+                <div key={l} className="rounded-[12px] border border-line bg-panel2 p-4">
                   <div className="whitespace-nowrap text-[14px] font-semibold text-ink3">{l}</div>
                   <div className="mt-1.5 whitespace-nowrap font-display text-[26px] font-extrabold" data-numeric>
                     {v}
@@ -168,14 +175,14 @@ export default function LandingPage() {
                 </div>
               ))}
             </div>
-            <div className="rounded-[14px] border border-[#3a2812] bg-[#1c1409] p-5">
+            <div className="rounded-[14px] border border-warn/30 bg-warn-bg p-5">
               <div className="flex items-center gap-2 text-[15px] font-extrabold tracking-[0.06em] text-accent-text">
                 <TriangleAlert className="h-[18px] w-[18px]" aria-hidden /> RISQUE DÉTECTÉ
               </div>
               <p className="mt-3 text-[19px] font-bold leading-snug">
                 Votre best-seller sera en rupture dans ~4 jours (25 unités, ~5,8 ventes/jour).
               </p>
-              <p className="mt-2.5 text-[17px] leading-relaxed text-[#c8c2b6]">
+              <p className="mt-2.5 text-[17px] leading-relaxed text-ink2">
                 → Passez une commande de réassort d&apos;urgence (min. 60 unités) — ≈ €1 600/sem de CA en jeu.
               </p>
             </div>
@@ -188,7 +195,7 @@ export default function LandingPage() {
         {/* ── Connecteurs ── */}
         <section className="border-y border-line py-7 text-center">
           <p className="text-[15px] font-bold tracking-[0.14em] text-ink3">SE CONNECTE EN 1 CLIC À</p>
-          <div className="mt-4 flex flex-wrap items-center justify-center gap-x-8 gap-y-3 text-[19px] font-bold text-[#c8c2b6]">
+          <div className="mt-4 flex flex-wrap items-center justify-center gap-x-8 gap-y-3 text-[19px] font-bold text-ink2">
             {CONNECTORS.map((t) => (
               <span key={t}>{t}</span>
             ))}
@@ -210,7 +217,7 @@ export default function LandingPage() {
                   {s.n}
                 </span>
                 <h3 className="mt-5 text-[22px] font-bold">{s.t}</h3>
-                <p className="mt-2.5 text-[17px] leading-relaxed text-[#c8c2b6]">{s.d}</p>
+                <p className="mt-2.5 text-[17px] leading-relaxed text-ink2">{s.d}</p>
               </div>
             ))}
           </div>
@@ -229,14 +236,14 @@ export default function LandingPage() {
             {PILLARS.map((p) => (
               <div key={p.t} className="rounded-lg border border-line bg-panel p-8">
                 <h3 className="font-display text-[24px] font-extrabold text-accent">{p.t}</h3>
-                <p className="mt-3 text-[17px] leading-relaxed text-[#c8c2b6]">{p.d}</p>
+                <p className="mt-3 text-[17px] leading-relaxed text-ink2">{p.d}</p>
               </div>
             ))}
           </div>
 
           <div className="mt-6 grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(300px,1fr))]">
             {FEATURES.map(([Icon, t, d]) => (
-              <div key={t} className="rounded-lg border border-line bg-[#0d1219] p-6">
+              <div key={t} className="rounded-lg border border-line bg-panel2 p-6">
                 <Icon className="h-6 w-6 text-accent-text" strokeWidth={2} aria-hidden />
                 <h3 className="mt-3.5 text-[19px] font-bold">{t}</h3>
                 <p className="mt-2 text-[16px] leading-relaxed text-ink3">{d}</p>
@@ -273,7 +280,7 @@ export default function LandingPage() {
                 </div>
                 <ul className="mt-5 flex flex-1 flex-col gap-3">
                   {plan.features.map((f) => (
-                    <li key={f} className="flex items-start gap-3 text-[17px] leading-snug text-[#c8c2b6]">
+                    <li key={f} className="flex items-start gap-3 text-[17px] leading-snug text-ink2">
                       <Check className="mt-1 h-[18px] w-[18px] flex-none text-accent" strokeWidth={3} aria-hidden />
                       {f}
                     </li>
@@ -301,18 +308,18 @@ export default function LandingPage() {
                 <summary className="cursor-pointer list-none text-[19px] font-bold marker:hidden">
                   {q}
                 </summary>
-                <p className="mt-3 text-[17px] leading-[1.7] text-[#c8c2b6]">{a}</p>
+                <p className="mt-3 text-[17px] leading-[1.7] text-ink2">{a}</p>
               </details>
             ))}
           </div>
         </section>
 
         {/* ── CTA final ── */}
-        <section className="mb-[72px] rounded-2xl border border-[#3a2812] px-8 py-14 text-center [background:linear-gradient(160deg,#1c1409,#100c0a)]">
+        <section className="mb-[72px] rounded-2xl border border-warn/30 bg-warn-bg px-8 py-14 text-center">
           <h2 className="font-display text-[38px] font-extrabold tracking-[-0.02em]">
             Votre boutique a des choses à vous dire.
           </h2>
-          <p className="mt-3 text-[19px] text-[#c8c2b6]">
+          <p className="mt-3 text-[19px] text-ink2">
             Connectez-la en 1 clic et laissez le Copilot faire le premier rapport.
           </p>
           <Link
