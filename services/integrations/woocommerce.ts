@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { SyncSummary } from "@/services/integrations/registry";
+import { safePublicHttpsBase } from "@/lib/safe-url";
 
 /**
  * SERVER-ONLY. WooCommerce integration — key-based, multi-tenant.
@@ -28,8 +29,11 @@ function parseWooToken(
   const parts = token.split("::");
   if (parts.length !== 3) return null;
   const [base, ck, cs] = parts;
-  if (!/^https:\/\//.test(base) || !ck || !cs) return null;
-  return { base, ck, cs };
+  if (!ck || !cs) return null;
+  // SSRF guard: the server will fetch `${base}/wp-json/...` — refuse anything
+  // that isn't https to a real public host on the default port.
+  if (!safePublicHttpsBase(base)) return null;
+  return { base: base.replace(/\/+$/, ""), ck, cs };
 }
 
 async function wooGet<T>(

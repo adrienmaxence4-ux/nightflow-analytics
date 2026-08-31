@@ -1,3 +1,4 @@
+import { safePublicHttpsBase } from "@/lib/safe-url";
 import {
   ActionError,
   WRITE_FORBIDDEN_MSG,
@@ -21,13 +22,13 @@ const TIMEOUT_MS = 25_000;
 
 function creds(cred: WriteCredential): { base: string; ck: string; cs: string } {
   const [base, ck, cs] = cred.token.split("::");
-  if (!/^https:\/\//.test(base ?? "") || !ck || !cs) {
+  if (!ck || !cs || !safePublicHttpsBase(base ?? "")) {
     throw new ActionError(
       "platform",
       "Identifiants WooCommerce invalides — reconnecte l'intégration."
     );
   }
-  return { base, ck, cs };
+  return { base: base.replace(/\/+$/, ""), ck, cs };
 }
 
 async function call<T>(

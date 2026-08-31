@@ -101,6 +101,9 @@ async function shopifyGet<T>(
   token: string,
   path: string
 ): Promise<T> {
+  // Never send the access token anywhere but a *.myshopify.com host, even if a
+  // stored `metadata.shop` was tampered with.
+  if (!isValidShopDomain(shop)) throw new Error("Invalid Shopify shop domain");
   const res = await fetch(`https://${shop}/admin/api/${API_VERSION}/${path}`, {
     headers: {
       "X-Shopify-Access-Token": token,

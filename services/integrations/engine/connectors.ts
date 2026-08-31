@@ -19,7 +19,7 @@ import {
   keyedConnectorBase,
   syncWithCredential,
 } from "./keyed-connectors";
-import { syncShopify } from "@/services/integrations/shopify";
+import { syncShopify, isValidShopDomain } from "@/services/integrations/shopify";
 import { syncStripe } from "@/services/integrations/stripe";
 import { syncKlaviyo } from "@/services/integrations/klaviyo";
 import { syncWix } from "@/services/integrations/wix";
@@ -149,7 +149,7 @@ const shopify: IntegrationConnector = {
   async registerWebhooks(ctx) {
     const shop = ctx.tokens?.metadata?.shop as string | undefined;
     const token = ctx.tokens?.accessToken;
-    if (!shop || !token) return;
+    if (!shop || !token || !isValidShopDomain(shop)) return;
     const address = `${env.siteUrl}/api/webhooks/shopify`;
     await Promise.all(
       SHOPIFY_WEBHOOK_TOPICS.map((topic) =>

@@ -185,7 +185,6 @@ const CACHE_TTL_MS = 10 * 60 * 1000;
 const cache = new Map<string, { at: number; value: SocialOverview }>();
 
 export async function buildSocialOverview(
-  db: SupabaseClient,
   storeId: string | null,
   opts: { withVisits?: boolean } = {}
 ): Promise<SocialOverview> {
@@ -197,8 +196,13 @@ export async function buildSocialOverview(
   const hit = cache.get(key);
   if (hit && Date.now() - hit.at < CACHE_TTL_MS) return hit.value;
 
+  // Credential reads are service-role only (the anon key can't see token
+  // columns). The caller has already verified store ownership.
+  const admin = createAdminClient();
+  if (!admin) return emptyOverview();
+
   const [{ posts, source, connected, error }, codes] = await Promise.all([
-    fetchPosts(db, storeId),
+    fetchPosts(admin as unknown as SupabaseClient, storeId),
     opts.withVisits ? fetchCodes() : Promise.resolve([] as CodeStat[]),
   ]);
 

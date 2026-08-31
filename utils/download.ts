@@ -21,9 +21,15 @@ export function downloadBlob(
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-/** Escapes a single CSV field (quotes, commas, newlines). */
+/**
+ * Escapes a single CSV field: RFC-4180 quoting, plus formula-injection
+ * neutralisation — a value starting with `= + - @` or a control blank is
+ * prefixed with `'` so Excel/Sheets/LibreOffice treat it as text, not a formula
+ * (product/campaign names come from the connected store).
+ */
 function csvField(value: unknown): string {
-  const s = value == null ? "" : String(value);
+  let s = value == null ? "" : String(value);
+  if (/^[=+\-@\t\r]/.test(s)) s = `'${s}`;
   return /[",\n;]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 }
 

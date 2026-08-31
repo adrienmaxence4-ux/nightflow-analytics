@@ -185,6 +185,9 @@ async function runReport(
   propertyId: string,
   dimension: string
 ): Promise<{ key: string; sessions: number }[]> {
+  // Defence in depth: the id is validated on write, but never build the URL
+  // from anything that isn't a bare number.
+  if (!/^\d{1,15}$/.test(propertyId)) return [];
   const res = await fetch(`${GA_DATA}/properties/${propertyId}:runReport`, {
     method: "POST",
     headers: {
