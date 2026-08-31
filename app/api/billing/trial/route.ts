@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { rateLimit, RATE_LIMITED } from "@/lib/rate-limit";
 import type { SubscriptionRow } from "@/types/database";
 
@@ -66,10 +66,15 @@ export async function POST() {
     );
   }
 
-  // Grant the 30-day Pro trial.
+  // Grant the 30-day Pro trial. Written with the service role — `subscriptions`
+  // is not client-writable (would be a free self-upgrade). The two guards above
+  // (existing sub + identity ledger) have already authorised this user.
   const now = Date.now();
   const endsAt = new Date(now + TRIAL_DAYS * 86_400_000).toISOString();
-  const db = supabase as unknown as SupabaseClient;
+  const db = createAdminClient();
+  if (!db) {
+    return NextResponse.json({ error: "Service indisponible" }, { status: 503 });
+  }
   const { error: upErr } = await db.from("subscriptions").upsert(
     {
       user_id: user.id,

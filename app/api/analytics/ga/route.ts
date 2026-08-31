@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { ownedStoreId } from "@/lib/store";
 import { decryptToken } from "@/lib/integrations/crypto";
 import { fetchGa4Traffic } from "@/services/integrations/google";
 
@@ -22,11 +24,14 @@ export async function GET() {
   } = await supabase.auth.getUser();
   if (!user) return NextResponse.json(notConnected);
 
-  const { data: store } = await supabase.from("stores").select("id").limit(1);
-  const storeId = (store?.[0] as { id: string } | undefined)?.id;
+  const storeId = await ownedStoreId(supabase, user.id);
   if (!storeId) return NextResponse.json(notConnected);
 
-  const { data: integ } = await supabase
+  // Token columns aren't readable with the anon key — read them service-role,
+  // scoped to the store we just verified this user owns.
+  const admin = createAdminClient();
+  if (!admin) return NextResponse.json(notConnected);
+  const { data: integ } = await admin
     .from("integrations")
     .select("access_token, metadata, status")
     .eq("store_id", storeId)

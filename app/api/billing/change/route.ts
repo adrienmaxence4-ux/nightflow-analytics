@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
-import type { SupabaseClient } from "@supabase/supabase-js";
 import { env } from "@/lib/env";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { rateLimit, RATE_LIMITED } from "@/lib/rate-limit";
 import {
   PLANS,
@@ -65,6 +65,13 @@ export async function POST(req: Request) {
     );
   }
 
+  // `subscriptions` is not client-writable — the local mirror update below runs
+  // with the service role (the user is already verified).
+  const admin = createAdminClient();
+  if (!admin) {
+    return NextResponse.json({ error: "Service indisponible" }, { status: 503 });
+  }
+
   try {
     // 1) Create a price for the target plan + interval (inline product).
     const priceBody = new URLSearchParams();
@@ -93,8 +100,7 @@ export async function POST(req: Request) {
       // Test→live switch: the stored subscription belongs to the OLD mode —
       // clear the stale ids so the user can simply re-subscribe for real.
       if (/no such subscription/i.test(msg)) {
-        const dbClean = supabase as unknown as SupabaseClient;
-        await dbClean
+        await admin
           .from("subscriptions")
           .update({ stripe_customer_id: null, stripe_subscription_id: null })
           .eq("user_id", user.id);
@@ -127,9 +133,8 @@ export async function POST(req: Request) {
       );
     }
 
-    // 4) Reflect the new plan locally.
-    const db = supabase as unknown as SupabaseClient;
-    await db
+    // 4) Reflect the new plan locally (service role — see above).
+    await admin
       .from("subscriptions")
       .update({ plan: def.id, billing_interval: billingInterval })
       .eq("user_id", user.id);

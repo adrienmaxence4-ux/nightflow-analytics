@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
-import type { SupabaseClient } from "@supabase/supabase-js";
 import { env } from "@/lib/env";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import type { SubscriptionRow } from "@/types/database";
 
 /**
@@ -54,11 +54,13 @@ export async function POST() {
       // Test→live switch: the stored customer belongs to the OLD mode. Clean the
       // stale ids so the UI returns to the honest "no card on file" state.
       if (/no such customer/i.test(msg)) {
-        const db = supabase as unknown as SupabaseClient;
-        await db
-          .from("subscriptions")
-          .update({ stripe_customer_id: null, stripe_subscription_id: null })
-          .eq("user_id", user.id);
+        const admin = createAdminClient();
+        if (admin) {
+          await admin
+            .from("subscriptions")
+            .update({ stripe_customer_id: null, stripe_subscription_id: null })
+            .eq("user_id", user.id);
+        }
         return NextResponse.json(
           {
             error:

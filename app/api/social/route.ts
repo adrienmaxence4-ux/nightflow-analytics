@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
+import { ownedStoreId } from "@/lib/store";
 import { isAdminEmail } from "@/lib/admin";
 import { buildSocialOverview, emptyOverview } from "@/services/social/overview";
 
@@ -27,15 +27,12 @@ export async function GET() {
     return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
   }
 
-  const { data: stores } = await supabase.from("stores").select("id").limit(1);
-  const storeId = (stores?.[0] as { id: string } | undefined)?.id ?? null;
+  const storeId = await ownedStoreId(supabase, user.id);
   if (!storeId) return NextResponse.json(emptyOverview());
 
-  const overview = await buildSocialOverview(
-    supabase as unknown as SupabaseClient,
-    storeId,
-    { withVisits: isAdminEmail(user.email) }
-  );
+  const overview = await buildSocialOverview(storeId, {
+    withVisits: isAdminEmail(user.email),
+  });
 
   return NextResponse.json(overview);
 }

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
-import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { ownedStoreId } from "@/lib/store";
 import { decryptToken } from "@/lib/integrations/crypto";
 import { syncShopify } from "@/services/integrations/shopify";
 
@@ -21,13 +22,18 @@ export async function POST() {
     return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
   }
 
-  const { data: store } = await supabase.from("stores").select("id").limit(1);
-  const storeId = (store?.[0] as { id: string } | undefined)?.id;
+  const storeId = await ownedStoreId(supabase, user.id);
   if (!storeId) {
     return NextResponse.json({ error: "Aucune boutique" }, { status: 404 });
   }
 
-  const { data: integ } = await supabase
+  // Credentials + sync writes run service-role, scoped to the verified store.
+  const db = createAdminClient();
+  if (!db) {
+    return NextResponse.json({ error: "Service indisponible" }, { status: 503 });
+  }
+
+  const { data: integ } = await db
     .from("integrations")
     .select("access_token, metadata, status")
     .eq("store_id", storeId)
@@ -54,7 +60,6 @@ export async function POST() {
   }
 
   try {
-    const db = supabase as unknown as SupabaseClient;
     const summary = await syncShopify(shop, token, storeId, db);
     // Record the successful sync so the UI shows "Dernière synchro".
     await db

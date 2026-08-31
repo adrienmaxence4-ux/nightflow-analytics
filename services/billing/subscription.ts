@@ -46,15 +46,11 @@ export async function getUserSubscription(): Promise<UserSubscription> {
     return FREE;
   }
 
-  // Lazy trial expiry: a DB-managed Pro trial past its end date reverts to free
-  // (best-effort flag the row so it isn't re-evaluated every read).
+  // Trial expiry is evaluated on read (the client can no longer write this
+  // table). A past-due trial simply reads as free; the row is tidied to
+  // status='expired' by the Stripe webhook / a cron, not from this hot path.
   const trialing = row.status === "trialing";
   if (trialing && row.trial_ends_at && new Date(row.trial_ends_at).getTime() < Date.now()) {
-    void (supabase as unknown as SupabaseClient)
-      .from("subscriptions")
-      .update({ status: "expired" })
-      .eq("user_id", user.id)
-      .then(() => {}, () => {});
     return FREE;
   }
 

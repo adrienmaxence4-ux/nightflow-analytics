@@ -55,9 +55,7 @@ async function buildContextForResolvedStore(
     // withVisits mirrors the exact boundary /api/social/route.ts already
     // draws: tracking-code visit counts are Nightflow's own site analytics,
     // meaningful only for the owner — never for a future customer's chat.
-    buildSocialOverview(db, store.id, { withVisits }).catch(() =>
-      emptyOverview()
-    ),
+    buildSocialOverview(store.id, { withVisits }).catch(() => emptyOverview()),
   ]);
   const prods = (products.data as ProductRow[] | null) ?? [];
   if (prods.length === 0) return null;
@@ -86,6 +84,8 @@ export async function buildStoreContext(): Promise<StoreContext> {
         const { data: stores } = await supabase
           .from("stores")
           .select("*")
+          .eq("owner_id", user.id)
+          .order("created_at", { ascending: true })
           .limit(1);
         const store = (stores?.[0] as StoreRow | undefined) ?? null;
         if (store) {

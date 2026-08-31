@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
-import type { SupabaseClient } from "@supabase/supabase-js";
 import { env } from "@/lib/env";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { rateLimit, RATE_LIMITED } from "@/lib/rate-limit";
 import { PLANS, type PlanId } from "@/lib/plans";
 
@@ -89,8 +89,14 @@ export async function POST(req: Request) {
     ? new Date(sub.current_period_end * 1000).toISOString()
     : null;
 
-  const db = supabase as unknown as SupabaseClient;
-  await db.from("subscriptions").upsert(
+  // Write with the service role: `subscriptions` is not client-writable (a
+  // client write would be a free self-upgrade). The user + the Stripe session
+  // ownership are already verified above.
+  const admin = createAdminClient();
+  if (!admin) {
+    return NextResponse.json({ error: "Service indisponible" }, { status: 503 });
+  }
+  const { error: upErr } = await admin.from("subscriptions").upsert(
     {
       user_id: user.id,
       plan,
@@ -102,6 +108,10 @@ export async function POST(req: Request) {
     },
     { onConflict: "user_id" }
   );
+  if (upErr) {
+    console.error("[billing] confirm upsert failed", upErr);
+    return NextResponse.json({ error: "Enregistrement impossible" }, { status: 500 });
+  }
 
   return NextResponse.json({ ok: true, plan });
 }

@@ -1,6 +1,8 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { getStoredTokens } from "@/lib/integrations/tokens";
+import { ownedStoreId } from "@/lib/store";
 import { getUserSubscription } from "@/services/billing/subscription";
 import {
   ACTIONS,
@@ -107,10 +109,31 @@ const fail = (code: Failure["code"], error: string): Failure => ({
   error,
 });
 
+/**
+ * Re-checks the price-change ceiling at WRITE time, not just when the plan is
+ * drafted. `planAction` enforces it, but a plan row is a DB row the client can
+ * craft directly (RLS lets the store owner insert one) — so execute/undo must
+ * not trust `params`/`before_state` and re-validate against the live price.
+ */
+function priceDeltaTooLarge(currentCents: number, targetCents: number): Failure | null {
+  if (currentCents <= 0) return null;
+  const deltaPct = (Math.abs(targetCents - currentCents) / currentCents) * 100;
+  if (deltaPct > MAX_PRICE_CHANGE_PCT) {
+    return fail(
+      "invalid",
+      `Variation de ${deltaPct.toFixed(0)} % refusée : Nightflow ne modifie jamais un prix de plus de ${MAX_PRICE_CHANGE_PCT} % en une fois.`
+    );
+  }
+  return null;
+}
+
 // ── Context ──────────────────────────────────────────────────────────────────
 
 interface ActionContext {
+  /** User-scoped RLS client — used for ownership-checked reads. */
   db: SupabaseClient;
+  /** Service-role client — credential reads + applied_actions writes. */
+  admin: SupabaseClient;
   userId: string;
   storeId: string;
   /** Only the project owner may fall back to the simulation writer. */
@@ -126,8 +149,7 @@ async function context(): Promise<Result<{ ctx: ActionContext }>> {
   } = await supabase.auth.getUser();
   if (!user) return fail("auth", "Session expirée — reconnecte-toi.");
 
-  const { data: stores } = await supabase.from("stores").select("id").limit(1);
-  const storeId = (stores?.[0] as { id: string } | undefined)?.id;
+  const storeId = await ownedStoreId(supabase, user.id);
   if (!storeId) {
     return fail("no_provider", "Aucune boutique connectée à Nightflow.");
   }
@@ -140,10 +162,16 @@ async function context(): Promise<Result<{ ctx: ActionContext }>> {
     );
   }
 
+  const admin = createAdminClient();
+  if (!admin) {
+    return fail("platform", "Moteur d'actions indisponible.");
+  }
+
   return {
     ok: true,
     ctx: {
       db: supabase as unknown as SupabaseClient,
+      admin: admin as unknown as SupabaseClient,
       userId: user.id,
       storeId,
       isAdmin: isAdminEmail(user.email),
@@ -182,7 +210,7 @@ async function resolveWriter(
     );
   }
 
-  const tokens = await getStoredTokens(ctx.db, ctx.storeId, provider);
+  const tokens = await getStoredTokens(ctx.admin, ctx.storeId, provider);
   if (!tokens) {
     return fail("no_provider", "Identifiants introuvables — reconnecte l'intégration.");
   }
@@ -513,6 +541,8 @@ export async function executeAction(
       };
 
       if (params.kind === "product.price.update") {
+        const tooLarge = priceDeltaTooLarge(remote.priceCents, params.newPriceCents);
+        if (tooLarge) return tooLarge;
         await writer.setPrice(cred, remote, params.newPriceCents);
         await mirror(ctx, params.productId, { price_cents: params.newPriceCents });
         result = { priceCents: params.newPriceCents };
@@ -633,6 +663,8 @@ export async function undoAction(
 
       if (params.kind === "product.price.update") {
         const priceCents = Number(row.before_state.priceCents) || 0;
+        const tooLarge = priceDeltaTooLarge(remote.priceCents, priceCents);
+        if (tooLarge) return tooLarge;
         await writer.setPrice(cred, remote, priceCents);
         await mirror(ctx, params.productId, { price_cents: priceCents });
       } else if (params.kind === "product.stock.set") {

@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { ownedStoreId } from "@/lib/store";
 import { decryptToken } from "@/lib/integrations/crypto";
 import { listGa4Properties } from "@/services/integrations/google";
 
@@ -17,10 +19,13 @@ async function getContext() {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return null;
-  const { data: store } = await supabase.from("stores").select("id").limit(1);
-  const storeId = (store?.[0] as { id: string } | undefined)?.id;
+  const storeId = await ownedStoreId(supabase, user.id);
   if (!storeId) return null;
-  const { data: integ } = await supabase
+  // Credential columns + writes go through the service role, scoped to the
+  // store ownership just verified with the user's own client.
+  const admin = createAdminClient();
+  if (!admin) return null;
+  const { data: integ } = await admin
     .from("integrations")
     .select("access_token, metadata, status")
     .eq("store_id", storeId)
@@ -29,7 +34,7 @@ async function getContext() {
   const row = integ?.[0] as
     | { access_token: string | null; metadata: { property_id?: string }; status: string }
     | undefined;
-  return { supabase, storeId, row };
+  return { admin, storeId, row };
 }
 
 export async function GET() {
@@ -50,15 +55,16 @@ export async function POST(req: Request) {
   const { propertyId } = (await req.json().catch(() => ({}))) as {
     propertyId?: string;
   };
-  if (!propertyId) {
-    return NextResponse.json({ error: "propertyId manquant" }, { status: 400 });
+  // GA4 property ids are numeric. Anything else would be path-injected into the
+  // Analytics API URL (`.../properties/${propertyId}:runReport`).
+  if (!propertyId || !/^\d{1,15}$/.test(propertyId)) {
+    return NextResponse.json({ error: "propertyId invalide" }, { status: 400 });
   }
   const ctx = await getContext();
   if (!ctx?.row) {
     return NextResponse.json({ error: "Google non connecté" }, { status: 400 });
   }
-  const db = ctx.supabase as unknown as SupabaseClient;
-  await db
+  await ctx.admin
     .from("integrations")
     .update({ metadata: { ...ctx.row.metadata, property_id: propertyId } })
     .eq("store_id", ctx.storeId)
