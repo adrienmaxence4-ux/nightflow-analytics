@@ -1,6 +1,5 @@
 import Link from "next/link";
 import {
-  AlertTriangle,
   ArrowRight,
   BellRing,
   Check,
@@ -10,338 +9,331 @@ import {
   Smartphone,
   Sparkles,
   Store,
+  TriangleAlert,
 } from "lucide-react";
 import { PLAN_LIST, formatEuro } from "@/lib/plans";
 
 /**
- * Public landing page — the front door for visitors who aren't logged in yet.
- * Static (fast + SEO). Signed-in users just click "Ouvrir le dashboard".
+ * Landing publique — la porte d'entrée des visiteurs non connectés.
+ * Toujours en mode sombre : le conteneur racine force `data-theme="sombre"`,
+ * qui redéclare les variables de thème pour toute la page, quel que soit le
+ * thème global de l'utilisateur.
+ *
+ * Server Component : statique, rapide, indexable.
  */
+
+const CONNECTORS = ["Shopify", "Wix", "WooCommerce", "Stripe", "Klaviyo", "Google Analytics"];
+
+const STEPS = [
+  {
+    n: "1",
+    t: "Créez votre compte",
+    d: "Gratuit, sans carte bancaire. Vous explorez d'abord avec une boutique de démonstration complète.",
+  },
+  {
+    n: "2",
+    t: "Connectez votre boutique",
+    d: "Un clic sur « Se connecter avec Shopify, Wix, WooCommerce ou Stripe » — vos produits, commandes et revenus arrivent en quelques secondes.",
+  },
+  {
+    n: "3",
+    t: "Laissez le copilote veiller",
+    d: "Analyses, alertes et rapports arrivent tout seuls — sur le site, sur votre ordinateur et sur votre téléphone.",
+  },
+];
+
+const PILLARS = [
+  {
+    t: "Que se passe-t-il ?",
+    d: "« Le CA a chuté de 26 % cette semaine. » Vos KPIs traduits en phrases claires, pas en graphiques à déchiffrer.",
+  },
+  {
+    t: "Pourquoi ?",
+    d: "« Le trafic tient, mais la conversion mobile s'effondre depuis mardi. » L'IA croise vos données pour trouver la cause.",
+  },
+  {
+    t: "Que dois-je faire ?",
+    d: "« Réallouez €300 de Meta vers Google Ads (ROAS 4,3 vs 2,7). » Des actions concrètes, chiffrées, priorisées.",
+  },
+];
+
+const FEATURES: [typeof BellRing, string, string][] = [
+  [BellRing, "Alertes en temps réel", "Rupture de stock, chute de CA, pub qui perd de l'argent — prévenu avant que ça coûte cher, même sur votre téléphone."],
+  [Radar, "Détection d'anomalies", "Un moteur surveille vos métriques 24h/24 et repère les décrochages anormaux automatiquement."],
+  [FileText, "Rapports PDF, Excel & Word", "Un rapport pro généré en 1 clic à partir de vos vraies données — prêt à envoyer à un associé ou un banquier."],
+  [Store, "Multi-plateformes", "Shopify, Wix, WooCommerce, Stripe, Klaviyo, GA4 — toutes vos données dans un seul cerveau."],
+  [Sparkles, "Copilot IA", "Posez n'importe quelle question sur votre boutique et obtenez une réponse chiffrée, basée sur VOS données."],
+  [Smartphone, "App desktop & mobile", "Installez Nightflow comme une vraie application, avec notifications sur PC et téléphone."],
+];
+
+const FAQ: [string, string][] = [
+  ["Est-ce compliqué à installer ?", "Non : créez un compte, cliquez « Se connecter avec Shopify/Stripe/… » et autorisez l'accès. Aucune ligne de code, aucune clé à créer pour les connexions OAuth. Vos données arrivent en quelques secondes."],
+  ["Mes données sont-elles en sécurité ?", "Oui. Chaque compte est isolé au niveau de la base (RLS), les jetons d'accès sont chiffrés (AES-256), et nous n'importons jamais les données personnelles de vos clients — uniquement des métriques. Rien n'est revendu."],
+  ["L'IA invente-t-elle des chiffres ?", "Non. Le Copilot raisonne uniquement sur vos données réelles importées, et le moteur d'alertes est déterministe : chaque alerte cite les chiffres exacts qui l'ont déclenchée."],
+  ["Puis-je annuler à tout moment ?", "Oui, en 2 clics depuis la page Facturation (portail Stripe sécurisé). Vous gardez l'accès jusqu'à la fin de la période payée."],
+];
+
 export default function LandingPage() {
   return (
-    <div className="relative z-10 mx-auto w-full max-w-6xl px-5">
-      {/* ── Nav ── */}
-      <header className="flex items-center gap-6 py-5">
-        <Link href="/" className="flex items-center gap-2.5">
-          <span className="relative grid h-9 w-9 flex-none place-items-center rounded-xl shadow-glow [background:conic-gradient(from_140deg,#3df2ff,#9a6bff,#ff5cae,#3df2ff)]">
-            <span className="absolute inset-[3px] rounded-[9px] bg-night-900" />
-            <Moon className="relative z-10 h-4 w-4 text-white" strokeWidth={2.4} />
-          </span>
-          <span className="text-[14px] font-extrabold tracking-wide">
-            NIGHTFLOW <span className="text-neon-cyansoft">ANALYTICS</span>
-          </span>
-        </Link>
-        <nav className="ml-auto hidden items-center gap-6 text-[13px] font-semibold text-ink-dim sm:flex">
-          <a href="#fonctionnalites" className="hover:text-white">Fonctionnalités</a>
-          <a href="#tarifs" className="hover:text-white">Tarifs</a>
-          <Link href="/telecharger" className="hover:text-white">Télécharger</Link>
-          <Link href="/login" className="hover:text-white">Se connecter</Link>
-        </nav>
-        <Link
-          href="/signup"
-          className="rounded-xl bg-gradient-to-r from-neon-cyan to-neon-cyansoft px-4 py-2 text-[13px] font-bold text-night-950 shadow-glow transition hover:brightness-110"
-        >
-          Commencer gratuitement
-        </Link>
-      </header>
-
-      {/* ── Hero ── */}
-      <section className="grid items-center gap-10 py-14 lg:grid-cols-2 lg:py-20">
-        <div>
-          <span className="fade-up inline-flex items-center gap-1.5 rounded-full border border-glass-hi bg-glass px-3 py-1 text-[11px] font-bold tracking-wide text-neon-cyansoft">
-            <Sparkles className="h-3 w-3" /> VOTRE DIRECTEUR E-COMMERCE IA
-          </span>
-          <h1 className="fade-up-1 mt-4 text-[38px] font-extrabold leading-[1.1] tracking-tight sm:text-[48px]">
-            Arrêtez de fixer des chiffres.{" "}
-            <span className="bg-gradient-to-r from-neon-cyan via-neon-violet to-neon-pink bg-clip-text text-transparent">
-              Sachez quoi faire.
+    <div
+      data-theme="sombre"
+      className="min-h-screen text-ink [background:linear-gradient(180deg,#0d1219,#08090c_55%)]"
+    >
+      <div className="mx-auto w-full max-w-[1160px] px-6">
+        {/* ── Nav ── */}
+        <header className="flex flex-wrap items-center gap-6 py-6">
+          <Link href="/" className="flex items-center gap-3">
+            <span className="grid h-11 w-11 flex-none place-items-center rounded-[12px] bg-accent">
+              <Moon className="h-[22px] w-[22px] text-accent-ink" strokeWidth={2.2} aria-hidden />
             </span>
-          </h1>
-          <p className="fade-up-2 mt-4 max-w-lg text-[16px] leading-relaxed text-ink-dim">
-            Nightflow connecte votre boutique et vous dit en français clair{" "}
-            <b className="text-white">ce qui se passe</b>,{" "}
-            <b className="text-white">pourquoi</b>, et{" "}
-            <b className="text-white">quoi faire</b> — en moins de 30 secondes
-            par jour.
-          </p>
-          <div className="fade-up-3 mt-7 flex flex-wrap items-center gap-3">
-            <Link
-              href="/signup"
-              className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-neon-cyan to-neon-cyansoft px-6 py-3 text-[15px] font-bold text-night-950 shadow-glow transition hover:brightness-110"
-            >
-              Essayer gratuitement <ArrowRight className="h-4 w-4" />
-            </Link>
+            <span className="font-display text-[19px] font-extrabold tracking-[0.02em]">
+              NIGHTFLOW <span className="font-semibold text-ink3">ANALYTICS</span>
+            </span>
+          </Link>
+          <nav className="ml-auto flex flex-wrap items-center gap-6 text-[17px] font-semibold">
+            <a href="#fonctionnalites" className="text-ink hover:text-accent-text">Ce que ça fait</a>
+            <a href="#tarifs" className="text-ink hover:text-accent-text">Tarifs</a>
+            <a href="#questions" className="text-ink hover:text-accent-text">Questions</a>
             <Link
               href="/login"
-              className="rounded-xl border border-glass-border bg-glass px-5 py-3 text-[14px] font-semibold text-ink-dim transition hover:border-glass-hi hover:text-white"
+              className="inline-flex min-h-tap items-center rounded-[12px] border border-cool px-5 text-[17px] font-semibold text-ink transition hover:border-accent"
             >
-              Voir la démo
+              Se connecter
             </Link>
-          </div>
-          <div className="fade-up-3 mt-5 flex flex-wrap gap-2">
-            {["Gratuit, sans carte bancaire", "Prêt en 2 minutes", "Données chiffrées, jamais revendues"].map(
-              (t) => (
-                <span
-                  key={t}
-                  className="inline-flex items-center gap-1.5 rounded-full border border-glass-border bg-glass px-3 py-1 text-[11px] font-semibold text-ink-dim"
-                >
-                  <Check className="h-3 w-3 text-neon-lime" strokeWidth={3} />
-                  {t}
-                </span>
-              )
-            )}
-          </div>
-        </div>
+            <Link
+              href="/signup"
+              className="inline-flex min-h-tap items-center rounded-[12px] bg-accent px-6 text-[17px] font-bold text-accent-ink transition hover:brightness-95"
+            >
+              Commencer gratuitement
+            </Link>
+          </nav>
+        </header>
 
-        {/* Product taste: a real insight, as the app renders it */}
-        <div className="fade-up-2 rounded-2xl border border-glass-hi bg-night-900/70 p-5 shadow-[0_24px_80px_-24px_rgba(61,242,255,0.25)] backdrop-blur-xl">
-          <div className="mb-4 grid grid-cols-3 gap-3">
-            {[
-              ["Revenu (7j)", "€4 820", "+12,4 %", "text-neon-lime"],
-              ["Commandes", "142", "+8,1 %", "text-neon-lime"],
-              ["Conversion", "2,1 %", "−14 %", "text-neon-pinksoft"],
-            ].map(([l, v, d, tone]) => (
-              <div key={l} className="rounded-xl border border-glass-border bg-glass p-3">
-                <div className="text-[10px] font-semibold text-ink-mut">{l}</div>
-                <div className="mt-1 text-[18px] font-extrabold">{v}</div>
-                <div className={`text-[11px] font-bold ${tone}`}>{d}</div>
+        {/* ── Hero ── */}
+        <section className="grid items-center gap-14 py-16 [grid-template-columns:repeat(auto-fit,minmax(360px,1fr))]">
+          <div>
+            <span className="fade-up inline-flex items-center gap-2 rounded-pill border border-cool px-4 py-2 text-[15px] font-bold tracking-[0.04em] text-accent-text">
+              <Sparkles className="h-4 w-4" aria-hidden /> VOTRE DIRECTEUR E-COMMERCE IA
+            </span>
+            <h1 className="fade-up-1 mt-6 font-display text-[clamp(38px,8vw,60px)] font-extrabold leading-[1.05] tracking-[-0.02em]">
+              Arrêtez de fixer des chiffres.{" "}
+              <span className="text-accent">Sachez quoi faire.</span>
+            </h1>
+            <p className="fade-up-2 mt-6 max-w-[36ch] text-[21px] leading-relaxed text-[#c8c2b6]">
+              Nightflow connecte votre boutique et vous dit en français clair{" "}
+              <b className="text-ink">ce qui se passe</b>,{" "}
+              <b className="text-ink">pourquoi</b>, et{" "}
+              <b className="text-ink">quoi faire</b> — en moins de 30 secondes par jour.
+            </p>
+            <div className="fade-up-3 mt-8 flex flex-wrap gap-3">
+              <Link
+                href="/signup"
+                className="inline-flex min-h-[56px] items-center gap-2.5 rounded-[12px] bg-accent px-7 text-[19px] font-bold text-accent-ink transition hover:brightness-95"
+              >
+                Essayer gratuitement <ArrowRight className="h-5 w-5" aria-hidden />
+              </Link>
+              <Link
+                href="/login"
+                className="inline-flex min-h-[56px] items-center rounded-[12px] border border-cool px-6 text-[19px] font-semibold text-ink transition hover:border-accent"
+              >
+                Voir la démo
+              </Link>
+            </div>
+            <ul className="fade-up-3 mt-8 flex flex-wrap gap-x-6 gap-y-3 text-[16px] text-ink3">
+              {["Gratuit, sans carte bancaire", "Prêt en 2 minutes", "Données chiffrées, jamais revendues"].map(
+                (t) => (
+                  <li key={t} className="flex items-center gap-2">
+                    <Check className="h-[18px] w-[18px] flex-none text-accent" strokeWidth={3} aria-hidden />
+                    {t}
+                  </li>
+                )
+              )}
+            </ul>
+          </div>
+
+          {/* Aperçu produit : une vraie analyse, telle que l'app la rend. */}
+          <div className="fade-up-2 rounded-xl border border-line bg-panel p-6">
+            <div className="mb-5 grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(140px,1fr))]">
+              {[
+                ["Revenu (7j)", "€4 820", "+12,4 %", "text-good"],
+                ["Commandes", "142", "+8,1 %", "text-good"],
+                ["Conversion", "2,1 %", "−14 %", "text-bad"],
+              ].map(([l, v, d, tone]) => (
+                <div key={l} className="rounded-[12px] border border-line bg-[#08090c] p-4">
+                  <div className="whitespace-nowrap text-[14px] font-semibold text-ink3">{l}</div>
+                  <div className="mt-1.5 whitespace-nowrap font-display text-[26px] font-extrabold" data-numeric>
+                    {v}
+                  </div>
+                  <div className={`whitespace-nowrap text-[15px] font-bold ${tone}`}>{d}</div>
+                </div>
+              ))}
+            </div>
+            <div className="rounded-[14px] border border-[#3a2812] bg-[#1c1409] p-5">
+              <div className="flex items-center gap-2 text-[15px] font-extrabold tracking-[0.06em] text-accent-text">
+                <TriangleAlert className="h-[18px] w-[18px]" aria-hidden /> RISQUE DÉTECTÉ
+              </div>
+              <p className="mt-3 text-[19px] font-bold leading-snug">
+                Votre best-seller sera en rupture dans ~4 jours (25 unités, ~5,8 ventes/jour).
+              </p>
+              <p className="mt-2.5 text-[17px] leading-relaxed text-[#c8c2b6]">
+                → Passez une commande de réassort d&apos;urgence (min. 60 unités) — ≈ €1 600/sem de CA en jeu.
+              </p>
+            </div>
+            <p className="mt-3.5 text-center text-[15px] text-ink3">
+              Exemple réel d&apos;analyse générée par le Copilot
+            </p>
+          </div>
+        </section>
+
+        {/* ── Connecteurs ── */}
+        <section className="border-y border-line py-7 text-center">
+          <p className="text-[15px] font-bold tracking-[0.14em] text-ink3">SE CONNECTE EN 1 CLIC À</p>
+          <div className="mt-4 flex flex-wrap items-center justify-center gap-x-8 gap-y-3 text-[19px] font-bold text-[#c8c2b6]">
+            {CONNECTORS.map((t) => (
+              <span key={t}>{t}</span>
+            ))}
+          </div>
+        </section>
+
+        {/* ── 3 étapes ── */}
+        <section className="py-[72px]">
+          <h2 className="text-center font-display text-[40px] font-extrabold tracking-[-0.02em]">
+            Lancé en 2 minutes, sans rien installer
+          </h2>
+          <p className="mx-auto mt-3 max-w-[48ch] text-center text-[19px] text-ink3">
+            Pas de code, pas de configuration, pas de tableur à remplir.
+          </p>
+          <div className="mt-12 grid gap-5 [grid-template-columns:repeat(auto-fit,minmax(280px,1fr))]">
+            {STEPS.map((s) => (
+              <div key={s.n} className="rounded-lg border border-line bg-panel p-8">
+                <span className="grid h-[52px] w-[52px] place-items-center rounded-pill bg-accent font-display text-[24px] font-extrabold text-accent-ink">
+                  {s.n}
+                </span>
+                <h3 className="mt-5 text-[22px] font-bold">{s.t}</h3>
+                <p className="mt-2.5 text-[17px] leading-relaxed text-[#c8c2b6]">{s.d}</p>
               </div>
             ))}
           </div>
-          <div className="rounded-xl border border-neon-pink/30 bg-neon-pink/5 p-4">
-            <div className="flex items-center gap-2 text-[11px] font-extrabold tracking-wide text-neon-pinksoft">
-              <AlertTriangle className="h-3.5 w-3.5" /> RISQUE DÉTECTÉ
-            </div>
-            <p className="mt-2 text-[13px] font-bold leading-snug">
-              Votre best-seller sera en rupture dans ~4 jours (25 unités, ~5,8
-              ventes/jour).
-            </p>
-            <p className="mt-1.5 text-[12px] leading-relaxed text-ink-dim">
-              → Passez une commande de réassort d&apos;urgence (min. 60 unités)
-              — ≈ €1 600/sem de CA en jeu.
-            </p>
-          </div>
-          <p className="mt-3 text-center text-[11px] text-ink-mut">
-            Exemple réel d&apos;analyse générée par le Copilot
+        </section>
+
+        {/* ── 3 piliers + 6 fonctionnalités ── */}
+        <section id="fonctionnalites" className="border-t border-line py-[72px]">
+          <h2 className="text-center font-display text-[40px] font-extrabold tracking-[-0.02em]">
+            Un copilote, pas un tableau de plus
+          </h2>
+          <p className="mx-auto mt-3 max-w-[56ch] text-center text-[19px] leading-relaxed text-ink3">
+            Les dashboards classiques vous montrent des courbes. Nightflow les lit à votre place et
+            répond aux trois seules questions qui comptent :
           </p>
-        </div>
-      </section>
-
-      {/* ── Compatible tools ── */}
-      <section className="border-y border-glass-border py-6 text-center">
-        <p className="text-[11px] font-bold tracking-[2px] text-ink-mut">
-          SE CONNECTE EN 1 CLIC À
-        </p>
-        <div className="mt-3 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-[14px] font-bold text-ink-dim">
-          {["Shopify", "Wix", "WooCommerce", "Stripe", "Klaviyo", "Google Analytics"].map(
-            (t) => (
-              <span key={t} className="hover:text-white">{t}</span>
-            )
-          )}
-        </div>
-      </section>
-
-      {/* ── How it works — 3 real, simple steps ── */}
-      <section className="py-16">
-        <h2 className="text-center text-[28px] font-extrabold tracking-tight">
-          Lancé en 2 minutes, sans rien installer
-        </h2>
-        <p className="mx-auto mt-2 max-w-md text-center text-[14px] text-ink-dim">
-          Pas de code, pas de configuration, pas de tableur à remplir.
-        </p>
-        <div className="mt-10 grid gap-5 md:grid-cols-3">
-          {[
-            {
-              n: "1",
-              t: "Créez votre compte",
-              d: "Gratuit, sans carte bancaire. Vous explorez d'abord avec une boutique de démonstration complète.",
-            },
-            {
-              n: "2",
-              t: "Connectez votre boutique",
-              d: "Un clic sur « Se connecter avec Shopify, Wix, WooCommerce ou Stripe » — vos produits, commandes et revenus arrivent en quelques secondes.",
-            },
-            {
-              n: "3",
-              t: "Laissez le copilote veiller",
-              d: "Analyses, alertes et rapports arrivent tout seuls — sur le site, sur votre ordinateur et sur votre téléphone.",
-            },
-          ].map((s, i) => (
-            <div key={s.n} className="relative rounded-2xl border border-glass-border bg-glass p-6 text-center">
-              <span className="mx-auto grid h-11 w-11 place-items-center rounded-full bg-gradient-to-br from-neon-cyan to-neon-violet text-[17px] font-extrabold text-night-950 shadow-glow">
-                {s.n}
-              </span>
-              <h3 className="mt-4 text-[16px] font-extrabold">{s.t}</h3>
-              <p className="mt-2 text-[13px] leading-relaxed text-ink-dim">{s.d}</p>
-              {i < 2 && (
-                <ArrowRight className="absolute -right-4 top-1/2 hidden h-5 w-5 -translate-y-1/2 text-ink-mut md:block" />
-              )}
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* ── The 3 pillars ── */}
-      <section id="fonctionnalites" className="border-t border-glass-border py-16">
-        <h2 className="text-center text-[28px] font-extrabold tracking-tight">
-          Un copilote, pas un tableau de plus
-        </h2>
-        <p className="mx-auto mt-2 max-w-xl text-center text-[14px] text-ink-dim">
-          Les dashboards classiques vous montrent des courbes. Nightflow les
-          lit à votre place et répond aux trois seules questions qui comptent :
-        </p>
-        <div className="mt-10 grid gap-5 md:grid-cols-3">
-          {[
-            {
-              n: "1",
-              t: "Que se passe-t-il ?",
-              d: "« Le CA a chuté de 26 % cette semaine. » Vos KPIs traduits en phrases claires, pas en graphiques à déchiffrer.",
-            },
-            {
-              n: "2",
-              t: "Pourquoi ?",
-              d: "« Le trafic tient, mais la conversion mobile s'effondre depuis mardi. » L'IA croise vos données pour trouver la cause.",
-            },
-            {
-              n: "3",
-              t: "Que dois-je faire ?",
-              d: "« Réallouez €300 de Meta vers Google Ads (ROAS 4,3 vs 2,7). » Des actions concrètes, chiffrées, priorisées.",
-            },
-          ].map((p) => (
-            <div key={p.n} className="rounded-2xl border border-glass-border bg-glass p-6">
-              <span className="grid h-10 w-10 place-items-center rounded-xl bg-gradient-to-br from-neon-cyan/25 to-neon-violet/25 text-[16px] font-extrabold text-neon-cyansoft">
-                {p.n}
-              </span>
-              <h3 className="mt-4 text-[17px] font-extrabold">{p.t}</h3>
-              <p className="mt-2 text-[13px] leading-relaxed text-ink-dim">{p.d}</p>
-            </div>
-          ))}
-        </div>
-
-        {/* Feature grid */}
-        <div className="mt-14 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {[
-            [BellRing, "Alertes en temps réel", "Rupture de stock, chute de CA, pub qui perd de l'argent — prévenu avant que ça coûte cher, même sur votre téléphone."],
-            [Radar, "Détection d'anomalies", "Un moteur surveille vos métriques 24h/24 et repère les décrochages anormaux automatiquement."],
-            [FileText, "Rapports PDF, Excel & Word", "Un rapport pro généré en 1 clic à partir de vos vraies données — prêt à envoyer à un associé ou un banquier."],
-            [Store, "Multi-plateformes", "Shopify, Wix, WooCommerce, Stripe, Klaviyo, GA4 — toutes vos données dans un seul cerveau."],
-            [Sparkles, "Copilot IA", "Posez n'importe quelle question sur votre boutique et obtenez une réponse chiffrée, basée sur VOS données."],
-            [Smartphone, "App desktop & mobile", "Installez Nightflow comme une vraie application, avec notifications sur PC et téléphone."],
-          ].map(([Icon, t, d]) => {
-            const I = Icon as typeof BellRing;
-            return (
-              <div key={t as string} className="rounded-2xl border border-glass-border bg-glass-2 p-5">
-                <I className="h-5 w-5 text-neon-cyansoft" />
-                <h3 className="mt-3 text-[14px] font-bold">{t as string}</h3>
-                <p className="mt-1.5 text-[12px] leading-relaxed text-ink-dim">{d as string}</p>
+          <div className="mt-12 grid gap-5 [grid-template-columns:repeat(auto-fit,minmax(280px,1fr))]">
+            {PILLARS.map((p) => (
+              <div key={p.t} className="rounded-lg border border-line bg-panel p-8">
+                <h3 className="font-display text-[24px] font-extrabold text-accent">{p.t}</h3>
+                <p className="mt-3 text-[17px] leading-relaxed text-[#c8c2b6]">{p.d}</p>
               </div>
-            );
-          })}
-        </div>
-      </section>
+            ))}
+          </div>
 
-      {/* ── Pricing ── */}
-      <section id="tarifs" className="py-14">
-        <h2 className="text-center text-[28px] font-extrabold tracking-tight">
-          Tarifs simples, sans surprise
-        </h2>
-        <p className="mt-2 text-center text-[14px] text-ink-dim">
-          Commencez gratuitement. Passez au niveau supérieur quand votre
-          boutique le mérite.
-        </p>
-        <div className="mt-10 grid gap-5 md:grid-cols-3">
-          {PLAN_LIST.map((plan) => (
-            <div
-              key={plan.id}
-              className={`flex flex-col rounded-2xl border p-6 ${
-                plan.highlight
-                  ? "border-glass-hi shadow-glow [background:linear-gradient(160deg,rgba(154,107,255,0.18),rgba(61,242,255,0.06))]"
-                  : "border-glass-border bg-glass"
-              }`}
-            >
-              <div className="flex items-center justify-between">
-                <h3 className="text-[17px] font-extrabold">{plan.name}</h3>
-                <span className="rounded-full bg-neon-violet/15 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-neon-violet">
-                  {plan.tag}
-                </span>
+          <div className="mt-6 grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(300px,1fr))]">
+            {FEATURES.map(([Icon, t, d]) => (
+              <div key={t} className="rounded-lg border border-line bg-[#0d1219] p-6">
+                <Icon className="h-6 w-6 text-accent-text" strokeWidth={2} aria-hidden />
+                <h3 className="mt-3.5 text-[19px] font-bold">{t}</h3>
+                <p className="mt-2 text-[16px] leading-relaxed text-ink3">{d}</p>
               </div>
-              <div className="mt-3 flex items-end gap-1">
-                <span className="text-[32px] font-extrabold tracking-tight">
-                  {formatEuro(plan.monthlyCents)}
-                </span>
-                <span className="mb-1.5 text-sm text-ink-dim">/mois</span>
-              </div>
-              <ul className="mt-4 flex flex-1 flex-col gap-2.5">
-                {plan.features.map((f) => (
-                  <li key={f} className="flex items-start gap-2.5 text-[13px] text-ink-dim">
-                    <Check className="mt-0.5 h-3.5 w-3.5 flex-none text-neon-cyan" strokeWidth={3} />
-                    {f}
-                  </li>
-                ))}
-              </ul>
-              <Link
-                href="/signup"
-                className={`mt-6 rounded-xl py-2.5 text-center text-sm font-bold transition ${
-                  plan.highlight
-                    ? "bg-gradient-to-r from-neon-cyan to-neon-cyansoft text-night-950 shadow-glow hover:brightness-110"
-                    : "border border-glass-border bg-glass text-ink-dim hover:border-glass-hi hover:text-white"
-                }`}
+            ))}
+          </div>
+        </section>
+
+        {/* ── Tarifs ── */}
+        <section id="tarifs" className="border-t border-line py-[72px]">
+          <h2 className="text-center font-display text-[40px] font-extrabold tracking-[-0.02em]">
+            Tarifs simples, sans surprise
+          </h2>
+          <p className="mx-auto mt-3 max-w-[52ch] text-center text-[19px] text-ink3">
+            Commencez gratuitement. Passez au niveau supérieur quand votre boutique le mérite.
+          </p>
+          <div className="mt-12 grid gap-5 [grid-template-columns:repeat(auto-fit,minmax(300px,1fr))]">
+            {PLAN_LIST.map((plan) => (
+              <div
+                key={plan.id}
+                className="flex flex-col rounded-lg border border-line bg-panel p-8"
               >
-                {plan.id === "free" ? "Essayer la démo" : `Choisir ${plan.name}`}
-              </Link>
-            </div>
-          ))}
-        </div>
-      </section>
+                <div className="flex items-center justify-between gap-3">
+                  <h3 className="font-display text-[24px] font-extrabold">{plan.name}</h3>
+                  <span className="rounded-pill border border-cool px-3 py-1 text-[14px] font-bold text-accent-text">
+                    {plan.tag}
+                  </span>
+                </div>
+                <div className="mt-4 flex items-end gap-1.5">
+                  <span className="font-display text-[44px] font-extrabold tracking-[-0.02em]" data-numeric>
+                    {formatEuro(plan.monthlyCents)}
+                  </span>
+                  <span className="mb-2 text-[17px] text-ink3">/mois</span>
+                </div>
+                <ul className="mt-5 flex flex-1 flex-col gap-3">
+                  {plan.features.map((f) => (
+                    <li key={f} className="flex items-start gap-3 text-[17px] leading-snug text-[#c8c2b6]">
+                      <Check className="mt-1 h-[18px] w-[18px] flex-none text-accent" strokeWidth={3} aria-hidden />
+                      {f}
+                    </li>
+                  ))}
+                </ul>
+                <Link
+                  href="/signup"
+                  className="mt-7 inline-flex min-h-[52px] items-center justify-center rounded-[12px] border border-cool px-5 text-[17px] font-bold text-ink transition hover:border-accent"
+                >
+                  {plan.id === "free" ? "Essayer la démo" : `Choisir ${plan.name}`}
+                </Link>
+              </div>
+            ))}
+          </div>
+        </section>
 
-      {/* ── FAQ ── */}
-      <section className="mx-auto max-w-2xl py-12">
-        <h2 className="text-center text-[24px] font-extrabold tracking-tight">
-          Questions fréquentes
-        </h2>
-        <div className="mt-8 flex flex-col gap-3">
-          {[
-            ["Est-ce compliqué à installer ?", "Non : créez un compte, cliquez « Se connecter avec Shopify/Stripe/… » et autorisez l'accès. Aucune ligne de code, aucune clé à créer pour les connexions OAuth. Vos données arrivent en quelques secondes."],
-            ["Mes données sont-elles en sécurité ?", "Oui. Chaque compte est isolé au niveau de la base (RLS), les jetons d'accès sont chiffrés (AES-256), et nous n'importons jamais les données personnelles de vos clients — uniquement des métriques. Rien n'est revendu."],
-            ["L'IA invente-t-elle des chiffres ?", "Non. Le Copilot raisonne uniquement sur vos données réelles importées, et le moteur d'alertes est déterministe : chaque alerte cite les chiffres exacts qui l'ont déclenchée."],
-            ["Puis-je annuler à tout moment ?", "Oui, en 2 clics depuis la page Facturation (portail Stripe sécurisé). Vous gardez l'accès jusqu'à la fin de la période payée."],
-          ].map(([q, a]) => (
-            <details key={q} className="group rounded-xl border border-glass-border bg-glass p-4">
-              <summary className="cursor-pointer list-none text-[14px] font-bold marker:hidden">
-                {q}
-              </summary>
-              <p className="mt-2 text-[13px] leading-relaxed text-ink-dim">{a}</p>
-            </details>
-          ))}
-        </div>
-      </section>
+        {/* ── FAQ ── */}
+        <section id="questions" className="mx-auto max-w-[760px] border-t border-line py-[72px]">
+          <h2 className="text-center font-display text-[36px] font-extrabold tracking-[-0.02em]">
+            Questions fréquentes
+          </h2>
+          <div className="mt-9 flex flex-col gap-3">
+            {FAQ.map(([q, a]) => (
+              <details key={q} className="rounded-[14px] border border-line bg-panel p-5 px-6">
+                <summary className="cursor-pointer list-none text-[19px] font-bold marker:hidden">
+                  {q}
+                </summary>
+                <p className="mt-3 text-[17px] leading-[1.7] text-[#c8c2b6]">{a}</p>
+              </details>
+            ))}
+          </div>
+        </section>
 
-      {/* ── Final CTA ── */}
-      <section className="my-10 rounded-3xl border border-glass-hi p-10 text-center [background:linear-gradient(140deg,rgba(154,107,255,0.2),rgba(61,242,255,0.08))]">
-        <h2 className="text-[26px] font-extrabold tracking-tight">
-          Votre boutique a des choses à vous dire.
-        </h2>
-        <p className="mt-2 text-[14px] text-ink-dim">
-          Connectez-la en 1 clic et laissez le Copilot faire le premier rapport.
-        </p>
-        <Link
-          href="/signup"
-          className="mt-6 inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-neon-cyan to-neon-cyansoft px-7 py-3 text-[15px] font-bold text-night-950 shadow-glow transition hover:brightness-110"
-        >
-          Commencer gratuitement <ArrowRight className="h-4 w-4" />
-        </Link>
-      </section>
+        {/* ── CTA final ── */}
+        <section className="mb-[72px] rounded-2xl border border-[#3a2812] px-8 py-14 text-center [background:linear-gradient(160deg,#1c1409,#100c0a)]">
+          <h2 className="font-display text-[38px] font-extrabold tracking-[-0.02em]">
+            Votre boutique a des choses à vous dire.
+          </h2>
+          <p className="mt-3 text-[19px] text-[#c8c2b6]">
+            Connectez-la en 1 clic et laissez le Copilot faire le premier rapport.
+          </p>
+          <Link
+            href="/signup"
+            className="mt-7 inline-flex min-h-[56px] items-center gap-2.5 rounded-[12px] bg-accent px-8 text-[19px] font-bold text-accent-ink transition hover:brightness-95"
+          >
+            Commencer gratuitement <ArrowRight className="h-5 w-5" aria-hidden />
+          </Link>
+        </section>
 
-      {/* ── Footer ── */}
-      <footer className="flex flex-wrap items-center gap-x-6 gap-y-2 border-t border-glass-border py-8 text-[12px] text-ink-mut">
-        <span>© {new Date().getFullYear()} Nightflow Analytics</span>
-        <Link href="/confidentialite" className="hover:text-white">Confidentialité</Link>
-        <Link href="/conditions" className="hover:text-white">Conditions</Link>
-        <Link href="/mentions-legales" className="hover:text-white">Mentions légales</Link>
-        <a href="mailto:adrienmaxence4@gmail.com" className="ml-auto hover:text-white">
-          Contact
-        </a>
-      </footer>
+        {/* ── Pied de page ── */}
+        <footer className="flex flex-wrap items-center gap-x-7 gap-y-3 border-t border-line py-8 pb-12 text-[16px] text-ink3">
+          <span>© {new Date().getFullYear()} Nightflow Analytics</span>
+          <Link href="/confidentialite" className="hover:text-accent-text">Confidentialité</Link>
+          <Link href="/conditions" className="hover:text-accent-text">Conditions</Link>
+          <Link href="/mentions-legales" className="hover:text-accent-text">Mentions légales</Link>
+          <a href="mailto:adrienmaxence4@gmail.com" className="ml-auto hover:text-accent-text">
+            Contact
+          </a>
+        </footer>
+      </div>
     </div>
   );
 }
