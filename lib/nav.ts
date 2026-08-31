@@ -19,18 +19,22 @@ export interface NavItem {
   badge?: number;
 }
 
+/** Libellés en français simple — voir le handoff de refonte. */
 export const NAV_MAIN: NavItem[] = [
-  { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-  { label: "Analytics", href: "/analytics", icon: LineChart },
-  { label: "Products", href: "/products", icon: Package },
-  { label: "Marketing", href: "/marketing", icon: Megaphone },
+  { label: "Accueil", href: "/dashboard", icon: LayoutDashboard },
+  { label: "Analyses", href: "/analytics", icon: LineChart },
+  { label: "Produits", href: "/products", icon: Package },
+  { label: "Publicité", href: "/marketing", icon: Megaphone },
   { label: "Publications", href: "/social", icon: Film },
-  { label: "AI Copilot", href: "/copilot", icon: Sparkles },
+  { label: "Copilote IA", href: "/copilot", icon: Sparkles },
 ];
 
 export const NAV_SECONDARY: NavItem[] = [
-  { label: "Notifications", href: "/notifications", icon: Bell },
-  { label: "Integrations", href: "/integrations", icon: Plug },
-  { label: "Billing", href: "/billing", icon: CreditCard },
-  { label: "Settings", href: "/settings", icon: Settings },
+  { label: "Alertes", href: "/notifications", icon: Bell },
+  { label: "Connexions", href: "/integrations", icon: Plug },
+  { label: "Abonnement", href: "/billing", icon: CreditCard },
+  { label: "Réglages", href: "/settings", icon: Settings },
 ];
+
+export const NAV_GROUP_MAIN = "PILOTAGE";
+export const NAV_GROUP_SECONDARY = "MON COMPTE";
