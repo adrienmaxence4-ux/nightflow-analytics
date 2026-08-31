@@ -67,7 +67,7 @@ export function GaPropertySelect({ onChange }: { onChange?: () => void }) {
         value={current}
         onChange={(e) => select(e.target.value)}
         disabled={busy}
-        className="glass-input min-w-[220px] rounded-xl px-3 py-2 text-[13px] text-ink [&>option]:bg-night-900"
+        className="field min-w-[220px] rounded-xl px-3 py-2 text-[13px] text-ink [&>option]:bg-panel"
       >
         {props.map((p) => (
           <option key={p.id} value={p.id}>
@@ -76,7 +76,7 @@ export function GaPropertySelect({ onChange }: { onChange?: () => void }) {
           </option>
         ))}
       </select>
-      <span className="text-[11px] text-ink-mut">
+      <span className="text-[11px] text-ink3">
         Choisis la propriété qui reçoit ton trafic réel.
       </span>
     </Card>

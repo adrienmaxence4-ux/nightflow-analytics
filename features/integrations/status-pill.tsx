@@ -4,35 +4,35 @@ import { AlertTriangle, Check, Clock, Loader2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import type { ConnectionState } from "@/services/integrations/engine/types";
 
-/** Renders the connection lifecycle as a coloured badge. */
+/** Rend le cycle de vie de la connexion sous forme de pastille colorée. */
 export function StatusPill({ state }: { state: ConnectionState }) {
   switch (state) {
     case "connected":
       return (
-        <Badge variant="lime">
-          <Check className="h-3 w-3" strokeWidth={3} /> Connecté
+        <Badge variant="good">
+          <Check className="h-[15px] w-[15px]" strokeWidth={3} /> Connecté
         </Badge>
       );
     case "syncing":
       return (
-        <Badge variant="cyan">
-          <Loader2 className="h-3 w-3 animate-spin" /> Synchro…
+        <Badge variant="cool">
+          <Loader2 className="h-[15px] w-[15px] animate-spin" /> Synchro…
         </Badge>
       );
     case "error":
       return (
-        <Badge variant="critical">
-          <AlertTriangle className="h-3 w-3" /> Erreur
+        <Badge variant="bad">
+          <AlertTriangle className="h-[15px] w-[15px]" /> Erreur
         </Badge>
       );
     case "expired":
       return (
-        <Badge variant="warning">
-          <Clock className="h-3 w-3" /> Expiré
+        <Badge variant="warn">
+          <Clock className="h-[15px] w-[15px]" /> En validation
         </Badge>
       );
     default:
-      return <Badge variant="cyan">Disponible</Badge>;
+      return <Badge variant="neutral">Non connecté</Badge>;
   }
 }
 

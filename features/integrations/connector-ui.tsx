@@ -12,9 +12,9 @@ import type { IntegrationStatus } from "@/features/integrations/status-pill";
  */
 
 const PRIMARY =
-  "rounded-xl bg-gradient-to-r from-neon-cyan to-neon-cyansoft px-4 py-2.5 text-[13px] font-bold text-night-950 shadow-glow transition hover:brightness-110 disabled:opacity-60";
+  "rounded-xl bg-accent px-4 py-2.5 text-[15px] font-bold text-accent-ink transition hover:brightness-95 disabled:opacity-60";
 const GHOST =
-  "rounded-xl border border-glass-border bg-glass px-4 py-2.5 text-[13px] font-semibold text-ink-dim transition hover:border-glass-hi hover:text-white disabled:opacity-60";
+  "rounded-xl border border-line bg-panel2 px-4 py-2.5 text-[13px] font-semibold text-ink2 transition hover:border-line hover:text-ink disabled:opacity-60";
 
 /** Gradient tile holding the provider's emoji or initial. */
 export function ConnectorLogo({
@@ -54,15 +54,15 @@ export function ConnectionNotes({
       {status.connected && status.lastSync && (
         // timeAgo already says "il y a …" (or "hier", "à l'instant"), so no
         // prefix here — the four cards used to read "il y a il y a 3 min".
-        <p className="mt-0.5 text-[11px] text-ink-mut">
+        <p className="mt-0.5 text-[11px] text-ink3">
           Dernière synchro : {timeAgo(status.lastSync)}
         </p>
       )}
       {status.state === "error" && status.error && (
-        <p className="mt-0.5 text-[11px] text-neon-pinksoft">{status.error}</p>
+        <p className="mt-0.5 text-[11px] text-bad">{status.error}</p>
       )}
       {status.state === "expired" && expiredHint && (
-        <p className="mt-0.5 text-[11px] text-neon-amber">{expiredHint}</p>
+        <p className="mt-0.5 text-[11px] text-warn">{expiredHint}</p>
       )}
     </>
   );
@@ -123,7 +123,7 @@ export function DisconnectButton({
     <button
       onClick={onClick}
       disabled={disabled}
-      className="rounded-xl border border-glass-border bg-glass px-3.5 py-2.5 text-[13px] font-semibold text-ink-dim transition hover:border-neon-pink hover:text-white disabled:opacity-60"
+      className="rounded-xl border border-line bg-panel2 px-3.5 py-2.5 text-[13px] font-semibold text-ink2 transition hover:border-bad hover:text-ink disabled:opacity-60"
     >
       Déconnecter
     </button>

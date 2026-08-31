@@ -45,13 +45,13 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 20, scale: 0.95 }}
               transition={{ type: "spring", stiffness: 400, damping: 30 }}
-              className="pointer-events-auto flex max-w-md items-center gap-3 rounded-2xl border border-glass-hi bg-night-900/95 px-4 py-3 text-[13px] font-semibold text-white shadow-premium backdrop-blur-xl"
+              className="pointer-events-auto flex max-w-md items-center gap-3 rounded-[16px] border border-line bg-panel px-4 py-3 text-[13px] font-semibold text-ink shadow-card "
             >
               <span
-                className={`grid h-6 w-6 flex-none place-items-center rounded-full text-night-950 ${
+                className={`grid h-6 w-6 flex-none place-items-center rounded-full text-accent-ink ${
                   t.variant === "success"
-                    ? "bg-gradient-to-b from-neon-lime to-emerald-400"
-                    : "bg-gradient-to-b from-neon-cyan to-neon-cyansoft"
+                    ? "bg-good"
+                    : "bg-accent"
                 }`}
               >
                 {t.variant === "success" ? (
@@ -63,7 +63,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
               <span className="flex-1">{t.message}</span>
               <button
                 onClick={() => setToasts((s) => s.filter((x) => x.id !== t.id))}
-                className="text-ink-mut transition hover:text-white"
+                className="text-ink3 transition hover:text-ink"
                 aria-label="Fermer"
               >
                 <X className="h-4 w-4" />

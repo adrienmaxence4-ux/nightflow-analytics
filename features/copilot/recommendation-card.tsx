@@ -16,12 +16,12 @@ import type { Priority, Recommendation } from "@/types";
  * nothing.
  */
 
-const PRIORITY: Record<Priority, { variant: "critical" | "warning" | "info" | "cyan"; label: string }> =
+const PRIORITY: Record<Priority, { variant: "bad" | "warn" | "cool" | "neutral"; label: string }> =
   {
-    CRITICAL: { variant: "critical", label: "Critique" },
-    HIGH: { variant: "warning", label: "Prioritaire" },
-    MEDIUM: { variant: "info", label: "À planifier" },
-    LOW: { variant: "cyan", label: "Optionnel" },
+    CRITICAL: { variant: "bad", label: "Urgent" },
+    HIGH: { variant: "warn", label: "Prioritaire" },
+    MEDIUM: { variant: "cool", label: "À planifier" },
+    LOW: { variant: "neutral", label: "Optionnel" },
   };
 
 /** Lowercase only the leading verb — product names keep their capitals. */
@@ -44,41 +44,35 @@ export function RecommendationCard({
       initial={{ opacity: 0, y: 14 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.06 }}
-      className={cn(
-        "glass-card border p-5 transition hover:border-glass-hi",
-        executable ? "border-neon-cyan/30" : "border-glass-border"
-      )}
+      className={cn("panel border-l-4 p-6", executable ? "border-l-accent" : "border-l-line")}
     >
       <div className="mb-2 flex flex-wrap items-center gap-2">
         <Badge variant={prio.variant}>{prio.label}</Badge>
         {executable && (
-          <Badge variant="lime">
+          <Badge variant="good">
             <Wand2 className="h-3 w-3" aria-hidden />
             Automatisable
           </Badge>
         )}
-        <span className="ml-auto flex items-center gap-1 text-[11px] text-ink-mut">
+        <span className="ml-auto flex items-center gap-1 text-[11px] text-ink3">
           <Gauge className="h-3 w-3" aria-hidden />
           Effort {reco.effort.toLowerCase()}
         </span>
       </div>
 
-      <h3 className="text-[15px] font-bold leading-snug">{reco.title}</h3>
+      <h3 className="text-[19px] font-bold leading-snug">{reco.title}</h3>
       {reco.detail && (
-        <p className="mt-1.5 text-[13px] leading-relaxed text-ink-dim">{reco.detail}</p>
+        <p className="mt-2 text-[17px] leading-relaxed text-ink2">{reco.detail}</p>
       )}
 
       {reco.impact && (
-        <div className="mt-3 flex items-center gap-2 rounded-xl border border-glass-hi bg-glass-2 px-3.5 py-2.5">
-          <TrendingUp className="h-4 w-4 flex-none text-neon-lime" aria-hidden />
-          <span className="text-[13px] font-bold text-neon-lime">{reco.impact}</span>
-        </div>
+        <p className="mt-3 text-[17px] font-bold text-good">{reco.impact}</p>
       )}
 
       <div className="mt-4">
         {executable ? (
           <>
-            <p className="mb-2.5 text-[12px] leading-relaxed text-ink-mut">
+            <p className="mb-2.5 text-[16px] leading-relaxed text-ink3">
               Nightflow peut le faire pour toi : {lowerFirst(reco.action!.preview)}.
             </p>
             <Button variant="primary" size="sm" onClick={() => onApply(reco)}>
@@ -87,7 +81,7 @@ export function RecommendationCard({
             </Button>
           </>
         ) : (
-          <span className="inline-flex items-center gap-2 rounded-lg border border-glass-border bg-glass px-3 py-2 text-[12px] text-ink-mut">
+          <span className="inline-flex items-center gap-2 rounded-[10px] border border-line bg-panel2 px-3 py-2 text-[16px] text-ink3">
             <Hand className="h-3.5 w-3.5" aria-hidden />
             À faire depuis ta boutique — Nightflow ne peut pas l&apos;automatiser.
           </span>

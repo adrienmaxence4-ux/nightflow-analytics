@@ -17,25 +17,25 @@ export default function GlobalError({
   return (
     <div className="relative z-10 grid min-h-screen place-items-center px-4 text-center">
       <div>
-        <div className="mb-2 text-[10px] font-bold tracking-[3px] text-neon-pinksoft">
+        <div className="mb-2 text-[10px] font-bold tracking-[3px] text-bad">
           ✦ TURBULENCE DÉTECTÉE
         </div>
         <h1 className="text-[40px] font-extrabold leading-tight tracking-tight">
           Quelque chose s&apos;est mal passé
         </h1>
-        <p className="mt-2 text-ink-dim">
+        <p className="mt-2 text-ink2">
           L&apos;erreur a été enregistrée. Vos données ne sont pas affectées.
         </p>
         <div className="mt-6 flex items-center justify-center gap-3">
           <button
             onClick={reset}
-            className="rounded-xl bg-gradient-to-r from-neon-cyan to-neon-cyansoft px-5 py-2.5 text-sm font-bold text-night-950 shadow-glow transition hover:brightness-110"
+            className="rounded-xl bg-accent px-5 py-2.5 text-[15px] font-bold text-accent-ink transition hover:brightness-95"
           >
             Réessayer
           </button>
           <a
             href="/dashboard"
-            className="rounded-xl border border-glass-border bg-glass px-5 py-2.5 text-sm font-semibold text-ink-dim transition hover:border-glass-hi hover:text-white"
+            className="rounded-xl border border-line bg-panel2 px-5 py-2.5 text-sm font-semibold text-ink2 transition hover:border-line hover:text-ink"
           >
             Retour au dashboard
           </a>

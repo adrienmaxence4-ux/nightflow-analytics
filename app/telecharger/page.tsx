@@ -74,17 +74,17 @@ export default function TelechargerPage() {
       {/* ── Header ── */}
       <header className="flex items-center gap-4 py-5">
         <Link href="/" className="flex items-center gap-2.5">
-          <span className="relative grid h-9 w-9 flex-none place-items-center rounded-xl shadow-glow [background:conic-gradient(from_140deg,#3df2ff,#9a6bff,#ff5cae,#3df2ff)]">
-            <span className="absolute inset-[3px] rounded-[9px] bg-night-900" />
-            <Moon className="relative z-10 h-4 w-4 text-white" strokeWidth={2.4} />
+          <span className="relative grid h-9 w-9 flex-none place-items-center rounded-xl  bg-accent">
+            <span className="absolute inset-[3px] rounded-[9px] bg-panel" />
+            <Moon className="relative z-10 h-4 w-4 text-ink" strokeWidth={2.4} />
           </span>
           <span className="text-[14px] font-extrabold tracking-wide">
-            NIGHTFLOW <span className="text-neon-cyansoft">ANALYTICS</span>
+            NIGHTFLOW <span className="text-accent-text">ANALYTICS</span>
           </span>
         </Link>
         <Link
           href="/"
-          className="ml-auto inline-flex items-center gap-1.5 text-[13px] font-semibold text-ink-dim hover:text-white"
+          className="ml-auto inline-flex items-center gap-1.5 text-[13px] font-semibold text-ink2 hover:text-ink"
         >
           <ArrowLeft className="h-3.5 w-3.5" /> Retour
         </Link>
@@ -92,16 +92,16 @@ export default function TelechargerPage() {
 
       {/* ── Hero ── */}
       <section className="py-12 text-center sm:py-16">
-        <span className="inline-flex items-center gap-1.5 rounded-full border border-glass-hi bg-glass px-3 py-1 text-[11px] font-bold tracking-wide text-neon-cyansoft">
+        <span className="inline-flex items-center gap-1.5 rounded-full border border-line bg-panel2 px-3 py-1 text-[11px] font-bold tracking-[0.06em] text-accent-text">
           <AppWindow className="h-3 w-3" /> APPLICATION DE BUREAU · WINDOWS
         </span>
         <h1 className="mx-auto mt-4 max-w-2xl text-[34px] font-extrabold leading-[1.12] tracking-tight sm:text-[44px]">
           Nightflow veille sur votre boutique,{" "}
-          <span className="bg-gradient-to-r from-neon-cyan via-neon-violet to-neon-pink bg-clip-text text-transparent">
+          <span className="text-accent">
             même fenêtre fermée.
           </span>
         </h1>
-        <p className="mx-auto mt-4 max-w-xl text-[16px] leading-relaxed text-ink-dim">
+        <p className="mx-auto mt-4 max-w-xl text-[16px] leading-relaxed text-ink2">
           Installez l&apos;agent de bureau : il interroge le moteur de détection
           toutes les 30 minutes et vous envoie une notification native dès qu&apos;un
           problème mérite votre attention.
@@ -111,16 +111,16 @@ export default function TelechargerPage() {
           {available ? (
             <a
               href="/api/desktop/download"
-              className="flex items-center gap-2.5 rounded-xl bg-gradient-to-r from-neon-cyan to-neon-cyansoft px-7 py-3.5 text-[15px] font-bold text-night-950 shadow-glow transition hover:brightness-110"
+              className="flex items-center gap-2.5 rounded-xl bg-accent px-7 py-3.5 text-[17px] font-bold text-accent-ink transition hover:brightness-95"
             >
               <Download className="h-4 w-4" /> Télécharger pour Windows
             </a>
           ) : (
-            <span className="flex cursor-not-allowed items-center gap-2.5 rounded-xl border border-glass-border bg-glass px-7 py-3.5 text-[15px] font-bold text-ink-mut">
+            <span className="flex cursor-not-allowed items-center gap-2.5 rounded-xl border border-line bg-panel2 px-7 py-3.5 text-[15px] font-bold text-ink3">
               <Download className="h-4 w-4" /> Bientôt disponible
             </span>
           )}
-          <p className="text-[12px] text-ink-mut">
+          <p className="text-[12px] text-ink3">
             v{DESKTOP.version} · ≈ {DESKTOP.windowsSizeMb} Mo · {DESKTOP.minOs}
           </p>
         </div>
@@ -131,13 +131,13 @@ export default function TelechargerPage() {
         {FEATURES.map(({ icon: Icon, title, body }) => (
           <div
             key={title}
-            className="rounded-2xl border border-glass-border bg-glass p-5"
+            className="rounded-[16px] border border-line bg-panel2 p-5"
           >
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-glass-hi bg-night-900 text-neon-cyansoft">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-line bg-panel text-accent-text">
               <Icon className="h-4 w-4" />
             </div>
             <h3 className="mt-3 text-[15px] font-bold">{title}</h3>
-            <p className="mt-1.5 text-[13px] leading-relaxed text-ink-dim">
+            <p className="mt-1.5 text-[13px] leading-relaxed text-ink2">
               {body}
             </p>
           </div>
@@ -153,14 +153,14 @@ export default function TelechargerPage() {
           {STEPS.map(({ n, title, body }) => (
             <li
               key={n}
-              className="flex gap-4 rounded-2xl border border-glass-border bg-glass p-5"
+              className="flex gap-4 rounded-[16px] border border-line bg-panel2 p-5"
             >
-              <span className="flex h-8 w-8 flex-none items-center justify-center rounded-full bg-gradient-to-r from-neon-cyan to-neon-cyansoft text-[14px] font-extrabold text-night-950">
+              <span className="flex h-8 w-8 flex-none items-center justify-center rounded-full bg-accent text-[14px] font-extrabold text-accent-ink">
                 {n}
               </span>
               <div>
                 <h3 className="text-[15px] font-bold">{title}</h3>
-                <p className="mt-1 text-[13px] leading-relaxed text-ink-dim">
+                <p className="mt-1 text-[13px] leading-relaxed text-ink2">
                   {body}
                 </p>
               </div>
@@ -170,17 +170,17 @@ export default function TelechargerPage() {
       </section>
 
       {/* ── SmartScreen note ── */}
-      <div className="mt-8 flex gap-3 rounded-2xl border border-neon-pink/30 bg-neon-pink/5 p-5">
-        <TriangleAlert className="h-4 w-4 flex-none text-neon-pinksoft" />
-        <div className="text-[13px] leading-relaxed text-ink-dim">
-          <b className="text-white">Windows affichera un avertissement bleu</b> à
+      <div className="mt-8 flex gap-3 rounded-[16px] border border-bad/40 bg-bad-bg p-5">
+        <TriangleAlert className="h-4 w-4 flex-none text-bad" />
+        <div className="text-[13px] leading-relaxed text-ink2">
+          <b className="text-ink">Windows affichera un avertissement bleu</b> à
           la première ouverture : l&apos;app n&apos;est pas encore signée par un
           certificat éditeur. Cliquez sur{" "}
-          <span className="font-semibold text-white">
+          <span className="font-semibold text-ink">
             « Informations complémentaires »
           </span>{" "}
           puis{" "}
-          <span className="font-semibold text-white">
+          <span className="font-semibold text-ink">
             « Exécuter quand même »
           </span>
           . Une seule fois — Windows retient ensuite votre choix.
@@ -188,14 +188,14 @@ export default function TelechargerPage() {
       </div>
 
       {/* ── Other platforms ── */}
-      <p className="mt-10 text-center text-[13px] text-ink-mut">
+      <p className="mt-10 text-center text-[13px] text-ink3">
         <span className="inline-flex items-center gap-1.5">
-          <Check className="h-3.5 w-3.5 text-neon-lime" strokeWidth={3} /> Windows
+          <Check className="h-3.5 w-3.5 text-good" strokeWidth={3} /> Windows
           10 / 11
         </span>
         <span className="mx-3 opacity-40">·</span>
         macOS et Linux — bientôt. En attendant,{" "}
-        <Link href="/dashboard" className="text-neon-cyansoft hover:underline">
+        <Link href="/dashboard" className="text-accent-text hover:underline">
           installez le site en PWA
         </Link>
         .

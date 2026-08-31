@@ -145,7 +145,7 @@ export default function AdminStatsPage() {
       />
 
       {error && (
-        <Card className="p-6 text-sm text-neon-pinksoft">{error}</Card>
+        <Card className="p-6 text-sm text-bad">{error}</Card>
       )}
 
       {/* Audit Stripe : test ou réel ? */}
@@ -153,8 +153,8 @@ export default function AdminStatsPage() {
         <Card
           className={`p-5 ${
             stripe.verdict === "live"
-              ? "border-neon-lime/40"
-              : "border-neon-pinksoft/50 [background:linear-gradient(160deg,rgba(255,92,174,0.12),rgba(255,92,174,0.03))]"
+              ? "border-good/40"
+              : "border-bad/40 bg-bad-bg"
           }`}
         >
           <div className="flex flex-wrap items-center justify-between gap-3">
@@ -162,8 +162,8 @@ export default function AdminStatsPage() {
             <span
               className={`rounded-full px-2.5 py-1 text-[10px] font-extrabold ${
                 stripe.verdict === "live"
-                  ? "bg-neon-lime/15 text-neon-lime"
-                  : "bg-neon-pinksoft/20 text-neon-pinksoft"
+                  ? "bg-good-bg text-good"
+                  : "bg-bad-bg text-bad"
               }`}
             >
               {stripe.verdict === "live"
@@ -177,13 +177,13 @@ export default function AdminStatsPage() {
             {stripe.checks.map((c) => (
               <div key={c.name} className="flex items-start gap-2.5">
                 <span
-                  className={`mt-0.5 text-[13px] ${c.ok ? "text-neon-lime" : "text-neon-pinksoft"}`}
+                  className={`mt-0.5 text-[13px] ${c.ok ? "text-good" : "text-bad"}`}
                 >
                   {c.ok ? "✓" : "!"}
                 </span>
                 <div>
-                  <div className="text-[13px] font-semibold text-white">{c.name}</div>
-                  <div className="text-[12px] text-ink-mut">{c.detail}</div>
+                  <div className="text-[13px] font-semibold text-ink">{c.name}</div>
+                  <div className="text-[12px] text-ink3">{c.detail}</div>
                 </div>
               </div>
             ))}
@@ -196,14 +196,14 @@ export default function AdminStatsPage() {
         <Card
           className={`p-5 ${
             maintenance
-              ? "border-neon-pinksoft/50 [background:linear-gradient(160deg,rgba(255,92,174,0.14),rgba(255,92,174,0.03))]"
+              ? "border-bad/40 bg-bad-bg"
               : ""
           }`}
         >
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <h3 className="text-[15px] font-bold">🛠️ Mode maintenance</h3>
-              <p className="mt-1 text-xs text-ink-mut">
+              <p className="mt-1 text-xs text-ink3">
                 {maintenance
                   ? "Le site est ACTUELLEMENT bloqué pour tous les visiteurs. Toi seul y as accès."
                   : "Bloque tout le site (page « maintenance ») pour les visiteurs. Toi, tu gardes l'accès complet."}
@@ -213,8 +213,8 @@ export default function AdminStatsPage() {
               <span
                 className={`rounded-full px-2.5 py-1 text-[10px] font-extrabold ${
                   maintenance
-                    ? "bg-neon-pinksoft/20 text-neon-pinksoft"
-                    : "bg-neon-lime/15 text-neon-lime"
+                    ? "bg-bad-bg text-bad"
+                    : "bg-good-bg text-good"
                 }`}
               >
                 {maintenance ? "● ACTIVÉ" : "● SITE EN LIGNE"}
@@ -224,8 +224,8 @@ export default function AdminStatsPage() {
                 disabled={maintBusy}
                 className={`rounded-xl px-4 py-2.5 text-[13px] font-bold transition disabled:opacity-60 ${
                   maintenance
-                    ? "bg-gradient-to-r from-neon-cyan to-neon-cyansoft text-night-950 shadow-glow hover:brightness-110"
-                    : "border border-neon-pinksoft/40 bg-neon-pinksoft/10 text-neon-pinksoft hover:bg-neon-pinksoft/20"
+                    ? "bg-accent text-accent-ink hover:brightness-95"
+                    : "border border-bad/40 bg-bad-bg text-bad hover:bg-bad-bg"
                 }`}
               >
                 {maintBusy
@@ -259,9 +259,9 @@ export default function AdminStatsPage() {
               ["Revenu mensuel (MRR)", euros(stats.totals.mrrCents), "abonnements actifs × prix"],
             ].map(([l, v, s]) => (
               <Card key={l} className="p-4">
-                <div className="text-[11px] font-semibold text-ink-mut">{l}</div>
+                <div className="text-[11px] font-semibold text-ink3">{l}</div>
                 <div className="mt-1.5 text-[24px] font-extrabold tracking-tight">{v}</div>
-                <div className="mt-1 text-[10px] text-ink-mut">{s}</div>
+                <div className="mt-1 text-[10px] text-ink3">{s}</div>
               </Card>
             ))}
           </div>
@@ -269,7 +269,7 @@ export default function AdminStatsPage() {
           {/* VIP access grant (influenceurs / testeurs) */}
           <Card className="p-5">
             <h3 className="text-[15px] font-bold">🎁 Offrir l&apos;accès Scale (VIP)</h3>
-            <p className="mt-1 text-xs text-ink-mut">
+            <p className="mt-1 text-xs text-ink3">
               Entre l&apos;email d&apos;un testeur/influenceur : s&apos;il a un
               compte, il passe Scale immédiatement ; sinon l&apos;accès
               s&apos;activera automatiquement à son inscription.
@@ -280,23 +280,23 @@ export default function AdminStatsPage() {
                 onChange={(e) => setVipEmail(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && grantVip()}
                 placeholder="email@dutesteur.com"
-                className="glass-input min-w-[260px] flex-1 rounded-xl px-3 py-2.5 text-[13px] sm:max-w-[360px]"
+                className="field min-w-[260px] flex-1 rounded-xl px-3 py-2.5 text-[13px] sm:max-w-[360px]"
               />
               <button
                 onClick={grantVip}
                 disabled={vipBusy}
-                className="rounded-xl bg-gradient-to-r from-neon-cyan to-neon-cyansoft px-4 py-2.5 text-[13px] font-bold text-night-950 shadow-glow transition hover:brightness-110 disabled:opacity-60"
+                className="rounded-xl bg-accent px-4 py-2.5 text-[15px] font-bold text-accent-ink transition hover:brightness-95 disabled:opacity-60"
               >
                 {vipBusy ? "Activation…" : "Offrir Scale à vie"}
               </button>
             </div>
-            {vipMsg && <p className="mt-2 text-[12px] text-ink-dim">{vipMsg}</p>}
+            {vipMsg && <p className="mt-2 text-[12px] text-ink2">{vipMsg}</p>}
           </Card>
 
           {/* Quelle pub marche (attribution ?a=CODE) */}
           <Card className="p-5">
             <h3 className="text-[15px] font-bold">🏆 Quelle pub marche</h3>
-            <p className="mt-1 text-xs text-ink-mut">
+            <p className="mt-1 text-xs text-ink3">
               Visiteurs amenés par chaque publicité (30 j) — le lien de chaque pub
               contient son code. Le générateur privilégie les gagnantes.
             </p>
@@ -306,19 +306,19 @@ export default function AdminStatsPage() {
                   const max = stats.adPerformance![0].visits || 1;
                   return (
                     <div key={a.code} className="flex items-center gap-3">
-                      <span className="w-6 text-[12px] font-bold text-ink-mut">
+                      <span className="w-6 text-[12px] font-bold text-ink3">
                         {i + 1}.
                       </span>
-                      <span className="w-32 flex-none truncate text-[13px] font-semibold text-white">
+                      <span className="w-32 flex-none truncate text-[13px] font-semibold text-ink">
                         {a.code}
                       </span>
                       <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-white/5">
                         <div
-                          className="h-full rounded-full bg-gradient-to-r from-neon-cyan to-neon-violet"
+                          className="h-full rounded-full bg-accent"
                           style={{ width: `${Math.round((a.visits / max) * 100)}%` }}
                         />
                       </div>
-                      <span className="w-16 text-right text-[13px] font-bold text-neon-cyan">
+                      <span className="w-16 text-right text-[13px] font-bold text-accent-text">
                         {a.visits}
                       </span>
                     </div>
@@ -326,7 +326,7 @@ export default function AdminStatsPage() {
                 })}
               </div>
             ) : (
-              <p className="mt-3 text-[12px] text-ink-mut">
+              <p className="mt-3 text-[12px] text-ink3">
                 Aucune visite attribuée pour l&apos;instant — publie une pub avec
                 son lien de suivi et les résultats apparaîtront ici 📈
               </p>
@@ -336,7 +336,7 @@ export default function AdminStatsPage() {
           {/* D'où viennent les visiteurs — pour choisir la langue Instagram */}
           <Card className="p-5">
             <h3 className="text-[15px] font-bold">🌍 D&apos;où viennent tes visiteurs</h3>
-            <p className="mt-1 text-xs text-ink-mut">
+            <p className="mt-1 text-xs text-ink3">
               Pays d&apos;origine sur 30 jours, et la langue à privilégier pour
               tes publications. Aucune adresse IP n&apos;est enregistrée — seul
               le pays est conservé.
@@ -346,19 +346,19 @@ export default function AdminStatsPage() {
                 <div className="mt-4 flex flex-col gap-2">
                   {stats.pays.map((p) => (
                     <div key={p.code} className="flex items-center gap-3">
-                      <span className="w-36 flex-none truncate text-[13px] font-semibold text-white">
+                      <span className="w-36 flex-none truncate text-[13px] font-semibold text-ink">
                         {p.nom}
                       </span>
                       <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-white/5">
                         <div
-                          className="h-full rounded-full bg-gradient-to-r from-neon-cyan to-neon-violet"
+                          className="h-full rounded-full bg-accent"
                           style={{ width: `${Math.max(p.part, 2)}%` }}
                         />
                       </div>
-                      <span className="w-24 text-right text-[12px] text-ink-dim">
+                      <span className="w-24 text-right text-[12px] text-ink2">
                         {p.langue}
                       </span>
-                      <span className="w-16 text-right text-[13px] font-bold text-neon-cyan">
+                      <span className="w-16 text-right text-[13px] font-bold text-accent-text">
                         {p.visiteurs}
                       </span>
                     </div>
@@ -375,15 +375,15 @@ export default function AdminStatsPage() {
                   )[0];
                   const total = [...parLangue.values()].reduce((t, x) => t + x, 0);
                   return (
-                    <p className="mt-4 rounded-xl border border-neon-cyan/25 bg-neon-cyan/5 px-3 py-2.5 text-[12.5px] text-ink-dim">
-                      👉 Publie en <span className="font-bold text-white">{langue}</span> —{" "}
+                    <p className="mt-4 rounded-xl border border-line bg-panel2 px-3 py-2.5 text-[12.5px] text-ink2">
+                      👉 Publie en <span className="font-bold text-ink">{langue}</span> —{" "}
                       {Math.round((n / total) * 100)} % de tes visiteurs.
                     </p>
                   );
                 })()}
               </>
             ) : (
-              <p className="mt-3 text-[12px] text-ink-mut">
+              <p className="mt-3 text-[12px] text-ink3">
                 Aucun pays enregistré pour l&apos;instant. Les visites déjà
                 comptées n&apos;ont pas de pays : il apparaîtra à partir des
                 prochaines, une fois cette version en ligne 🌍
@@ -433,7 +433,7 @@ export default function AdminStatsPage() {
               </ResponsiveContainer>
             </div>
             {stats.totals.revenueTotalCents === 0 && (
-              <p className="mt-3 text-[12px] text-ink-mut">
+              <p className="mt-3 text-[12px] text-ink3">
                 Aucun paiement encaissé pour l&apos;instant — ce graphique
                 s&apos;animera dès ton premier client 💶
               </p>

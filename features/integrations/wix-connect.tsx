@@ -47,17 +47,17 @@ export function WixConnect() {
       <div className="flex flex-wrap items-center gap-4">
         <ConnectorLogo
           accent="from-slate-200 to-slate-400"
-          className="font-black text-night-950"
+          className="font-black text-accent-ink"
         >
           W
         </ConnectorLogo>
         <div className="min-w-[180px] flex-1">
           <div className="flex items-center gap-2">
             <h3 className="text-[16px] font-extrabold">Wix Stores</h3>
-            <Badge variant="violet">Bêta</Badge>
+            <Badge variant="cool">Bêta</Badge>
             <StatusPill state={status.state} />
           </div>
-          <p className="text-[12px] text-ink-mut">
+          <p className="text-[12px] text-ink3">
             {status.connected
               ? "Produits & commandes importés depuis votre site Wix."
               : "Connectez votre boutique Wix : produits, commandes & revenus."}
@@ -71,16 +71,16 @@ export function WixConnect() {
               value={siteId}
               onChange={(e) => setSiteId(e.target.value)}
               placeholder="Site ID (Paramètres du site → ID du site)"
-              className="glass-input w-full rounded-xl px-3 py-2.5 text-[13px]"
+              className="field w-full rounded-xl px-3 py-2.5 text-[13px]"
             />
             <div className="relative">
-              <KeyRound className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-mut" />
+              <KeyRound className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink3" />
               <input
                 value={apiKey}
                 onChange={(e) => setApiKey(e.target.value)}
                 type="password"
                 placeholder="Clé API Wix"
-                className="glass-input w-full rounded-xl py-2.5 pl-9 pr-3 text-[13px]"
+                className="field w-full rounded-xl py-2.5 pl-9 pr-3 text-[13px]"
               />
             </div>
             <div className="flex items-center gap-2">
@@ -91,7 +91,7 @@ export function WixConnect() {
                 href="https://manage.wix.com/account/api-keys"
                 target="_blank"
                 rel="noreferrer"
-                className="flex items-center gap-1 text-[11px] text-ink-mut underline-offset-2 hover:text-white hover:underline"
+                className="flex items-center gap-1 text-[11px] text-ink3 underline-offset-2 hover:text-ink hover:underline"
               >
                 Créer une clé API <ExternalLink className="h-3 w-3" />
               </a>

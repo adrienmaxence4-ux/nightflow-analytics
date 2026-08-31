@@ -5,32 +5,23 @@ import { cn } from "@/lib/utils";
 
 const buttonVariants = cva(
   [
-    "relative inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md",
+    "relative inline-flex items-center justify-center gap-2.5 whitespace-nowrap rounded-[12px]",
     "font-bold transition duration-base ease-out",
-    // Le focus vient de la règle globale :focus-visible — pas de ring local
-    // à 40% d'opacité, invisible sur fond nuit.
     "disabled:pointer-events-none disabled:opacity-45",
   ],
   {
     variants: {
       variant: {
-        primary:
-          "bg-gradient-to-r from-neon-cyan to-neon-cyansoft text-night-950 shadow-glow hover:brightness-110 hover:shadow-[0_0_32px_rgba(61,242,255,0.5)] active:translate-y-px active:brightness-95",
-        pink: "bg-gradient-to-r from-neon-pink to-neon-violet text-white shadow-glow-pink hover:brightness-110 active:translate-y-px active:brightness-95",
-        ghost:
-          "border border-glass-border bg-glass text-ink-dim hover:border-glass-hi hover:bg-glass-2 hover:text-white active:translate-y-px",
-        outline:
-          "border border-glass-hi bg-transparent text-ink hover:bg-glass-2 active:translate-y-px",
-        danger:
-          "border border-neon-pink/40 bg-neon-pink/10 text-neon-pinksoft hover:border-neon-pink hover:bg-neon-pink/16 hover:text-white active:translate-y-px",
+        primary: "bg-accent text-accent-ink hover:brightness-95 active:brightness-90",
+        outline: "border border-line bg-transparent text-ink hover:border-accent",
+        ghost: "border border-line bg-panel2 text-ink2 hover:text-ink",
+        danger: "border border-bad/40 bg-bad-bg text-bad hover:border-bad",
       },
       size: {
-        // sm fait 40px : sous la cible tactile de 44px, on élargit donc la
-        // zone cliquable de 4px tout autour avec un pseudo-élément.
-        sm: "h-10 px-3 text-label after:absolute after:-inset-1 after:rounded-[inherit] after:content-['']",
-        md: "h-11 px-5 text-body font-bold",
-        lg: "h-12 px-6 text-head",
-        icon: "h-11 w-11",
+        sm: "min-h-tap px-4 text-label",
+        md: "min-h-tap px-5 text-[17px]",
+        lg: "min-h-[56px] px-7 text-[18px]",
+        icon: "h-tap w-tap",
       },
     },
     defaultVariants: { variant: "primary", size: "md" },
@@ -53,19 +44,10 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       className={cn(buttonVariants({ variant, size, className }))}
       {...props}
     >
-      {/* Le libellé garde sa place pendant le chargement : sans ça le bouton
-          se rétracte et la barre d'outils saute. */}
-      <span
-        className={cn(
-          "inline-flex items-center gap-2",
-          loading && "invisible"
-        )}
-      >
+      <span className={cn("inline-flex items-center gap-2.5", loading && "invisible")}>
         {children}
       </span>
-      {loading && (
-        <Loader2 className="absolute h-4 w-4 animate-spin" aria-hidden />
-      )}
+      {loading && <Loader2 className="absolute h-5 w-5 animate-spin" aria-hidden />}
     </button>
   )
 );

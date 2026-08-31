@@ -2,13 +2,8 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { PageTransition } from "@/components/layout/page-transition";
-import { PageHeader } from "@/components/layout/page-header";
 import { DemoBanner } from "@/components/demo-banner";
 import { RangeToggle } from "@/components/ui/range-toggle";
-import { Card } from "@/components/ui/card";
-import { RevenueChart } from "@/features/dashboard/revenue-chart";
-import { ProductBars } from "@/features/dashboard/product-bars";
-import { Funnel } from "@/features/dashboard/funnel";
 import { GaPropertySelect } from "@/features/integrations/ga-property-select";
 import { useRange } from "@/hooks/use-range";
 import { getRangeDataSync } from "@/services/analytics.service";
@@ -17,114 +12,21 @@ import type { Range } from "@/types";
 interface GaChannel {
   channel: string;
   share: number;
-  color: string;
-}
-interface GaDevice {
-  l: string;
-  v: number;
-  c: string;
 }
 
-/** Real GA4 traffic-by-channel bars. */
-function ChannelsCard({
-  channels,
-  className,
-}: {
-  channels: GaChannel[];
-  className?: string;
-}) {
-  return (
-    <Card className={`p-5 ${className ?? ""}`}>
-      <h3 className="mb-4 text-[15px] font-bold">Trafic par canal</h3>
-      <div className="flex flex-col gap-3.5">
-        {channels.map((c) => (
-          <div key={c.channel} className="flex flex-col gap-1.5">
-            <div className="flex justify-between text-xs">
-              <span className="text-ink-dim">{c.channel}</span>
-              <span className="font-bold">{c.share}%</span>
-            </div>
-            <div className="h-2.5 overflow-hidden rounded-lg bg-[rgba(120,140,255,0.08)]">
-              <div
-                className="h-full rounded-lg"
-                style={{
-                  width: `${c.share}%`,
-                  background: `linear-gradient(90deg, ${c.color}, ${c.color}80)`,
-                  boxShadow: `0 0 12px ${c.color}80`,
-                }}
-              />
-            </div>
-          </div>
-        ))}
-      </div>
-    </Card>
-  );
-}
-
-/** Real GA4 device-breakdown donuts. */
-function DevicesCard({ devices }: { devices: GaDevice[] }) {
-  return (
-    <Card className="p-5">
-      <h3 className="mb-1 text-[15px] font-bold">Répartition par appareil</h3>
-      <p className="mb-5 text-xs text-ink-mut">Mobile vs Desktop vs Tablette</p>
-      <div className="flex items-center justify-around">
-        {devices.map((d) => (
-          <div key={d.l} className="text-center">
-            <div
-              className="mx-auto mb-3 grid h-[88px] w-[88px] place-items-center rounded-full text-lg font-extrabold"
-              style={{
-                background: `conic-gradient(${d.c} ${d.v}%, rgba(120,140,255,0.08) 0)`,
-              }}
-            >
-              <span className="grid h-[68px] w-[68px] place-items-center rounded-full bg-night-900">
-                {d.v}%
-              </span>
-            </div>
-            <div className="text-xs font-semibold text-ink-dim">{d.l}</div>
-          </div>
-        ))}
-      </div>
-    </Card>
-  );
-}
-
-/** Compact waiting state — keeps the card; real analyses fill it once GA4 has data. */
-function GaWaitingCard({
-  title,
-  subtitle,
-  connected,
-  className,
-}: {
-  title: string;
-  subtitle: string;
-  connected?: boolean;
-  className?: string;
-}) {
-  return (
-    <Card className={`p-5 ${className ?? ""}`}>
-      <h3 className="mb-1 text-[15px] font-bold">{title}</h3>
-      <p className="mb-4 text-xs text-ink-mut">{subtitle}</p>
-      <p className="rounded-xl bg-glass-2 px-4 py-6 text-center text-[12px] text-ink-mut">
-        {connected
-          ? "Google Analytics connecté ✓ — tes analyses s'afficheront ici dès les premières visites."
-          : "Connecte Google Analytics pour afficher ces analyses."}
-      </p>
-    </Card>
-  );
-}
+const DEMO_SOURCES: GaChannel[] = [
+  { channel: "Réseaux sociaux", share: 38 },
+  { channel: "Recherche Google", share: 27 },
+  { channel: "Accès direct", share: 19 },
+  { channel: "Email", share: 16 },
+];
 
 export default function AnalyticsPage() {
   const { range, setRange } = useRange("week");
   const [data, setData] = useState(getRangeDataSync("week"));
   const [source, setSource] = useState<"db" | "mock" | null>(null);
-  const [ga, setGa] = useState<{
-    connected: boolean;
-    channels?: GaChannel[];
-    devices?: GaDevice[];
-    reason?: string;
-  } | null>(null);
+  const [ga, setGa] = useState<{ connected: boolean; channels?: GaChannel[] } | null>(null);
 
-  // Pull real GA4 traffic when Google Analytics is connected (re-runnable after
-  // switching the GA4 property).
   const loadGa = useCallback(() => {
     fetch("/api/analytics/ga")
       .then((r) => (r.ok ? r.json() : null))
@@ -146,7 +48,7 @@ export default function AnalyticsPage() {
         return;
       }
     } catch {
-      /* fall back */
+      /* repli sur les mocks */
     }
     setData(getRangeDataSync(r));
     setSource("mock");
@@ -156,50 +58,125 @@ export default function AnalyticsPage() {
     load(range);
   }, [range, load]);
 
-  const gaChannels = ga?.connected && ga.channels?.length ? ga.channels : null;
-  const gaDevices = ga?.connected && ga.devices?.length ? ga.devices : null;
+  const series = data.series ?? [];
+  const maxRev = Math.max(1, ...series.map((s) => s.revenue));
+  // Les deux barres les plus hautes passent en ambre.
+  const topTwo = [...series].map((s) => s.revenue).sort((a, b) => b - a).slice(0, 2);
+  const peakShare = Math.round(
+    (topTwo.reduce((a, b) => a + b, 0) / Math.max(1, series.reduce((a, s) => a + s.revenue, 0))) * 100
+  );
+
+  const sources =
+    ga?.connected && ga.channels?.length
+      ? [...ga.channels].sort((a, b) => b.share - a.share)
+      : DEMO_SOURCES;
+
+  const funnel = data.funnel ?? [];
+  const visitors = funnel[0]?.value ?? 0;
+  const lostCart =
+    (funnel[2]?.value ?? 0) - (funnel[3]?.value ?? 0);
 
   return (
     <PageTransition>
       <DemoBanner source={source} onSeeded={() => load(range)} />
-      <PageHeader
-        title="Analytics"
-        subtitle={data.sub}
-        action={<RangeToggle value={range} onChange={setRange} />}
-      />
 
-      <RevenueChart data={data} />
-
-      {/* GA4 property picker — only when there's a real choice to make. */}
-      <GaPropertySelect onChange={loadGa} />
-
-      {/* Traffic by channel (real GA4 data, else compact waiting state) + funnel. */}
-      <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
-        {gaChannels ? (
-          <ChannelsCard channels={gaChannels} className="lg:col-span-2" />
-        ) : (
-          <GaWaitingCard
-            title="Trafic par canal"
-            subtitle="Sessions par source d'acquisition"
-            connected={ga?.connected}
-            className="lg:col-span-2"
-          />
-        )}
-        <Funnel steps={data.funnel} />
+      <div className="flex flex-wrap items-center gap-4">
+        <p className="max-w-[70ch] text-body text-ink2">
+          Ce que vos visiteurs font sur la boutique : d&apos;où ils viennent, sur quel
+          appareil, et à quelle étape ils abandonnent.
+        </p>
+        <RangeToggle value={range} onChange={setRange} />
       </div>
 
-      {/* Top products + device breakdown (real GA4, else compact waiting state). */}
-      <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
-        <ProductBars data={data.bars} />
-        {gaDevices ? (
-          <DevicesCard devices={gaDevices} />
-        ) : (
-          <GaWaitingCard
-            title="Répartition par appareil"
-            subtitle="Mobile vs Desktop vs Tablette"
-            connected={ga?.connected}
-          />
-        )}
+      <GaPropertySelect onChange={loadGa} />
+
+      {/* Ventes heure par heure */}
+      <section className="panel p-7">
+        <h2 className="font-display text-title">Ventes heure par heure</h2>
+        <p className="mb-6 mt-1.5 text-small text-ink3">{data.sub}</p>
+        <div className="flex h-[220px] items-end gap-3">
+          {series.map((s) => {
+            const isPeak = topTwo.includes(s.revenue);
+            return (
+              <div key={s.label} className="flex flex-1 flex-col items-center gap-2">
+                <div
+                  className={`w-full rounded-t-[6px] ${isPeak ? "bg-accent" : "bg-cool"}`}
+                  style={{ height: `${Math.max(6, (s.revenue / maxRev) * 200)}px` }}
+                />
+                <span
+                  className={`text-[14px] ${isPeak ? "font-bold text-ink" : "text-ink3"}`}
+                >
+                  {s.label}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+        <p className="mt-5 border-t border-line pt-5 text-[17px] leading-relaxed text-ink2">
+          En clair : <b className="text-ink">{peakShare} % de vos ventes se concentrent sur
+          les deux meilleures tranches horaires.</b> C&apos;est le moment de publier et de
+          lancer vos campagnes.
+        </p>
+      </section>
+
+      <div className="grid gap-5 [grid-template-columns:repeat(auto-fit,minmax(340px,1fr))]">
+        {/* D'où viennent vos visiteurs */}
+        <section className="panel p-7">
+          <h2 className="mb-6 font-display text-title">D&apos;où viennent vos visiteurs</h2>
+          <div className="flex flex-col gap-5">
+            {sources.map((c, i) => (
+              <div key={c.channel}>
+                <div className="mb-2 flex justify-between text-[17px] font-semibold">
+                  <span>{c.channel}</span>
+                  <span data-numeric>{c.share} %</span>
+                </div>
+                <div className="h-3.5 overflow-hidden rounded-pill bg-panel2">
+                  <div
+                    className={`h-full rounded-pill ${i === 0 ? "bg-accent" : "bg-cool"}`}
+                    style={{ width: `${c.share}%` }}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* Le parcours d'achat */}
+        <section className="panel p-7">
+          <h2 className="font-display text-title">Le parcours d&apos;achat</h2>
+          <p className="mb-6 mt-1.5 text-small text-ink3" data-numeric>
+            Sur {visitors.toLocaleString("fr-FR")} visiteurs
+          </p>
+          <div className="flex flex-col gap-3.5">
+            {funnel.map((step, i) => {
+              const last = i === funnel.length - 1;
+              const pay = i === funnel.length - 2;
+              return (
+                <div
+                  key={step.label}
+                  className={`flex items-center justify-between rounded-[10px] px-[18px] py-3.5 text-[17px] font-semibold ${
+                    last
+                      ? "bg-accent font-bold text-accent-ink"
+                      : pay
+                        ? "bg-bad text-white"
+                        : "bg-cool text-white"
+                  }`}
+                  style={{ width: `${Math.max(24, step.pct)}%` }}
+                >
+                  <span>{step.label}</span>
+                  <b data-numeric>{step.value.toLocaleString("fr-FR")}</b>
+                </div>
+              );
+            })}
+          </div>
+          <p className="mt-5 border-t border-line pt-5 text-[17px] leading-relaxed text-ink2">
+            La plus grosse perte est entre le panier et le paiement :{" "}
+            <b className="text-ink" data-numeric>
+              {Math.max(0, lostCart).toLocaleString("fr-FR")} paniers abandonnés
+            </b>
+            .
+          </p>
+        </section>
       </div>
     </PageTransition>
   );

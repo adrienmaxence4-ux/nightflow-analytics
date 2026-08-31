@@ -192,29 +192,25 @@ export default function CopilotPage() {
   return (
     <PageTransition>
       {/* ── Greeting ── */}
-      <Card className="overflow-hidden p-0">
-        <div className="flex flex-col gap-4 p-6 sm:flex-row sm:items-center [background:linear-gradient(110deg,rgba(154,107,255,0.18),rgba(61,242,255,0.08))]">
-          <span className="relative grid h-14 w-14 flex-none animate-spinslow place-items-center rounded-full shadow-glow [background:conic-gradient(from_0deg,#3df2ff,#ff5cae,#9a6bff,#3df2ff)]">
-            <span className="absolute inset-[6px] rounded-full bg-night-900" />
-            <Sparkles className="relative z-10 h-6 w-6 text-white" />
-          </span>
+      <section className="panel p-8">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
           <div className="flex-1">
-            <h1 className="text-[22px] font-extrabold leading-tight">
-              Bonjour {user?.name ?? "Adrien"},
+            <h1 className="font-display text-[28px] font-extrabold leading-tight">
+              Bonjour {user?.name ?? "Adrien"}
             </h1>
-            <p className="text-[14px] text-ink-dim">
+            <p className="mt-2.5 max-w-[60ch] text-[19px] leading-relaxed text-ink2">
               J&apos;ai analysé l&apos;activité de{" "}
-              <b className="text-white">{user?.store ?? "MoonStore"}</b>. Voici ce qui
+              <b className="text-ink">{user?.store ?? "MoonStore"}</b>. Voici ce qui
               compte aujourd&apos;hui.
             </p>
-            <div className="mt-3 flex flex-wrap gap-2">
-              <Chip icon={<ShieldAlert className="h-3.5 w-3.5" />} tone="pink">
+            <div className="mt-5 flex flex-wrap gap-3">
+              <Chip icon={<ShieldAlert className="h-[18px] w-[18px]" />} tone="bad">
                 {summary.risks} risque{summary.risks > 1 ? "s" : ""}
               </Chip>
-              <Chip icon={<AlertTriangle className="h-3.5 w-3.5" />} tone="amber">
+              <Chip icon={<AlertTriangle className="h-[18px] w-[18px]" />} tone="warn">
                 {summary.alerts} alerte{summary.alerts > 1 ? "s" : ""}
               </Chip>
-              <Chip icon={<TrendingUp className="h-3.5 w-3.5" />} tone="lime">
+              <Chip icon={<TrendingUp className="h-[18px] w-[18px]" />} tone="good">
                 {summary.opportunities} opportunité
                 {summary.opportunities > 1 ? "s" : ""}
               </Chip>
@@ -222,16 +218,12 @@ export default function CopilotPage() {
           </div>
           <div className="flex flex-none items-center gap-2.5">
             <ReportMenu />
-            <Button
-              variant="ghost"
-              onClick={refreshAnalysis}
-              disabled={refreshing}
-            >
+            <Button variant="ghost" onClick={refreshAnalysis} disabled={refreshing}>
               {refreshing ? "Analyse…" : "Actualiser"}
             </Button>
           </div>
         </div>
-      </Card>
+      </section>
 
       <TestPanel onApplied={refreshAnalysis} />
 
@@ -239,15 +231,13 @@ export default function CopilotPage() {
         <div className="flex min-w-0 flex-col gap-5">
           {/* ── Analysis cards ── */}
           <div>
-            <div className="mb-3 text-[10px] font-bold tracking-[1.6px] text-ink-mut">
-              {loadingInsights
-                ? "✦ ANALYSE IA EN COURS…"
-                : "ANALYSES — CLIQUEZ POUR EXPLORER"}
+            <div className="mb-3 text-[15px] font-bold tracking-[0.06em] text-ink3">
+              {loadingInsights ? "ANALYSE EN COURS…" : "ANALYSES — CLIQUEZ POUR EXPLORER"}
             </div>
             {loadingInsights ? (
               <AnalyzingPanel />
             ) : (
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(340px,1fr))]">
                 {analyses.map((c, i) => (
                   <AnalysisCard key={c.id} card={c} index={i} onOpen={setOpenAnalysis} />
                 ))}
@@ -266,7 +256,7 @@ export default function CopilotPage() {
           {groups.risks.length > 0 && (
             <Section
               title="Risques détectés"
-              icon={<ShieldAlert className="h-4 w-4 text-neon-pinksoft" />}
+              icon={<ShieldAlert className="h-5 w-5 text-bad" />}
             >
               {groups.risks.map((ins, i) => (
                 <InsightCard key={ins.id} insight={ins} index={i} />
@@ -277,7 +267,7 @@ export default function CopilotPage() {
           {groups.alerts.length > 0 && (
             <Section
               title="Alertes importantes"
-              icon={<AlertTriangle className="h-4 w-4 text-neon-amber" />}
+              icon={<AlertTriangle className="h-5 w-5 text-warn" />}
             >
               {groups.alerts.map((ins, i) => (
                 <InsightCard key={ins.id} insight={ins} index={i} />
@@ -288,7 +278,7 @@ export default function CopilotPage() {
           {groups.opportunities.length > 0 && (
             <Section
               title="Opportunités"
-              icon={<Target className="h-4 w-4 text-neon-lime" />}
+              icon={<Target className="h-5 w-5 text-good" />}
             >
               {groups.opportunities.map((ins, i) => (
                 <InsightCard key={ins.id} insight={ins} index={i} />
@@ -298,7 +288,7 @@ export default function CopilotPage() {
         </div>
 
         {/* ── Chat ── */}
-        <div className="xl:sticky xl:top-[88px] xl:self-start">
+        <div className="xl:sticky xl:top-4 xl:self-start">
           <CopilotChat />
         </div>
       </div>
@@ -307,35 +297,26 @@ export default function CopilotPage() {
       <Sheet open={!!openAnalysis} onClose={() => setOpenAnalysis(null)}>
         {openAnalysis && (
           <>
-            <div className="mb-5 flex items-center gap-4">
-              <span className="grid h-[54px] w-[54px] place-items-center rounded-2xl border border-glass-border bg-glass-2 text-[26px]">
-                {openAnalysis.icon}
-              </span>
-              <div>
-                <div className="text-xs font-semibold uppercase tracking-wider text-ink-mut">
-                  ANALYSE COPILOT
-                </div>
-                <div className="text-[22px] font-extrabold">{openAnalysis.title}</div>
+            <div className="mb-5">
+              <div className="text-[15px] font-bold tracking-[0.06em] text-ink3">
+                ANALYSE DU COPILOTE
               </div>
+              <div className="font-display text-[24px] font-extrabold">{openAnalysis.title}</div>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
-              <div className="rounded-2xl border border-glass-border bg-glass p-3.5">
-                <div className="text-[11px] text-ink-mut">Indicateur clé</div>
-                <div className="mt-1 text-[22px] font-extrabold">
-                  {openAnalysis.metric}
-                </div>
+              <div className="rounded-[12px] border border-line bg-panel2 p-4">
+                <div className="text-[15px] text-ink3">Indicateur clé</div>
+                <div className="mt-1 text-[22px] font-extrabold">{openAnalysis.metric}</div>
               </div>
-              <div className="rounded-2xl border border-glass-border bg-glass p-3.5">
-                <div className="text-[11px] text-ink-mut">Évolution</div>
+              <div className="rounded-[12px] border border-line bg-panel2 p-4">
+                <div className="text-[15px] text-ink3">Évolution</div>
                 <div
                   className={`mt-1 text-[22px] font-extrabold ${
-                    openAnalysis.trend === "up"
-                      ? "text-neon-lime"
-                      : "text-neon-pinksoft"
+                    openAnalysis.trend === "up" ? "text-good" : "text-bad"
                   }`}
                 >
-                  {openAnalysis.trend === "up" ? "▲" : "▼"} {openAnalysis.delta}
+                  {openAnalysis.trend === "up" ? "↑" : "↓"} {openAnalysis.delta}
                 </div>
               </div>
             </div>
@@ -380,20 +361,12 @@ export default function CopilotPage() {
 
 function AnalyzingPanel() {
   return (
-    <div className="flex items-center gap-4 rounded-2xl border border-glass-border bg-glass-2 p-6">
-      <span className="relative grid h-11 w-11 flex-none animate-spinslow place-items-center rounded-full shadow-glow [background:conic-gradient(from_0deg,#3df2ff,#ff5cae,#9a6bff,#3df2ff)]">
-        <span className="absolute inset-[4px] rounded-full bg-night-900" />
-        <span className="relative z-10 text-[13px] text-white">✦</span>
-      </span>
-      <div>
-        <div className="text-[14px] font-bold">
-          Les données sont en cours d&apos;analyse…
-        </div>
-        <p className="mt-0.5 text-[12px] text-ink-dim">
-          L&apos;IA examine ta boutique — les conseils s&apos;afficheront ici dans
-          un instant. La page reste entièrement utilisable.
-        </p>
-      </div>
+    <div className="rounded-[12px] border border-line bg-panel2 p-6">
+      <div className="text-[18px] font-bold">Les données sont en cours d&apos;analyse…</div>
+      <p className="mt-1 text-[16px] text-ink2">
+        Le Copilote examine votre boutique — les conseils s&apos;afficheront ici dans un
+        instant. La page reste entièrement utilisable.
+      </p>
     </div>
   );
 }
@@ -411,7 +384,7 @@ function Section({
     <div>
       <div className="mb-3 flex items-center gap-2">
         {icon}
-        <h2 className="text-[13px] font-bold uppercase tracking-wider">{title}</h2>
+        <h2 className="text-[17px] font-extrabold">{title}</h2>
       </div>
       <div className="flex flex-col gap-4">{children}</div>
     </div>
@@ -424,17 +397,17 @@ function Chip({
   children,
 }: {
   icon: React.ReactNode;
-  tone: "pink" | "amber" | "lime";
+  tone: "bad" | "warn" | "good";
   children: React.ReactNode;
 }) {
   const tones = {
-    pink: "border-neon-pink/40 bg-neon-pink/10 text-neon-pinksoft",
-    amber: "border-neon-amber/40 bg-neon-amber/10 text-neon-amber",
-    lime: "border-neon-lime/40 bg-neon-lime/10 text-neon-lime",
+    bad: "bg-bad-bg text-bad",
+    warn: "bg-warn-bg text-warn",
+    good: "bg-good-bg text-good",
   };
   return (
     <span
-      className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[12px] font-bold ${tones[tone]}`}
+      className={`inline-flex items-center gap-2 rounded-pill px-4 py-2 text-[17px] font-bold ${tones[tone]}`}
     >
       {icon}
       {children}
@@ -453,16 +426,12 @@ function DrawerStep({
 }) {
   return (
     <div
-      className={`rounded-xl border p-3.5 ${
-        highlight
-          ? "border-glass-hi [background:linear-gradient(110deg,rgba(154,107,255,0.16),rgba(61,242,255,0.08))]"
-          : "border-glass-border bg-glass-2"
+      className={`rounded-[12px] border p-4 ${
+        highlight ? "border-line border-l-4 border-l-accent bg-panel2" : "border-line bg-panel2"
       }`}
     >
-      <div className="text-[10px] font-bold uppercase tracking-wider text-ink-mut">
-        {label}
-      </div>
-      <p className="mt-1 text-[13px] leading-relaxed">{text}</p>
+      <div className="text-[15px] font-bold tracking-[0.06em] text-ink3">{label}</div>
+      <p className="mt-1 text-[17px] leading-relaxed">{text}</p>
     </div>
   );
 }

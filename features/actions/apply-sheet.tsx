@@ -207,14 +207,14 @@ export function ApplySheet({
       {action && (
         <div className="pr-8">
           <header className="mb-5 flex items-start gap-3">
-            <span className="grid h-11 w-11 flex-none place-items-center rounded-xl border border-glass-border bg-glass-2 text-xl">
+            <span className="grid h-11 w-11 flex-none place-items-center rounded-xl border border-line bg-panel2 text-xl">
               {plan?.icon ?? "⚡"}
             </span>
             <div>
               <h2 className="text-[17px] font-black leading-snug">
                 {plan?.title ?? action.preview}
               </h2>
-              <p className="mt-1 text-[12px] text-ink-mut">
+              <p className="mt-1 text-[12px] text-ink3">
                 {phase === "planning"
                   ? "Vérification de ta boutique…"
                   : phase === "error"
@@ -232,9 +232,9 @@ export function ApplySheet({
 
           {phase === "error" && error && (
             <div className="flex flex-col gap-4">
-              <div className="flex gap-3 rounded-xl border border-neon-pink/35 bg-neon-pink/8 p-4">
-                <AlertTriangle className="h-4 w-4 flex-none text-neon-pinksoft" />
-                <p className="text-[13px] leading-relaxed text-ink-dim">{error.message}</p>
+              <div className="flex gap-3 rounded-xl border border-bad/40 bg-bad-bg p-4">
+                <AlertTriangle className="h-4 w-4 flex-none text-bad" />
+                <p className="text-[13px] leading-relaxed text-ink2">{error.message}</p>
               </div>
               <div className="flex flex-wrap gap-2">
                 {recovery ? (
@@ -259,11 +259,11 @@ export function ApplySheet({
           {(phase === "ready" || phase === "applying") && plan && (
             <div className="flex flex-col gap-4">
               {plan.simulated && <SimulationNotice />}
-              <p className="text-[13px] leading-relaxed text-ink-dim">{plan.intro}</p>
+              <p className="text-[13px] leading-relaxed text-ink2">{plan.intro}</p>
 
               {field && (
                 <label className="flex flex-col gap-1.5">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-ink-mut">
+                  <span className="text-[10px] font-bold tracking-[0.06em] text-ink3">
                     {field.label}
                   </span>
                   <div className="flex gap-2">
@@ -291,7 +291,7 @@ export function ApplySheet({
                       Recalculer
                     </Button>
                   </div>
-                  <span className="text-[11px] text-ink-mut">
+                  <span className="text-[11px] text-ink3">
                     {field.money ? "en euros" : field.suffix}
                   </span>
                 </label>
@@ -304,17 +304,17 @@ export function ApplySheet({
                   {plan.warnings.map((w) => (
                     <li
                       key={w}
-                      className="flex gap-2.5 rounded-xl border border-neon-amber/30 bg-neon-amber/8 p-3"
+                      className="flex gap-2.5 rounded-xl border border-warn/40 bg-warn-bg p-3"
                     >
-                      <AlertTriangle className="mt-0.5 h-3.5 w-3.5 flex-none text-neon-amber" />
-                      <span className="text-[12px] leading-relaxed text-ink-dim">{w}</span>
+                      <AlertTriangle className="mt-0.5 h-3.5 w-3.5 flex-none text-warn" />
+                      <span className="text-[12px] leading-relaxed text-ink2">{w}</span>
                     </li>
                   ))}
                 </ul>
               )}
 
               {plan.reversible && (
-                <p className="flex items-center gap-2 text-[12px] text-neon-lime">
+                <p className="flex items-center gap-2 text-[12px] text-good">
                   <RotateCcw className="h-3.5 w-3.5" />
                   Annulable en un clic après application.
                 </p>
@@ -346,8 +346,8 @@ export function ApplySheet({
               animate={{ opacity: 1, y: 0 }}
               className="flex flex-col gap-4"
             >
-              <div className="flex gap-3 rounded-xl border border-neon-lime/35 bg-neon-lime/8 p-4">
-                <Check className="h-4 w-4 flex-none text-neon-lime" />
+              <div className="flex gap-3 rounded-xl border border-good/40 bg-good-bg p-4">
+                <Check className="h-4 w-4 flex-none text-good" />
                 <p className="text-[13px] font-semibold leading-relaxed text-ink">
                   {plan.simulated
                     ? "C'est fait — la modification est appliquée sur tes données de démonstration."
@@ -384,10 +384,10 @@ export function ApplySheet({
  */
 function SimulationNotice() {
   return (
-    <div className="flex gap-3 rounded-xl border border-neon-violet/40 bg-neon-violet/8 p-3.5">
-      <FlaskConical className="mt-0.5 h-4 w-4 flex-none text-neon-violet" aria-hidden />
-      <p className="text-[12px] leading-relaxed text-ink-dim">
-        <b className="text-neon-violet">Mode démonstration.</b> Aucune boutique
+    <div className="flex gap-3 rounded-xl border border-line bg-panel2 p-3.5">
+      <FlaskConical className="mt-0.5 h-4 w-4 flex-none text-cool" aria-hidden />
+      <p className="text-[12px] leading-relaxed text-ink2">
+        <b className="text-cool">Mode démonstration.</b> Aucune boutique
         réelle n&apos;est connectée : la modification s&apos;applique à tes données
         de démonstration, pour que tu voies exactement ce que Nightflow ferait.
       </p>
@@ -402,15 +402,15 @@ function ChangeList({ changes }: { changes: ActionChange[] }) {
       {changes.map((c) => (
         <li
           key={c.label}
-          className="rounded-xl border border-glass-hi bg-glass-2 px-3.5 py-3"
+          className="rounded-xl border border-line bg-panel2 px-3.5 py-3"
         >
-          <div className="text-[10px] font-bold uppercase tracking-wider text-ink-mut">
+          <div className="text-[10px] font-bold tracking-[0.06em] text-ink3">
             {c.label}
           </div>
           <div className="mt-1.5 flex items-center gap-2.5">
-            <span className="text-[13px] text-ink-mut line-through">{c.before}</span>
-            <ArrowRight className="h-3.5 w-3.5 flex-none text-neon-cyan" aria-hidden />
-            <span className="text-[14px] font-bold text-white">{c.after}</span>
+            <span className="text-[13px] text-ink3 line-through">{c.before}</span>
+            <ArrowRight className="h-3.5 w-3.5 flex-none text-accent-text" aria-hidden />
+            <span className="text-[14px] font-bold text-ink">{c.after}</span>
           </div>
         </li>
       ))}

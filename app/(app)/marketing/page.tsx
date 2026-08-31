@@ -1,35 +1,27 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { Sparkles } from "lucide-react";
 import { PageTransition } from "@/components/layout/page-transition";
-import { PageHeader } from "@/components/layout/page-header";
 import { DemoBanner } from "@/components/demo-banner";
-import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { RichText } from "@/components/ui/rich-text";
 import { useCopilotAsk } from "@/features/copilot/copilot-answer";
 import { CAMPAIGNS } from "@/services/mock/data";
 import { parseMetric } from "@/utils/format";
-import {
-  CATEGORY_SHORT,
-  channelCategory,
-} from "@/services/integrations/engine/categories";
-import type { ConnectorCategory } from "@/services/integrations/engine/types";
 import type { Campaign } from "@/types";
 
-const TYPE_VARIANT: Record<ConnectorCategory, "cyan" | "violet" | "info" | "lime"> = {
-  advertising: "cyan",
-  email: "violet",
-  analytics: "info",
-  commerce: "lime",
-  logistics: "info",
-  support: "violet",
-};
+const TARGET = 3.5;
+
+/** ROAS toujours reformulé « pour 1 € dépensé », jamais en « 4.2× ». */
+function perEuro(roas: number): string {
+  return `${roas.toFixed(2).replace(".", ",")} €`;
+}
 
 export default function MarketingPage() {
   const [campaigns, setCampaigns] = useState<Campaign[]>(CAMPAIGNS);
   const [source, setSource] = useState<"db" | "mock" | null>(null);
   const copilot = useCopilotAsk();
-  const [optimized, setOptimized] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -41,7 +33,7 @@ export default function MarketingPage() {
         return;
       }
     } catch {
-      /* fall back */
+      /* repli sur les mocks */
     }
     setCampaigns(CAMPAIGNS);
     setSource("mock");
@@ -53,155 +45,130 @@ export default function MarketingPage() {
 
   const spendCents = campaigns.reduce((t, c) => t + parseMetric(c.spend), 0);
   const revCents = campaigns.reduce((t, c) => t + parseMetric(c.revenue), 0);
-  const totalSpend = `€${spendCents.toLocaleString("fr-FR")}`;
-  const totalRev = `€${revCents.toLocaleString("fr-FR")}`;
-  const blendedRoas = spendCents > 0 ? (revCents / spendCents).toFixed(1) : "—";
+  const blended = spendCents > 0 ? revCents / spendCents : 0;
+  const ranked = [...campaigns].sort((a, b) => b.roas - a.roas);
 
   return (
     <PageTransition>
       <DemoBanner source={source} onSeeded={load} />
-      <PageHeader
-        title="Marketing"
-        subtitle="Vos canaux marketing payants & email. L'analyse d'audience (Google Analytics) est dans Analytics."
-      />
 
-      <div className="grid grid-cols-1 gap-5 sm:grid-cols-3">
-        {[
-          { l: "Dépenses marketing (7j)", v: totalSpend, d: "pub + email" },
-          { l: "Revenu attribué", v: totalRev, d: "+19% vs sem. -1" },
-          { l: "ROAS global", v: blendedRoas, d: "objectif : 3.5", tone: "lime" },
-        ].map((s, i) => (
-          <Card key={i} hover className="p-5">
-            <div className="text-xs font-semibold text-ink-dim">{s.l}</div>
-            <div
-              className={`mt-2 text-[26px] font-extrabold tracking-tight ${
-                s.tone === "lime" ? "text-neon-lime" : ""
-              }`}
-            >
-              {s.v}
-            </div>
-            <div className="mt-2 text-[11px] text-ink-mut">{s.d}</div>
-          </Card>
-        ))}
+      <p className="max-w-[70ch] text-body text-ink2">
+        Ce que vous dépensez en publicité et en emailing, et ce que ça rapporte
+        réellement.
+      </p>
+
+      <div className="grid gap-5 [grid-template-columns:repeat(auto-fit,minmax(260px,1fr))]">
+        <div className="panel p-6">
+          <div className="text-small font-semibold text-ink2">Dépensé cette semaine</div>
+          <div className="mt-1.5 font-display text-[40px] font-extrabold" data-numeric>
+            €{Math.round(spendCents).toLocaleString("fr-FR")}
+          </div>
+        </div>
+        <div className="panel p-6">
+          <div className="text-small font-semibold text-ink2">Ventes générées</div>
+          <div className="mt-1.5 font-display text-[40px] font-extrabold" data-numeric>
+            €{Math.round(revCents).toLocaleString("fr-FR")}
+          </div>
+        </div>
+        <div className="panel p-6">
+          <div className="text-small font-semibold text-ink2">Pour 1 € dépensé</div>
+          <div
+            className={`mt-1.5 font-display text-[40px] font-extrabold ${
+              blended >= TARGET ? "text-good" : "text-bad"
+            }`}
+            data-numeric
+          >
+            {perEuro(blended)}
+          </div>
+          <div className="mt-1 text-[16px] text-ink3">objectif : 3,50 €</div>
+        </div>
       </div>
 
-      <Card className="p-5">
-        <h3 className="mb-1 text-[15px] font-bold">Performance des canaux marketing</h3>
-        <p className="mb-4 text-xs text-ink-mut">
-          Régies publicitaires & email. Le Copilot recommande de réallouer le
-          budget vers les canaux à fort ROAS.
-        </p>
-        <div className="overflow-x-auto">
-          <table className="w-full border-collapse">
+      <section className="panel overflow-hidden p-0">
+        <div className="p-6 pb-0">
+          <h2 className="font-display text-title">Vos canaux, du plus au moins rentable</h2>
+          <p className="mt-1.5 text-small text-ink3">
+            « Pour 1 € » = ce que chaque euro dépensé vous rapporte en ventes.
+          </p>
+        </div>
+        <div className="mt-5 overflow-x-auto">
+          <table className="w-full min-w-[800px]">
             <thead>
-              <tr>
-                {["CANAL", "TYPE", "STATUT", "DÉPENSES", "REVENU", "ROAS", "TENDANCE", ""].map(
-                  (h) => (
-                    <th
-                      key={h}
-                      className="border-b border-glass-border px-3 py-2.5 text-left text-[10px] font-bold tracking-[1px] text-ink-mut"
-                    >
-                      {h}
-                    </th>
-                  )
-                )}
+              <tr className="bg-panel2">
+                {["CANAL", "ÉTAT", "DÉPENSÉ", "RAPPORTÉ", "POUR 1 €"].map((h, i) => (
+                  <th
+                    key={h}
+                    className={`px-4 py-4 text-[15px] font-bold tracking-[0.06em] text-ink3 ${
+                      i === 0 ? "text-left" : i === 1 ? "text-left" : "text-right"
+                    }`}
+                  >
+                    {h}
+                  </th>
+                ))}
               </tr>
             </thead>
             <tbody>
-              {campaigns.map((c) => (
-                <tr
-                  key={c.id}
-                  className="border-b border-[rgba(120,140,255,0.06)] text-[13px] transition hover:bg-glass-2"
-                >
-                  <td className="px-3 py-3.5">
-                    <div className="flex items-center gap-3 font-semibold">
-                      <span className="grid h-[34px] w-[34px] place-items-center rounded-[9px] border border-glass-border bg-glass-2 text-base">
-                        {c.logo}
-                      </span>
-                      {c.channel}
-                    </div>
-                  </td>
-                  <td className="px-3 py-3.5">
-                    <Badge variant={TYPE_VARIANT[channelCategory(c.channel)]}>
-                      {CATEGORY_SHORT[channelCategory(c.channel)]}
-                    </Badge>
-                  </td>
-                  <td className="px-3 py-3.5">
-                    <Badge variant={c.status === "active" ? "positive" : "warning"}>
+              {ranked.map((c) => (
+                <tr key={c.id} className="border-t border-line">
+                  <td className="px-4 py-[18px] text-[18px] font-bold">{c.channel}</td>
+                  <td className="px-4 py-[18px]">
+                    <Badge variant={c.status === "active" ? "good" : "warn"}>
                       {c.status === "active" ? "Active" : "En pause"}
                     </Badge>
                   </td>
-                  <td className="px-3 py-3.5">{c.spend}</td>
-                  <td className="px-3 py-3.5">{c.revenue}</td>
-                  <td className="px-3 py-3.5">
-                    <span
-                      className={`font-bold ${
-                        c.roas >= 3.5 ? "text-neon-lime" : "text-neon-pinksoft"
-                      }`}
-                    >
-                      {c.roas.toFixed(1)}×
-                    </span>
+                  <td className="px-4 py-[18px] text-right text-[18px]" data-numeric>
+                    {c.spend}
                   </td>
-                  <td className="px-3 py-3.5">
-                    <Badge variant={c.trend === "up" ? "lime" : "pink"}>
-                      {c.trend === "up" ? "▲" : "▼"} {c.delta}
-                    </Badge>
+                  <td className="px-4 py-[18px] text-right text-[18px]" data-numeric>
+                    {c.revenue}
                   </td>
-                  <td className="px-3 py-3.5">
-                    <button
-                      disabled={copilot.busy}
-                      onClick={() => {
-                        setOptimized(c.channel);
-                        copilot.ask(
-                          `Le canal « ${c.channel} » a dépensé ${c.spend} pour ${c.revenue} de revenu (ROAS ${c.roas.toFixed(1)}×). Dois-je augmenter, réduire ou réallouer ce budget ? Donne une recommandation concrète.`
-                        );
-                      }}
-                      className="rounded-lg border border-glass-border bg-glass px-3 py-1.5 text-xs font-semibold text-ink-dim transition hover:border-neon-cyan hover:text-white disabled:opacity-60"
-                    >
-                      {copilot.busy && optimized === c.channel ? "Analyse…" : "Optimiser"}
-                    </button>
+                  <td
+                    className={`px-4 py-[18px] text-right text-[18px] font-bold ${
+                      c.roas >= TARGET ? "text-good" : "text-bad"
+                    }`}
+                    data-numeric
+                  >
+                    {perEuro(c.roas)}
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
-      </Card>
+      </section>
 
-      <Card className="p-5 [background:linear-gradient(110deg,rgba(154,107,255,0.14),rgba(61,242,255,0.06))]">
-        <div className="flex items-start gap-3">
-          <span className="grid h-10 w-10 flex-none animate-spinslow place-items-center rounded-full shadow-glow [background:conic-gradient(from_0deg,#3df2ff,#ff5cae,#9a6bff,#3df2ff)]">
-            <span className="absolute h-7 w-7 rounded-full bg-night-900" />
-            <span className="relative z-10 text-white">✦</span>
-          </span>
-          <div className="flex-1">
-            <div className="text-[10px] font-extrabold tracking-wider text-neon-cyansoft">
-              {optimized ? `RECOMMANDATION COPILOT — ${optimized}` : "RECOMMANDATION COPILOT"}
-            </div>
-            {copilot.busy ? (
-              <p className="mt-2 flex gap-1">
-                {[0, 1, 2].map((d) => (
-                  <span
-                    key={d}
-                    className="h-1.5 w-1.5 animate-pulsedot rounded-full bg-neon-cyan"
-                    style={{ animationDelay: `${d * 0.2}s` }}
-                  />
-                ))}
-              </p>
-            ) : copilot.answer ? (
-              <p className="mt-1 whitespace-pre-line text-[14px] leading-relaxed">
-                {copilot.answer}
-              </p>
-            ) : (
-              <p className="mt-1 text-[14px] leading-relaxed">
-                Cliquez <b>« Optimiser »</b> sur un canal ci-dessus : le Copilot
-                analyse son ROAS en temps réel et vous dit s&apos;il faut augmenter,
-                réduire ou réallouer le budget.
-              </p>
-            )}
-          </div>
+      <section className="panel border-l-4 border-l-accent p-6">
+        <div className="flex items-center gap-2.5 text-[15px] font-extrabold tracking-[0.08em] text-accent-text">
+          <Sparkles className="h-5 w-5" strokeWidth={2} aria-hidden />
+          CONSEIL DU COPILOTE
         </div>
-      </Card>
+        {copilot.busy ? (
+          <p className="mt-3.5 text-[19px] text-ink2">Analyse en cours…</p>
+        ) : copilot.answer ? (
+          <div className="mt-3.5 text-[19px] leading-relaxed">
+            <RichText>{copilot.answer}</RichText>
+          </div>
+        ) : (
+          <>
+            <p className="mt-3.5 text-[19px] leading-relaxed">
+              Vos canaux les plus rentables sont souvent les plus sous-investis.
+              Demandez au Copilote où déplacer votre budget cette semaine.
+            </p>
+            <button
+              type="button"
+              disabled={copilot.busy}
+              onClick={() =>
+                copilot.ask(
+                  "Voici mes canaux marketing triés par rentabilité. Où dois-je déplacer du budget cette semaine pour gagner le plus de ventes ? Donne une recommandation chiffrée."
+                )
+              }
+              className="mt-4 inline-flex min-h-tap items-center rounded-[12px] bg-accent px-5 text-[17px] font-bold text-accent-ink transition hover:brightness-95"
+            >
+              Analyser mes canaux
+            </button>
+          </>
+        )}
+      </section>
     </PageTransition>
   );
 }

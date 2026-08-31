@@ -34,7 +34,7 @@ export function KpiDrawer({
     <Sheet open={!!kpi} onClose={onClose}>
       {kpi && (
         <>
-          <h2 className="mt-1 text-xs font-semibold uppercase tracking-wider text-ink-mut">
+          <h2 className="mt-1 text-xs font-semibold tracking-[0.06em] text-ink3">
             {kpi.label}
           </h2>
           <div className="mt-1.5 text-[38px] font-extrabold tracking-tight">
@@ -42,7 +42,7 @@ export function KpiDrawer({
           </div>
           <div
             className={`text-[13px] ${
-              kpi.dir === "up" ? "text-neon-lime" : "text-neon-pinksoft"
+              kpi.dir === "up" ? "text-good" : "text-bad"
             }`}
           >
             {kpi.dir === "up" ? "▲" : "▼"} {kpi.delta} · {kpi.sub}
@@ -72,16 +72,16 @@ export function KpiDrawer({
             {range.kpis.map((k) => (
               <div
                 key={k.key}
-                className="rounded-2xl border border-glass-border bg-glass p-3.5"
+                className="rounded-[16px] border border-line bg-panel2 p-3.5"
               >
-                <div className="text-[11px] text-ink-mut">{k.label}</div>
+                <div className="text-[11px] text-ink3">{k.label}</div>
                 <div className="mt-1 text-[19px] font-extrabold">{k.value}</div>
               </div>
             ))}
           </div>
 
-          <div className="mt-5 rounded-2xl border border-glass-hi p-4 text-[13px] leading-relaxed [background:linear-gradient(110deg,rgba(154,107,255,0.16),rgba(61,242,255,0.08))]">
-            <span className="mb-2 inline-flex items-center gap-1.5 text-[10px] font-extrabold tracking-wider text-neon-cyansoft">
+          <div className="mt-5 rounded-[16px] border border-line p-4 text-[13px] leading-relaxed [background:linear-gradient(110deg,rgba(154,107,255,0.16),rgba(61,242,255,0.08))]">
+            <span className="mb-2 inline-flex items-center gap-1.5 text-[10px] font-extrabold tracking-[0.06em] text-accent-text">
               ✦ INSIGHT COPILOT
             </span>
             <p>{kpi.insight}</p>
@@ -95,7 +95,7 @@ export function KpiDrawer({
                   `Analyse l'indicateur « ${kpi.label} » qui vaut ${kpi.value} (${kpi.delta} ${kpi.sub}). Que se passe-t-il, pourquoi, et que dois-je faire concrètement ?`
                 )
               }
-              className="rounded-xl bg-gradient-to-r from-neon-cyan to-neon-cyansoft py-2.5 text-[13px] font-bold text-night-950 shadow-glow transition hover:brightness-110 disabled:opacity-60"
+              className="rounded-xl bg-accent py-2.5 text-[15px] font-bold text-accent-ink transition hover:brightness-95 disabled:opacity-60"
             >
               {copilot.busy ? "Analyse…" : "Analyser"}
             </button>
@@ -108,7 +108,7 @@ export function KpiDrawer({
                 toast("Rapport téléchargé ✓");
                 setReporting(false);
               }}
-              className="rounded-xl border border-glass-border bg-glass py-2.5 text-[13px] font-semibold text-ink-dim transition hover:border-glass-hi hover:text-white disabled:opacity-60"
+              className="rounded-xl border border-line bg-panel2 py-2.5 text-[13px] font-semibold text-ink2 transition hover:border-line hover:text-ink disabled:opacity-60"
             >
               {reporting ? "Génération…" : "Générer un rapport"}
             </button>

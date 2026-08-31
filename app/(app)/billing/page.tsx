@@ -55,7 +55,7 @@ export default function BillingPage() {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ sessionId: sid }),
       })
-        .then(() => toast("Paiement réussi — abonnement activé 🎉"))
+        .then(() => toast("Paiement réussi — abonnement activé "))
         .catch(() => {})
         .finally(loadSub);
     } else if (r === "cancel") {
@@ -95,7 +95,7 @@ export default function BillingPage() {
       const res = await fetch("/api/billing/trial", { method: "POST" });
       const data = await res.json().catch(() => ({}));
       if (res.ok) {
-        toast("Essai Pro activé — 30 jours offerts 🎉");
+        toast("Essai Pro activé — 30 jours offerts ");
         await loadSub();
       } else {
         toast(data.error ?? "Activation impossible", "info");
@@ -163,15 +163,15 @@ export default function BillingPage() {
 
       {/* Essai Pro — offre (compte neuf) ou statut (essai en cours) */}
       {trialAvailable && (
-        <Card className="flex flex-wrap items-center justify-between gap-4 border-glass-hi p-5 [background:linear-gradient(160deg,rgba(61,242,255,0.14),rgba(154,107,255,0.06))]">
+        <Card className="flex flex-wrap items-center justify-between gap-4 border-line p-5 bg-panel2">
           <div>
             <div className="flex items-center gap-2">
               <span className="text-[15px] font-extrabold">
                 Essaie Pro gratuitement pendant 30 jours
               </span>
-              <Badge variant="cyan">Sans carte</Badge>
+              <Badge variant="cool">Sans carte</Badge>
             </div>
-            <p className="mt-1 text-xs text-ink-dim">
+            <p className="mt-1 text-xs text-ink2">
               Toutes tes vraies données + toutes les intégrations. Aucun paiement,
               annulable à tout moment.
             </p>
@@ -179,18 +179,18 @@ export default function BillingPage() {
           <button
             onClick={startTrial}
             disabled={busy === "trial"}
-            className="rounded-xl bg-gradient-to-r from-neon-cyan to-neon-cyansoft px-5 py-2.5 text-sm font-bold text-night-950 shadow-glow transition hover:brightness-110 disabled:opacity-60"
+            className="rounded-xl bg-accent px-5 py-2.5 text-[15px] font-bold text-accent-ink transition hover:brightness-95 disabled:opacity-60"
           >
             {busy === "trial" ? "Activation…" : "Démarrer l'essai 30 jours"}
           </button>
         </Card>
       )}
       {isTrialing && trialDaysLeft !== null && (
-        <Card className="flex flex-wrap items-center justify-between gap-3 border-glass-hi p-4">
-          <p className="text-[13px] text-ink-dim">
-            🎁 <span className="font-bold text-white">Essai Pro actif</span> — il te
+        <Card className="flex flex-wrap items-center justify-between gap-3 border-line p-4">
+          <p className="text-[13px] text-ink2">
+            <span className="font-bold text-ink">Essai Pro actif</span> — il te
             reste{" "}
-            <span className="font-bold text-neon-cyan">
+            <span className="font-bold text-accent-text">
               {trialDaysLeft} jour{trialDaysLeft > 1 ? "s" : ""}
             </span>
             . Passe en payant quand tu veux pour ne pas perdre l&apos;accès.
@@ -199,20 +199,20 @@ export default function BillingPage() {
       )}
 
       {/* Monthly / annual toggle */}
-      <div className="flex w-fit items-center gap-1 rounded-xl border border-glass-border bg-glass p-1">
+      <div className="flex w-fit items-center gap-1 rounded-xl border border-line bg-panel2 p-1">
         {(["month", "year"] as BillingInterval[]).map((i) => (
           <button
             key={i}
             onClick={() => setBillingInterval(i)}
             className={`rounded-lg px-4 py-1.5 text-xs font-bold transition ${
               interval === i
-                ? "bg-gradient-to-r from-neon-cyan to-neon-cyansoft text-night-950 shadow-glow"
-                : "text-ink-dim hover:text-white"
+                ? "bg-accent text-accent-ink"
+                : "text-ink2 hover:text-ink"
             }`}
           >
             {i === "month" ? "Mensuel" : "Annuel"}
             {i === "year" && (
-              <span className="ml-1.5 rounded bg-neon-lime/20 px-1 py-0.5 text-[9px] font-extrabold text-neon-lime">
+              <span className="ml-1.5 rounded bg-good-bg px-1.5 py-0.5 text-[13px] font-extrabold text-good">
                 2 MOIS OFFERTS
               </span>
             )}
@@ -264,28 +264,28 @@ export default function BillingPage() {
               hover
               className={`flex flex-col p-6 ${
                 plan.highlight
-                  ? "border-glass-hi shadow-glow [background:linear-gradient(160deg,rgba(154,107,255,0.18),rgba(61,242,255,0.06))]"
+                  ? "border-line border-accent bg-panel2"
                   : ""
               }`}
             >
               <div className="flex items-center justify-between">
                 <h3 className="text-[17px] font-extrabold">{plan.name}</h3>
-                <Badge variant={plan.highlight ? "violet" : "cyan"}>{plan.tag}</Badge>
+                <Badge variant={plan.highlight ? "accent" : "cool"}>{plan.tag}</Badge>
               </div>
               <div className="mt-3 flex items-end gap-1">
                 <span className="text-[34px] font-extrabold tracking-tight">
                   {formatEuro(cents)}
                 </span>
-                <span className="mb-1.5 text-sm text-ink-dim">
+                <span className="mb-1.5 text-sm text-ink2">
                   {plan.id === "free" ? "/mois" : interval === "year" ? "/an" : "/mois"}
                 </span>
               </div>
-              <div className="mt-0.5 h-4 text-[11px] text-neon-lime">{perMonth}</div>
+              <div className="mt-0.5 h-4 text-[15px] text-good">{perMonth}</div>
 
               <ul className="mt-4 flex flex-1 flex-col gap-2.5">
                 {plan.features.map((f) => (
-                  <li key={f} className="flex items-center gap-2.5 text-[13px] text-ink-dim">
-                    <span className="grid h-5 w-5 flex-none place-items-center rounded-full bg-neon-cyan/15 text-neon-cyan">
+                  <li key={f} className="flex items-center gap-2.5 text-[13px] text-ink2">
+                    <span className="grid h-5 w-5 flex-none place-items-center rounded-full bg-panel2 text-accent-text">
                       <Check className="h-3 w-3" strokeWidth={3} />
                     </span>
                     {f}
@@ -297,8 +297,8 @@ export default function BillingPage() {
                 onClick={action}
                 className={`mt-6 w-full rounded-xl py-2.5 text-sm font-bold transition disabled:opacity-60 ${
                   plan.highlight
-                    ? "bg-gradient-to-r from-neon-cyan to-neon-cyansoft text-night-950 shadow-glow hover:brightness-110"
-                    : "border border-glass-border bg-glass text-ink-dim hover:border-glass-hi hover:text-white"
+                    ? "bg-accent text-accent-ink hover:brightness-95"
+                    : "border border-line bg-panel2 text-ink2 hover:border-line hover:text-ink"
                 }`}
               >
                 {busy === plan.id ? "Redirection…" : label}
@@ -319,7 +319,7 @@ export default function BillingPage() {
                 ? "Ouvrir le portail sécurisé Stripe"
                 : "Aucune carte enregistrée — abonnez-vous d'abord à un plan payant"
             }
-            className="rounded-xl border border-glass-border bg-glass px-3.5 py-2 text-xs font-semibold text-ink-dim transition hover:border-glass-hi hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
+            className="rounded-xl border border-line bg-panel2 px-3.5 py-2 text-xs font-semibold text-ink2 transition hover:border-line hover:text-ink disabled:cursor-not-allowed disabled:opacity-40"
           >
             {busy === "portal"
               ? "Ouverture…"
@@ -328,7 +328,7 @@ export default function BillingPage() {
                 : "Aucune carte enregistrée"}
           </button>
         </div>
-        <p className="mt-2 text-xs text-ink-mut">
+        <p className="mt-2 text-xs text-ink3">
           {hasCustomer
             ? "Modifiez votre carte, changez ou résiliez votre abonnement et consultez vos factures via le portail sécurisé Stripe."
             : "Choisissez un plan payant ci-dessus pour activer la gestion de votre carte et de votre abonnement."}

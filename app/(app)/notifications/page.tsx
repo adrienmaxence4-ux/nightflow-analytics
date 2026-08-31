@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { motion } from "framer-motion";
 import { Bell, Database, RotateCcw, Sparkles, Trash2 } from "lucide-react";
 import {
   dismiss,
@@ -14,7 +13,6 @@ import {
   setDesktopEnabled,
 } from "@/lib/notif-prefs";
 import { PageTransition } from "@/components/layout/page-transition";
-import { PageHeader } from "@/components/layout/page-header";
 import { TestPanel } from "@/features/admin/test-panel";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -30,13 +28,27 @@ import {
 import type { Notification } from "@/types";
 
 const SEV_LABEL: Record<Notification["severity"], string> = {
-  critical: "Critique",
+  critical: "Urgent",
   warning: "Attention",
   info: "Info",
-  positive: "Positif",
+  positive: "Bonne nouvelle",
 };
 
-const FILTERS = ["Toutes", "Non lues", "Critiques"];
+const SEV_BADGE: Record<Notification["severity"], "bad" | "warn" | "cool" | "good"> = {
+  critical: "bad",
+  warning: "warn",
+  info: "cool",
+  positive: "good",
+};
+
+const SEV_RULE: Record<Notification["severity"], string> = {
+  critical: "border-l-bad",
+  warning: "border-l-warn",
+  info: "border-l-cool",
+  positive: "border-l-good",
+};
+
+const FILTERS = ["Toutes", "Non lues", "Urgentes"];
 
 export default function NotificationsPage() {
   const toast = useToast();
@@ -112,7 +124,7 @@ export default function NotificationsPage() {
 
   const visible = items.filter((n) => {
     if (filter === "Non lues") return !n.read;
-    if (filter === "Critiques") return n.severity === "critical";
+    if (filter === "Urgentes") return n.severity === "critical";
     return true;
   });
   const unread = items.filter((n) => !n.read).length;
@@ -162,50 +174,45 @@ export default function NotificationsPage() {
 
   return (
     <PageTransition>
-      <PageHeader
-        title="Notifications"
-        subtitle={
-          loading
-            ? "Chargement…"
-            : `${unread} non lue${unread > 1 ? "s" : ""} · alertes intelligentes`
-        }
-        action={
-          <div className="flex flex-wrap items-center gap-2">
+      <div className="flex flex-wrap items-center gap-4">
+        <p className="text-body text-ink2">
+          {loading ? "Chargement…" : `${unread} alerte${unread > 1 ? "s" : ""} non lue${unread > 1 ? "s" : ""}`}
+        </p>
+        <div className="ml-auto flex flex-wrap items-center gap-3">
+          <button
+            onClick={enableDesktop}
+            disabled={desktopOn}
+            className="inline-flex min-h-tap items-center gap-2 rounded-[12px] border border-line bg-panel px-4 text-label font-semibold text-ink transition hover:bg-panel2 disabled:opacity-60"
+          >
+            <Bell className="h-[18px] w-[18px]" aria-hidden />
+            {desktopOn ? "Notifications bureau activées" : "Activer les notifications bureau"}
+          </button>
+          {items.length > 0 && (
             <button
-              onClick={enableDesktop}
-              disabled={desktopOn}
-              className="flex items-center gap-1.5 rounded-xl border border-glass-border bg-glass px-3.5 py-2 text-xs font-semibold text-ink-dim transition hover:border-glass-hi hover:text-white disabled:opacity-60"
+              onClick={handleMarkAllRead}
+              className="inline-flex min-h-tap items-center rounded-[12px] border border-line bg-panel px-4 text-label font-semibold text-ink transition hover:bg-panel2"
             >
-              <Bell className="h-3.5 w-3.5" />
-              {desktopOn ? "Notifications bureau activées" : "Activer les notifications bureau"}
+              Tout marquer comme lu
             </button>
-            {items.length > 0 && (
-              <button
-                onClick={handleMarkAllRead}
-                className="rounded-xl border border-glass-border bg-glass px-3.5 py-2 text-xs font-semibold text-ink-dim transition hover:border-glass-hi hover:text-white"
-              >
-                Tout marquer comme lu
-              </button>
-            )}
-            {hiddenCount > 0 && (
-              <button
-                onClick={handleRestore}
-                className="flex items-center gap-1.5 rounded-xl border border-glass-border bg-glass px-3.5 py-2 text-xs font-semibold text-ink-dim transition hover:border-glass-hi hover:text-white"
-              >
-                <RotateCcw className="h-3.5 w-3.5" />
-                Réafficher ({hiddenCount})
-              </button>
-            )}
-          </div>
-        }
-      />
+          )}
+          {hiddenCount > 0 && (
+            <button
+              onClick={handleRestore}
+              className="inline-flex min-h-tap items-center gap-2 rounded-[12px] border border-line bg-panel px-4 text-label font-semibold text-ink transition hover:bg-panel2"
+            >
+              <RotateCcw className="h-[18px] w-[18px]" aria-hidden />
+              Réafficher ({hiddenCount})
+            </button>
+          )}
+        </div>
+      </div>
 
       <TestPanel onApplied={load} />
 
       {/* Bandeau source de données */}
       {!loading && (
-        <div className="flex items-center gap-2 text-[11px] text-ink-mut">
-          <Database className="h-3.5 w-3.5" />
+        <div className="flex items-center gap-2 text-[15px] text-ink3">
+          <Database className="h-[18px] w-[18px]" aria-hidden />
           {source === "live"
             ? "Alertes en direct calculées sur vos données réelles"
             : source === "db"
@@ -216,15 +223,13 @@ export default function NotificationsPage() {
 
       {/* Filtres */}
       {items.length > 0 && (
-        <div className="flex w-fit gap-1 rounded-xl border border-glass-border bg-glass p-1">
+        <div className="flex w-fit gap-1.5 rounded-[12px] border border-line bg-panel p-1.5">
           {FILTERS.map((f) => (
             <button
               key={f}
               onClick={() => setFilter(f)}
-              className={`rounded-[9px] px-3.5 py-1.5 text-xs font-semibold transition ${
-                filter === f
-                  ? "bg-gradient-to-r from-neon-cyan to-neon-cyansoft text-night-950 shadow-glow"
-                  : "text-ink-dim hover:text-white"
+              className={`rounded-[8px] px-5 py-2.5 text-[16px] font-semibold transition ${
+                filter === f ? "bg-accent text-accent-ink" : "text-ink2 hover:text-ink"
               }`}
             >
               {f}
@@ -245,12 +250,12 @@ export default function NotificationsPage() {
       {/* État vide (base connectée mais sans données) → proposer le seed */}
       {!loading && source === "db" && items.length === 0 && (
         <Card className="flex flex-col items-center gap-4 p-10 text-center">
-          <span className="grid h-14 w-14 place-items-center rounded-2xl border border-glass-hi bg-glass-2 text-2xl">
-            🌙
+          <span className="grid h-14 w-14 place-items-center rounded-[16px] border border-line bg-panel2">
+            <Bell className="h-6 w-6 text-ink3" aria-hidden />
           </span>
           <div>
-            <h3 className="text-[15px] font-bold">Votre base est vide pour l&apos;instant</h3>
-            <p className="mt-1 max-w-sm text-[13px] text-ink-dim">
+            <h3 className="text-head font-bold">Votre base est vide pour l&apos;instant</h3>
+            <p className="mt-1 max-w-sm text-[16px] text-ink2">
               Chargez un jeu de notifications de démonstration MoonStore
               directement dans votre vraie base Supabase pour voir la page en
               action.
@@ -259,7 +264,7 @@ export default function NotificationsPage() {
           <button
             onClick={handleSeed}
             disabled={seeding}
-            className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-neon-cyan to-neon-cyansoft px-5 py-2.5 text-sm font-bold text-night-950 shadow-glow transition hover:brightness-110 disabled:opacity-60"
+            className="inline-flex min-h-tap items-center gap-2 rounded-[12px] bg-accent px-5 text-[17px] font-bold text-accent-ink transition hover:brightness-95 disabled:opacity-60"
           >
             <Sparkles className="h-4 w-4" />
             {seeding ? "Ajout en cours…" : "Charger des notifications de démo"}
@@ -270,13 +275,12 @@ export default function NotificationsPage() {
       {/* Tout supprimé */}
       {!loading && items.length === 0 && hiddenCount > 0 && (
         <Card className="flex flex-col items-center gap-3 p-10 text-center">
-          <span className="text-2xl">🧹</span>
-          <p className="text-sm text-ink-dim">
+          <p className="text-body text-ink2">
             Toutes les notifications ont été supprimées.
           </p>
           <button
             onClick={handleRestore}
-            className="flex items-center gap-1.5 rounded-xl border border-glass-border bg-glass px-4 py-2 text-xs font-semibold text-ink-dim transition hover:border-glass-hi hover:text-white"
+            className="inline-flex min-h-tap items-center gap-2 rounded-[12px] border border-line bg-panel px-4 text-label font-semibold text-ink transition hover:bg-panel2"
           >
             <RotateCcw className="h-3.5 w-3.5" />
             Réafficher ({hiddenCount})
@@ -287,63 +291,44 @@ export default function NotificationsPage() {
       {/* Liste */}
       {!loading && (
         <div className="flex flex-col gap-3">
-          {visible.map((n, i) => (
-            <motion.div
-              key={n.id}
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.04 }}
-            >
+          {visible.map((n) => (
+            <div key={n.id}>
               <Card
-                className={`cursor-pointer p-4 transition ${
-                  n.read
-                    ? "opacity-60"
-                    : "border-glass-hi shadow-[0_8px_24px_-16px_rgba(61,242,255,0.5)]"
+                className={`cursor-pointer border-l-4 p-6 transition ${SEV_RULE[n.severity]} ${
+                  n.read ? "opacity-60" : ""
                 }`}
                 onClick={() => !n.read && handleMarkOne(n.id)}
               >
-                <div className="flex gap-4">
-                  <span className="grid h-11 w-11 flex-none place-items-center rounded-xl border border-glass-border bg-glass text-xl">
-                    {n.icon}
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
-                      <Badge variant={n.severity}>{SEV_LABEL[n.severity]}</Badge>
-                      {!n.read ? (
-                        <span className="rounded-full bg-neon-cyan/15 px-1.5 py-0.5 text-[9px] font-extrabold uppercase tracking-wide text-neon-cyan">
-                          Nouveau
-                        </span>
-                      ) : (
-                        <span className="text-[10px] font-semibold text-ink-mut">Vu</span>
-                      )}
-                      <span className="text-[11px] text-ink-mut">{n.time}</span>
-                      <div className="ml-auto flex items-center gap-2">
-                        {!n.read && (
-                          <span className="h-2 w-2 rounded-full bg-neon-cyan shadow-glow" />
-                        )}
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDismiss(n.id);
-                          }}
-                          title="Supprimer cette notification"
-                          aria-label="Supprimer"
-                          className="grid h-7 w-7 place-items-center rounded-lg border border-glass-border text-ink-mut transition hover:border-neon-pink/50 hover:text-neon-pinksoft"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </button>
-                      </div>
-                    </div>
-                    <h4 className="mt-1.5 text-[14px] font-bold">{n.title}</h4>
-                    <p className="mt-1 text-[12px] text-ink-dim">{n.body}</p>
-                  </div>
+                <div className="flex flex-wrap items-center gap-3">
+                  <Badge variant={SEV_BADGE[n.severity]}>{SEV_LABEL[n.severity]}</Badge>
+                  {!n.read ? (
+                    <span className="rounded-pill bg-accent px-2.5 py-0.5 text-[13px] font-bold text-accent-ink">
+                      Nouveau
+                    </span>
+                  ) : (
+                    <span className="text-[15px] font-semibold text-ink3">Vu</span>
+                  )}
+                  <span className="text-[16px] text-ink3">{n.time}</span>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDismiss(n.id);
+                    }}
+                    title="Supprimer cette notification"
+                    aria-label="Supprimer"
+                    className="ml-auto grid h-9 w-9 place-items-center rounded-[10px] border border-line text-ink3 transition hover:text-bad"
+                  >
+                    <Trash2 className="h-[18px] w-[18px]" aria-hidden />
+                  </button>
                 </div>
+                <h3 className="mt-3 text-[20px] font-bold leading-snug">{n.title}</h3>
+                <p className="mt-2 text-[17px] leading-relaxed text-ink2">{n.body}</p>
               </Card>
-            </motion.div>
+            </div>
           ))}
           {items.length > 0 && visible.length === 0 && (
-            <Card className="p-10 text-center text-sm text-ink-mut">
-              Aucune notification dans cette catégorie 🌙
+            <Card className="p-10 text-center text-[17px] text-ink3">
+              Aucune notification dans cette catégorie.
             </Card>
           )}
         </div>

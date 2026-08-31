@@ -22,14 +22,11 @@ export function ProductDrawer({
       {product && (
         <>
           <div className="mb-5 flex items-center gap-4">
-            <span className="grid h-[54px] w-[54px] place-items-center rounded-2xl border border-glass-border bg-gradient-to-br from-neon-cyan/20 to-neon-violet/20 text-[26px]">
-              {product.icon}
-            </span>
             <div>
-              <div className="text-xs font-semibold uppercase tracking-wider text-ink-mut">
+              <div className="text-[15px] font-bold tracking-[0.06em] text-ink3">
                 PRODUIT
               </div>
-              <div className="text-[22px] font-extrabold">{product.name}</div>
+              <div className="font-display text-[24px] font-extrabold">{product.name}</div>
             </div>
           </div>
 
@@ -50,9 +47,9 @@ export function ProductDrawer({
             <Stat label="Part du CA" value={`${product.revenueShare}%`} />
           </div>
 
-          <div className="mt-5 rounded-2xl border border-glass-hi p-4 text-[13px] leading-relaxed [background:linear-gradient(110deg,rgba(154,107,255,0.16),rgba(61,242,255,0.08))]">
-            <span className="mb-2 inline-flex items-center gap-1.5 text-[10px] font-extrabold tracking-wider text-neon-cyansoft">
-              ✦ ANALYSE COPILOT
+          <div className="mt-5 rounded-[12px] border border-line border-l-4 border-l-accent bg-panel2 p-5 text-[17px] leading-relaxed">
+            <span className="mb-2 inline-flex items-center gap-1.5 text-[15px] font-extrabold tracking-[0.08em] text-accent-text">
+              ANALYSE DU COPILOTE
             </span>
             <p>{product.note}</p>
           </div>
@@ -98,15 +95,11 @@ function Stat({
   tone?: "good" | "bad";
 }) {
   return (
-    <div className="rounded-2xl border border-glass-border bg-glass p-3.5">
-      <div className="text-[11px] text-ink-mut">{label}</div>
+    <div className="rounded-[12px] border border-line bg-panel2 p-4">
+      <div className="text-[15px] text-ink3">{label}</div>
       <div
-        className={`mt-1 text-[19px] font-extrabold ${
-          tone === "good"
-            ? "text-neon-lime"
-            : tone === "bad"
-              ? "text-neon-pinksoft"
-              : ""
+        className={`mt-1 text-[20px] font-extrabold ${
+          tone === "good" ? "text-good" : tone === "bad" ? "text-bad" : ""
         }`}
       >
         {value}

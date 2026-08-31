@@ -315,7 +315,7 @@ export default function LandingPage() {
         </section>
 
         {/* ── CTA final ── */}
-        <section className="mb-[72px] rounded-2xl border border-warn/30 bg-warn-bg px-8 py-14 text-center">
+        <section className="mb-[72px] rounded-[16px] border border-warn/30 bg-warn-bg px-8 py-14 text-center">
           <h2 className="font-display text-[38px] font-extrabold tracking-[-0.02em]">
             Votre boutique a des choses à vous dire.
           </h2>

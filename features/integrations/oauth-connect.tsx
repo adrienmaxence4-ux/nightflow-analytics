@@ -100,12 +100,12 @@ export function OAuthConnect({
           <div className="flex flex-wrap items-center gap-2">
             <h3 className="text-[16px] font-extrabold">{name}</h3>
             {locked ? (
-              <Badge variant="violet">Validation Meta en cours</Badge>
+              <Badge variant="cool">Validation Meta en cours</Badge>
             ) : (
               <StatusPill state={status.state} />
             )}
           </div>
-          <p className="text-[12px] text-ink-mut">
+          <p className="text-[12px] text-ink3">
             {locked
               ? `${description} Meta doit encore valider Nightflow pour les comptes tiers — en attendant, la carte « Régies publicitaires » couvre les mêmes données.`
               : status.connected
@@ -122,7 +122,7 @@ export function OAuthConnect({
           <button
             disabled
             title="Disponible une fois la validation Meta obtenue"
-            className="flex-none cursor-not-allowed rounded-xl border border-glass-border bg-glass px-5 py-2.5 text-[13px] font-bold text-ink-mut"
+            className="flex-none cursor-not-allowed rounded-xl border border-line bg-panel2 px-5 py-2.5 text-[13px] font-bold text-ink3"
           >
             Bientôt
           </button>

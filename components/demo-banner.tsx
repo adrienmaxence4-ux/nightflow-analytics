@@ -46,16 +46,16 @@ export function DemoBanner({
   };
 
   return (
-    <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-glass-hi px-4 py-3 [background:linear-gradient(110deg,rgba(154,107,255,0.14),rgba(61,242,255,0.06))]">
-      <Database className="h-4 w-4 flex-none text-neon-cyansoft" />
-      <span className="text-[13px] text-ink-dim">
-        Vous voyez des <b className="text-white">données de démonstration</b>.
+    <div className="flex flex-wrap items-center gap-3 rounded-[16px] border border-line px-4 py-3 [background:linear-gradient(110deg,rgba(154,107,255,0.14),rgba(61,242,255,0.06))]">
+      <Database className="h-4 w-4 flex-none text-accent-text" />
+      <span className="text-[13px] text-ink2">
+        Vous voyez des <b className="text-ink">données de démonstration</b>.
         Chargez MoonStore dans votre vraie base Supabase pour tout activer.
       </span>
       <button
         onClick={seed}
         disabled={busy}
-        className="ml-auto flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-neon-cyan to-neon-cyansoft px-3.5 py-2 text-xs font-bold text-night-950 shadow-glow transition hover:brightness-110 disabled:opacity-60"
+        className="ml-auto flex items-center gap-1.5 rounded-xl bg-accent px-3.5 py-2 text-[15px] font-bold text-accent-ink transition hover:brightness-95 disabled:opacity-60"
       >
         <Sparkles className="h-3.5 w-3.5" />
         {busy ? "Chargement…" : "Charger les données démo"}

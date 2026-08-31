@@ -50,20 +50,12 @@ export function CopilotAnswer({
           exit={{ opacity: 0, height: 0 }}
           className="overflow-hidden"
         >
-          <div className="mt-3 rounded-2xl border border-glass-hi p-4 text-[13px] leading-relaxed [background:linear-gradient(110deg,rgba(154,107,255,0.16),rgba(61,242,255,0.08))]">
-            <span className="mb-2 inline-flex items-center gap-1.5 text-[10px] font-extrabold tracking-wider text-neon-cyansoft">
-              ✦ RÉPONSE DU COPILOT
+          <div className="mt-3 rounded-[12px] border border-line bg-panel2 p-5 text-[17px] leading-relaxed">
+            <span className="mb-2 inline-flex items-center gap-1.5 text-[15px] font-extrabold tracking-[0.08em] text-accent-text">
+              RÉPONSE DU COPILOTE
             </span>
             {busy ? (
-              <span className="flex gap-1">
-                {[0, 1, 2].map((d) => (
-                  <span
-                    key={d}
-                    className="h-1.5 w-1.5 animate-pulsedot rounded-full bg-neon-cyan"
-                    style={{ animationDelay: `${d * 0.2}s` }}
-                  />
-                ))}
-              </span>
+              <p className="text-ink3">Analyse en cours…</p>
             ) : (
               <RichText>{answer ?? ""}</RichText>
             )}

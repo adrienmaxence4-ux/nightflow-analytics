@@ -15,7 +15,7 @@ export function PageHeader({
     <div className="flex flex-wrap items-end justify-between gap-3">
       <div className="min-w-0">
         <h2 className="text-head">{title}</h2>
-        {subtitle && <p className="mt-1 text-label text-ink-mut">{subtitle}</p>}
+        {subtitle && <p className="mt-1 text-label text-ink3">{subtitle}</p>}
       </div>
       {action}
     </div>

@@ -71,7 +71,7 @@ export default function UiLab() {
     <main className="mx-auto flex max-w-[1180px] flex-col gap-8 p-6">
       <header>
         <h1 className="text-title">Banc d&apos;essai — système de design</h1>
-        <p className="mt-1 text-body text-ink-mut">
+        <p className="mt-1 text-body text-ink3">
           Vérification des tokens, primitives et états. Route temporaire.
         </p>
       </header>
@@ -82,37 +82,36 @@ export default function UiLab() {
 
       <Section title="Échelle typographique — 5 tailles">
         <Card className="flex flex-col gap-3 p-5">
-          <p className="text-display">36 — display</p>
-          <p className="text-title">22 — title</p>
-          <p className="text-head">16 — head</p>
-          <p className="text-body">14 — body, la taille par défaut de l&apos;interface</p>
-          <p className="text-label text-ink-mut">12 — label / méta</p>
+          <p className="text-display">30 — display</p>
+          <p className="text-title">24 — title</p>
+          <p className="text-head">19 — head</p>
+          <p className="text-body">18 — body, la taille par défaut de l&apos;interface</p>
+          <p className="text-label text-ink3">15 — label / méta</p>
         </Card>
       </Section>
 
       <Section title="Grille KPI — cascade CSS, survol sans déplacement">
-        <div className="stagger grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
           {KPIS.map((k) => {
             const Icon = k.icon;
             return (
               <Card key={k.label} hover className="p-5">
                 <div className="mb-4 flex items-center justify-between">
-                  <span className="text-label text-ink-dim">{k.label}</span>
+                  <span className="text-label text-ink2">{k.label}</span>
                   <span
-                    className="grid h-9 w-9 place-items-center rounded-sm border"
-                    style={{ borderColor: `${k.tone}33`, background: `${k.tone}18` }}
+                    className="grid h-9 w-9 place-items-center rounded-sm border border-line bg-panel2"
                   >
-                    <Icon className="h-4 w-4" style={{ color: k.tone }} aria-hidden />
+                    <Icon className="h-4 w-4 text-accent-text" aria-hidden />
                   </span>
                 </div>
                 <div className="text-display" data-numeric>
                   {k.value}
                 </div>
                 <div
-                  className={`mt-3 text-label ${k.up ? "text-neon-lime" : "text-neon-pinksoft"}`}
+                  className={`mt-3 text-label ${k.up ? "text-good" : "text-bad"}`}
                   data-numeric
                 >
-                  {k.delta} <span className="text-ink-mut">vs période précédente</span>
+                  {k.delta} <span className="text-ink3">vs période précédente</span>
                 </div>
               </Card>
             );
@@ -123,28 +122,25 @@ export default function UiLab() {
       <Section title="Boutons — 5 variantes × 6 états">
         <Card className="flex flex-wrap items-center gap-3 p-5">
           <Button>Primaire</Button>
-          <Button variant="pink">Rose</Button>
-          <Button variant="ghost">Fantôme</Button>
+                  <Button variant="ghost">Fantôme</Button>
           <Button variant="outline">Contour</Button>
           <Button variant="danger">Danger</Button>
           <Button loading>Chargement</Button>
           <Button disabled>Désactivé</Button>
           <Button size="sm" variant="ghost">
-            Petit (40px + zone 48px)
+            Petit
           </Button>
         </Card>
       </Section>
 
       <Section title="Badges">
         <Card className="flex flex-wrap gap-2 p-5">
-          <Badge variant="cyan">cyan</Badge>
-          <Badge variant="violet">violet</Badge>
-          <Badge variant="lime">lime</Badge>
-          <Badge variant="amber">amber</Badge>
-          <Badge variant="critical">critique</Badge>
-          <Badge variant="warning">alerte</Badge>
-          <Badge variant="positive">positif</Badge>
-          <Badge variant="info">info</Badge>
+          <Badge variant="good">bonne nouvelle</Badge>
+          <Badge variant="bad">urgent</Badge>
+          <Badge variant="warn">attention</Badge>
+          <Badge variant="cool">info</Badge>
+          <Badge variant="neutral">neutre</Badge>
+          <Badge variant="accent">accent</Badge>
         </Card>
       </Section>
 
@@ -197,7 +193,7 @@ export default function UiLab() {
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section className="flex flex-col gap-3">
-      <h2 className="text-head text-ink-dim">{title}</h2>
+      <h2 className="text-head text-ink2">{title}</h2>
       {children}
     </section>
   );

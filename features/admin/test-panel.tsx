@@ -55,10 +55,10 @@ export function TestPanel({ onApplied }: { onApplied?: () => void }) {
   };
 
   return (
-    <div className="rounded-2xl border border-dashed border-neon-violet/40 bg-neon-violet/5 p-3">
+    <div className="rounded-[16px] border border-dashed border-line bg-panel2 p-3">
       <button
         onClick={() => setOpen((o) => !o)}
-        className="flex w-full items-center gap-2 text-left text-[12px] font-bold text-neon-violet"
+        className="flex w-full items-center gap-2 text-left text-[12px] font-bold text-cool"
       >
         <FlaskConical className="h-4 w-4" />
         Mode test (admin) — déclencher une détection
@@ -69,7 +69,7 @@ export function TestPanel({ onApplied }: { onApplied?: () => void }) {
 
       {open && (
         <>
-          <p className="mt-2 px-0.5 text-[11px] text-ink-mut">
+          <p className="mt-2 px-0.5 text-[11px] text-ink3">
             Injecte des données réelles conçues pour déclencher une alerte
             précise, puis va voir Notifications / AI Copilot. Visible par toi seul.
           </p>
@@ -80,7 +80,7 @@ export function TestPanel({ onApplied }: { onApplied?: () => void }) {
                 onClick={() => apply(s.id)}
                 disabled={busy !== null}
                 title={s.hint}
-                className="flex items-center gap-1.5 rounded-xl border border-glass-border bg-glass px-3 py-2 text-[12px] font-semibold text-ink-dim transition hover:border-glass-hi hover:text-white disabled:opacity-50"
+                className="flex items-center gap-1.5 rounded-xl border border-line bg-panel2 px-3 py-2 text-[12px] font-semibold text-ink2 transition hover:border-line hover:text-ink disabled:opacity-50"
               >
                 <span>{s.icon}</span>
                 {busy === s.id ? "Application…" : s.label}

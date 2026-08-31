@@ -64,13 +64,13 @@ export default function OnboardingPage() {
             <span
               key={i}
               className={`h-1.5 rounded-full transition-all duration-500 ${
-                i <= step ? "w-8 bg-neon-cyan shadow-glow" : "w-4 bg-glass-border"
+                i <= step ? "w-8 bg-accent " : "w-4 bg-line"
               }`}
             />
           ))}
         </div>
 
-        <div className="glass-card p-8">
+        <div className="panel p-8">
           <AnimatePresence mode="wait">
             <motion.div
               key={step}
@@ -81,8 +81,8 @@ export default function OnboardingPage() {
             >
               {step === 0 && (
                 <div className="text-center">
-                  <span className="mx-auto mb-5 grid h-16 w-16 place-items-center rounded-2xl shadow-glow [background:conic-gradient(from_140deg,#3df2ff,#9a6bff,#ff5cae,#3df2ff)]">
-                    <Moon className="h-7 w-7 text-white" strokeWidth={2.2} />
+                  <span className="mx-auto mb-5 grid h-16 w-16 place-items-center rounded-[16px]  bg-accent">
+                    <Moon className="h-7 w-7 text-ink" strokeWidth={2.2} />
                   </span>
                 </div>
               )}
@@ -90,24 +90,24 @@ export default function OnboardingPage() {
               <h1 className="text-center text-[22px] font-extrabold">
                 {STEPS[step].title}
               </h1>
-              <p className="mt-1.5 text-center text-[13px] text-ink-dim">
+              <p className="mt-1.5 text-center text-[13px] text-ink2">
                 {STEPS[step].subtitle}
               </p>
 
               <div className="mt-6">
                 {step === 0 && (
-                  <p className="rounded-xl border border-glass-border bg-glass-2 p-4 text-center text-[13px] leading-relaxed text-ink-dim">
+                  <p className="rounded-xl border border-line bg-panel2 p-4 text-center text-[13px] leading-relaxed text-ink2">
                     Nightflow ne vous montre pas seulement des chiffres. Il vous dit{" "}
-                    <b className="text-white">ce qui se passe</b>,{" "}
-                    <b className="text-white">pourquoi</b>, et{" "}
-                    <b className="text-white">quoi faire</b> — en moins de 30
+                    <b className="text-ink">ce qui se passe</b>,{" "}
+                    <b className="text-ink">pourquoi</b>, et{" "}
+                    <b className="text-ink">quoi faire</b> — en moins de 30
                     secondes.
                   </p>
                 )}
 
                 {step === 1 && (
                   <label className="block">
-                    <span className="mb-1.5 block text-[11px] font-semibold text-ink-mut">
+                    <span className="mb-1.5 block text-[11px] font-semibold text-ink3">
                       Nom de votre boutique
                     </span>
                     <Input
@@ -128,8 +128,8 @@ export default function OnboardingPage() {
                           onClick={() => toggleSource(s.id)}
                           className={`flex items-center gap-3 rounded-xl border p-3.5 text-left transition ${
                             on
-                              ? "border-neon-cyan bg-neon-cyan/10 shadow-glow"
-                              : "border-glass-border bg-glass-2 hover:border-glass-hi"
+                              ? "border-accent bg-panel2 "
+                              : "border-line bg-panel2 hover:border-line"
                           }`}
                         >
                           <span className="text-xl">{s.logo}</span>
@@ -137,7 +137,7 @@ export default function OnboardingPage() {
                             {s.name}
                           </span>
                           {on && (
-                            <Check className="h-4 w-4 text-neon-cyan" strokeWidth={3} />
+                            <Check className="h-4 w-4 text-accent-text" strokeWidth={3} />
                           )}
                         </button>
                       );
@@ -147,10 +147,10 @@ export default function OnboardingPage() {
 
                 {step === 3 && (
                   <div className="flex flex-col items-center gap-3 py-2">
-                    <span className="grid h-14 w-14 place-items-center rounded-full bg-gradient-to-b from-neon-lime to-emerald-400 text-night-950">
+                    <span className="grid h-14 w-14 place-items-center rounded-full bg-good text-accent-ink">
                       <Check className="h-7 w-7" strokeWidth={3} />
                     </span>
-                    <p className="text-center text-[13px] text-ink-dim">
+                    <p className="text-center text-[13px] text-ink2">
                       {selected.length} source{selected.length > 1 ? "s" : ""}{" "}
                       sélectionnée{selected.length > 1 ? "s" : ""}. Vous pourrez
                       tout configurer depuis les Paramètres.
@@ -168,7 +168,7 @@ export default function OnboardingPage() {
               {step < STEPS.length - 1 && (
                 <button
                   onClick={() => router.push("/dashboard")}
-                  className="mt-3 w-full text-center text-[12px] text-ink-mut transition hover:text-white"
+                  className="mt-3 w-full text-center text-[12px] text-ink3 transition hover:text-ink"
                 >
                   Passer pour l&apos;instant
                 </button>

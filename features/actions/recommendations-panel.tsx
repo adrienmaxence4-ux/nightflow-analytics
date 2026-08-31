@@ -48,12 +48,12 @@ export function RecommendationsPanel({
     <>
       <section>
         <div className="mb-3 flex flex-wrap items-center gap-2">
-          <Wand2 className="h-4 w-4 text-neon-cyan" aria-hidden />
-          <h2 className="text-[10px] font-bold tracking-[1.6px] text-ink-mut">
+          <Wand2 className="h-4 w-4 text-accent-text" aria-hidden />
+          <h2 className="text-[10px] font-bold tracking-[1.6px] text-ink3">
             ACTIONS RECOMMANDÉES
           </h2>
           {automatable > 0 && (
-            <span className="rounded-full bg-neon-cyan/12 px-2 py-0.5 text-[10px] font-bold text-neon-cyan">
+            <span className="rounded-full bg-panel2 px-2 py-0.5 text-[10px] font-bold text-accent-text">
               {automatable} applicable{automatable > 1 ? "s" : ""} en un clic
             </span>
           )}
@@ -66,7 +66,7 @@ export function RecommendationsPanel({
             <span className="sr-only">Recommandations en cours de génération…</span>
           </div>
         ) : sorted.length === 0 ? (
-          <p className="rounded-2xl border border-glass-border bg-glass px-4 py-6 text-center text-[13px] text-ink-mut">
+          <p className="rounded-[16px] border border-line bg-panel2 px-4 py-6 text-center text-[13px] text-ink3">
             Rien à corriger pour l&apos;instant — Nightflow te préviendra dès qu&apos;une
             action rapportera quelque chose.
           </p>

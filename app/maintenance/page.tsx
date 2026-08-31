@@ -39,13 +39,13 @@ export default function MaintenancePage() {
           </svg>
         </div>
 
-        <p className="text-xs font-extrabold tracking-[0.3em] text-neon-cyan">
+        <p className="text-xs font-extrabold tracking-[0.3em] text-accent-text">
           NIGHTFLOW ANALYTICS
         </p>
-        <h1 className="mt-4 text-3xl font-extrabold tracking-tight text-white">
+        <h1 className="mt-4 text-3xl font-extrabold tracking-tight text-ink">
           Maintenance en cours
         </h1>
-        <p className="mt-4 text-sm leading-relaxed text-ink-dim">
+        <p className="mt-4 text-sm leading-relaxed text-ink2">
           On peaufine quelques réglages pour améliorer ton expérience. Le site
           revient très vite — merci de ta patience. 🌙
         </p>

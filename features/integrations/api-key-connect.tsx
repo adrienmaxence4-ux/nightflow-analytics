@@ -77,14 +77,14 @@ export function ApiKeyConnect({
           <div className="flex items-center gap-2">
             <h3 className="text-[16px] font-extrabold">{name}</h3>
             {status.connected ? (
-              <Badge variant="lime">
+              <Badge variant="good">
                 <Check className="h-3 w-3" strokeWidth={3} /> Connecté
               </Badge>
             ) : (
-              <Badge variant="cyan">Disponible</Badge>
+              <Badge variant="cool">Disponible</Badge>
             )}
           </div>
-          <p className="text-[12px] text-ink-mut">
+          <p className="text-[12px] text-ink3">
             {status.connected ? connectedHint : description}
           </p>
         </div>
@@ -100,7 +100,7 @@ export function ApiKeyConnect({
         ) : (
           <div className="flex flex-1 flex-wrap items-center gap-2">
             <div className="relative min-w-[240px] flex-1">
-              <KeyRound className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-mut" />
+              <KeyRound className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink3" />
               <input
                 value={apiKey}
                 onChange={(e) => setApiKey(e.target.value)}
@@ -109,13 +109,13 @@ export function ApiKeyConnect({
                 autoComplete="off"
                 spellCheck={false}
                 placeholder={placeholder}
-                className="glass-input w-full rounded-xl py-2.5 pl-9 pr-9 font-mono text-[13px]"
+                className="field w-full rounded-xl py-2.5 pl-9 pr-9 font-mono text-[13px]"
               />
               <button
                 type="button"
                 onClick={() => setReveal((v) => !v)}
                 aria-label={reveal ? "Masquer la clé" : "Afficher la clé"}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-ink-mut transition hover:text-white"
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-ink3 transition hover:text-ink"
               >
                 {reveal ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>
@@ -132,7 +132,7 @@ export function ApiKeyConnect({
           href={helpHref}
           target="_blank"
           rel="noopener noreferrer"
-          className="mt-3 inline-flex items-center gap-1 text-[11px] font-semibold text-neon-cyansoft transition hover:text-white"
+          className="mt-3 inline-flex items-center gap-1 text-[11px] font-semibold text-accent-text transition hover:text-ink"
         >
           {helpLabel ?? "Où trouver ma clé ?"} ↗
         </a>

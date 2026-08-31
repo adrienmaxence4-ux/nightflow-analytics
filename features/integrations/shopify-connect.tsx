@@ -61,7 +61,7 @@ export function ShopifyConnect() {
             <h3 className="text-[16px] font-extrabold">Shopify</h3>
             <StatusPill state={status.state} />
           </div>
-          <p className="text-[12px] text-ink-mut">
+          <p className="text-[12px] text-ink3">
             {status.connected && status.shop
               ? `Connecté à ${status.shop}`
               : "Connectez votre boutique pour importer produits, commandes & ventes."}
@@ -71,7 +71,7 @@ export function ShopifyConnect() {
             expiredHint="Jeton expiré — reconnecte ta boutique."
           />
           {canReauthorize && (
-            <p className="mt-1 text-[11px] text-ink-mut">
+            <p className="mt-1 text-[11px] text-ink3">
               Le Copilot doit pouvoir modifier prix, stock et codes promo pour
               appliquer ses recommandations : reconnecte la boutique une fois
               pour lui accorder ces droits.
@@ -82,13 +82,13 @@ export function ShopifyConnect() {
         {status.state === "not_connected" ? (
           <div className="flex flex-1 flex-wrap items-center gap-2">
             <div className="relative min-w-[220px] flex-1">
-              <Store className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-mut" />
+              <Store className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink3" />
               <input
                 value={domain}
                 onChange={(e) => setDomain(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && connect()}
                 placeholder="ma-boutique.myshopify.com"
-                className="glass-input w-full rounded-xl py-2.5 pl-9 pr-3 text-[13px]"
+                className="field w-full rounded-xl py-2.5 pl-9 pr-3 text-[13px]"
               />
             </div>
             <PrimaryButton onClick={() => connect()}>Connecter</PrimaryButton>

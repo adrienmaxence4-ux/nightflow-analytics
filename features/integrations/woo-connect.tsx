@@ -68,7 +68,7 @@ export function WooConnect() {
             <h3 className="text-[16px] font-extrabold">WooCommerce</h3>
             <StatusPill state={status.state} />
           </div>
-          <p className="text-[12px] text-ink-mut">
+          <p className="text-[12px] text-ink3">
             {status.connected
               ? "Produits & commandes importés depuis votre boutique WordPress."
               : "Boutique WordPress ? Connectez WooCommerce : produits, commandes & revenus."}
@@ -79,35 +79,35 @@ export function WooConnect() {
         {status.state === "not_connected" ? (
           <div className="flex w-full flex-col gap-2 sm:max-w-[420px]">
             <div className="relative">
-              <Globe className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-mut" />
+              <Globe className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink3" />
               <input
                 value={url}
                 onChange={(e) => setUrl(e.target.value)}
                 placeholder="https://maboutique.fr"
-                className="glass-input w-full rounded-xl py-2.5 pl-9 pr-3 text-[13px]"
+                className="field w-full rounded-xl py-2.5 pl-9 pr-3 text-[13px]"
               />
             </div>
             <input
               value={ck}
               onChange={(e) => setCk(e.target.value)}
               placeholder="Consumer key (ck_…)"
-              className="glass-input w-full rounded-xl px-3 py-2.5 text-[13px]"
+              className="field w-full rounded-xl px-3 py-2.5 text-[13px]"
             />
             <div className="relative">
-              <KeyRound className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-mut" />
+              <KeyRound className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink3" />
               <input
                 value={cs}
                 onChange={(e) => setCs(e.target.value)}
                 type="password"
                 placeholder="Consumer secret (cs_…)"
-                className="glass-input w-full rounded-xl py-2.5 pl-9 pr-3 text-[13px]"
+                className="field w-full rounded-xl py-2.5 pl-9 pr-3 text-[13px]"
               />
             </div>
             <div className="flex items-center gap-2">
               <PrimaryButton onClick={connect} disabled={busy}>
                 {busy ? "Vérification…" : "Connecter"}
               </PrimaryButton>
-              <span className="text-[11px] text-ink-mut">
+              <span className="text-[11px] text-ink3">
                 WooCommerce → Réglages → Avancé → API REST. Choisis
                 « Lecture/Écriture » pour que le Copilot puisse appliquer ses
                 recommandations ; « Lecture » suffit pour l&apos;analyse seule.

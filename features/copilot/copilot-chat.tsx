@@ -52,7 +52,7 @@ export function CopilotChat({ className }: { className?: string }) {
   const [messages, setMessages] = useState<Msg[]>([
     {
       role: "ai",
-      text: "Bonjour Adrien 🌙 Je suis votre directeur e-commerce IA. Posez-moi une question sur MoonStore, ou cliquez une suggestion ci-dessous.",
+      text: "Bonjour Adrien. Je suis votre directeur e-commerce IA. Posez-moi une question sur MoonStore, ou cliquez une suggestion ci-dessous.",
     },
   ]);
   const [q, setQ] = useState("");
@@ -134,16 +134,13 @@ export function CopilotChat({ className }: { className?: string }) {
 
   return (
     <Card className={`flex max-h-[640px] flex-col overflow-hidden p-0 ${className ?? ""}`}>
-      <div className="flex items-center gap-3 border-b border-glass-border px-5 py-4 [background:linear-gradient(110deg,rgba(154,107,255,0.2),rgba(61,242,255,0.1))]">
-        <span className="relative grid h-10 w-10 flex-none animate-spinslow place-items-center rounded-full shadow-glow [background:conic-gradient(from_0deg,#3df2ff,#ff5cae,#9a6bff,#3df2ff)]">
-          <span className="absolute inset-[5px] rounded-full bg-night-900" />
-          <Sparkles className="relative z-10 h-4 w-4 text-white" />
+      <div className="flex items-center gap-3 border-b border-line bg-panel2 px-5 py-4">
+        <span className="grid h-10 w-10 flex-none place-items-center rounded-[10px] bg-accent">
+          <Sparkles className="h-5 w-5 text-accent-ink" strokeWidth={2} />
         </span>
         <div>
-          <h3 className="text-[15px] font-extrabold">Nightflow Copilot</h3>
-          <p className="text-[11px] font-semibold text-neon-cyansoft">
-            En ligne · répond en français
-          </p>
+          <h3 className="font-display text-[18px] font-extrabold">Copilote Nightflow</h3>
+          <p className="text-[15px] font-semibold text-ink3">En ligne · répond en français</p>
         </div>
       </div>
 
@@ -154,15 +151,15 @@ export function CopilotChat({ className }: { className?: string }) {
             className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}
           >
             <div
-              className={`max-w-[85%] rounded-2xl px-3.5 py-2.5 text-[13px] leading-relaxed ${
+              className={`max-w-[85%] rounded-[14px] px-4 py-3 text-[17px] leading-relaxed ${
                 m.role === "user"
-                  ? "bg-gradient-to-r from-neon-cyan to-neon-cyansoft text-night-950"
-                  : "border border-glass-border bg-glass-2 text-ink"
+                  ? "bg-accent text-accent-ink"
+                  : "border border-line bg-panel2 text-ink"
               }`}
             >
               {m.role === "ai" ? <RichText>{m.text}</RichText> : m.text}
               {m.fallback && (
-                <span className="mt-1.5 block text-[10px] font-bold text-neon-amber">
+                <span className="mt-1.5 block text-[14px] font-bold text-warn">
                   Réponse hors-ligne — l&apos;IA n&apos;a pas répondu
                 </span>
               )}
@@ -170,7 +167,7 @@ export function CopilotChat({ className }: { className?: string }) {
                 <button
                   type="button"
                   onClick={() => setPending(m.action ?? null)}
-                  className="mt-3 flex min-h-tap w-full items-center justify-center gap-2 rounded-md bg-gradient-to-r from-neon-cyan to-neon-cyansoft px-3 text-[12px] font-bold text-night-950 shadow-glow transition duration-base ease-out hover:brightness-110 active:translate-y-px"
+                  className="mt-3 flex min-h-tap w-full items-center justify-center gap-2 rounded-[10px] bg-accent px-3 text-[16px] font-bold text-accent-ink transition duration-base ease-out hover:brightness-95"
                 >
                   <Zap className="h-3.5 w-3.5" aria-hidden />
                   {m.action.label}
@@ -181,45 +178,35 @@ export function CopilotChat({ className }: { className?: string }) {
         ))}
         {busy && (
           <div className="flex justify-start">
-            <div className="rounded-2xl border border-glass-border bg-glass-2 px-3.5 py-2.5">
-              <span className="flex gap-1">
-                {[0, 1, 2].map((d) => (
-                  <span
-                    key={d}
-                    className="h-1.5 w-1.5 animate-pulsedot rounded-full bg-neon-cyan"
-                    style={{ animationDelay: `${d * 0.2}s` }}
-                  />
-                ))}
-              </span>
-            </div>
+            <div className="rounded-[14px] border border-line bg-panel2 px-4 py-3 text-[16px] text-ink3">Analyse en cours…</div>
           </div>
         )}
       </div>
 
-      <div className="border-t border-glass-border px-4 py-3">
+      <div className="border-t border-line px-4 py-3">
         <div className="mb-2 flex flex-wrap gap-1.5">
           {suggestions.slice(0, 3).map((s) => (
             <button
               key={s}
               onClick={() => send(s)}
-              className="rounded-full border border-glass-border bg-glass px-2.5 py-1 text-[11px] text-ink-dim transition hover:border-neon-cyan hover:text-white"
+              className="rounded-pill border border-line bg-panel2 px-3.5 py-2 text-[15px] text-ink2 transition hover:text-ink"
             >
               {s}
             </button>
           ))}
         </div>
-        <div className="flex items-center gap-2 rounded-xl border border-glass-border bg-glass py-1.5 pl-3.5 pr-1.5">
+        <div className="flex items-center gap-2 rounded-[12px] border border-line bg-panel2 py-1.5 pl-4 pr-1.5">
           <input
             value={q}
             onChange={(e) => setQ(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && send(q)}
             placeholder="Posez votre question…"
-            className="flex-1 bg-transparent text-[13px] text-ink outline-none placeholder:text-ink-mut"
+            className="flex-1 min-h-[44px] bg-transparent text-[17px] text-ink outline-none placeholder:text-ink3"
           />
           <button
             onClick={() => send(q)}
             disabled={busy}
-            className="grid h-[34px] w-[34px] place-items-center rounded-[9px] bg-gradient-to-r from-neon-cyan to-neon-cyansoft text-night-950 transition hover:brightness-110 disabled:opacity-50"
+            className="grid h-11 w-11 place-items-center rounded-[10px] bg-accent text-accent-ink transition hover:brightness-95 disabled:opacity-50"
             aria-label="Envoyer"
           >
             <Send className="h-4 w-4" />

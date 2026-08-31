@@ -25,7 +25,7 @@ function inline(text: string, keyBase: string): ReactNode[] {
       const key = `${keyBase}-${i}`;
       if (part.length > 4 && part.startsWith("**") && part.endsWith("**")) {
         return (
-          <strong key={key} className="font-bold text-white">
+          <strong key={key} className="font-bold text-ink">
             {part.slice(2, -2)}
           </strong>
         );
@@ -41,7 +41,7 @@ function inline(text: string, keyBase: string): ReactNode[] {
         return (
           <code
             key={key}
-            className="rounded bg-glass-2 px-1 py-0.5 text-[12px] text-neon-cyansoft"
+            className="rounded bg-panel2 px-1.5 py-0.5 text-[15px] text-accent-text"
           >
             {part.slice(1, -1)}
           </code>
@@ -92,7 +92,7 @@ export function RichText({ children }: { children: string }) {
       {blocks.map((b, i) =>
         b.type === "li" ? (
           <div key={i} className="flex gap-2 pl-1">
-            <span className="flex-none font-bold text-neon-cyansoft">
+            <span className="flex-none font-bold text-accent-text">
               {b.marker}
             </span>
             <span>{inline(b.text, `b${i}`)}</span>

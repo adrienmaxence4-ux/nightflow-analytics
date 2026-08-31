@@ -34,7 +34,7 @@ export function InstallApp() {
     const onInstalled = () => {
       setInstalled(true);
       setDeferred(null);
-      toast("Nightflow installé sur cet appareil 🎉");
+      toast("Nightflow installé sur cet appareil ");
     };
     window.addEventListener("beforeinstallprompt", onPrompt);
     window.addEventListener("appinstalled", onInstalled);
@@ -55,15 +55,15 @@ export function InstallApp() {
   return (
     <Card className="p-6">
       <div className="flex items-center gap-3">
-        <span className="grid h-11 w-11 flex-none place-items-center rounded-xl border border-glass-hi bg-gradient-to-br from-neon-cyan/20 to-neon-violet/20">
-          <Smartphone className="h-5 w-5 text-neon-cyansoft" />
+        <span className="grid h-11 w-11 flex-none place-items-center rounded-xl border border-line bg-panel2">
+          <Smartphone className="h-5 w-5 text-accent-text" />
         </span>
         <div>
           <h3 className="flex items-center gap-2 text-[15px] font-bold">
             Application desktop & mobile
-            {installed && <Badge variant="lime">Installée ✓</Badge>}
+            {installed && <Badge variant="good">Installée ✓</Badge>}
           </h3>
-          <p className="text-xs text-ink-mut">
+          <p className="text-xs text-ink3">
             Installez Nightflow comme une vraie application — icône, plein
             écran, notifications.
           </p>
@@ -72,7 +72,7 @@ export function InstallApp() {
 
       <div className="mt-4">
         {installed ? (
-          <p className="text-[13px] text-ink-dim">
+          <p className="text-[13px] text-ink2">
             Nightflow tourne déjà en mode application sur cet appareil. Vous
             pouvez l&apos;épingler à la barre des tâches ou à l&apos;écran
             d&apos;accueil.
@@ -80,20 +80,20 @@ export function InstallApp() {
         ) : deferred ? (
           <button
             onClick={install}
-            className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-neon-cyan to-neon-cyansoft px-5 py-2.5 text-sm font-bold text-night-950 shadow-glow transition hover:brightness-110"
+            className="flex items-center gap-2 rounded-xl bg-accent px-5 py-2.5 text-[15px] font-bold text-accent-ink transition hover:brightness-95"
           >
             <MonitorDown className="h-4 w-4" />
             Installer l&apos;application
           </button>
         ) : isIos ? (
-          <div className="rounded-xl border border-glass-border bg-glass-2 p-3.5 text-[13px] leading-relaxed text-ink-dim">
+          <div className="rounded-xl border border-line bg-panel2 p-3.5 text-[13px] leading-relaxed text-ink2">
             Sur iPhone / iPad : ouvrez Nightflow dans Safari, touchez{" "}
             <Share className="inline h-3.5 w-3.5" />{" "}
-            <b className="text-white">Partager</b>, puis{" "}
-            <b className="text-white">« Sur l&apos;écran d&apos;accueil »</b>.
+            <b className="text-ink">Partager</b>, puis{" "}
+            <b className="text-ink">« Sur l&apos;écran d&apos;accueil »</b>.
           </div>
         ) : (
-          <p className="text-[13px] text-ink-dim">
+          <p className="text-[13px] text-ink2">
             Dans Chrome ou Edge, cliquez sur l&apos;icône{" "}
             <MonitorDown className="inline h-3.5 w-3.5" /> «&nbsp;Installer&nbsp;»
             dans la barre d&apos;adresse (elle apparaît après quelques visites),

@@ -15,7 +15,6 @@ import {
   Users,
 } from "lucide-react";
 import { PageTransition } from "@/components/layout/page-transition";
-import { PageHeader } from "@/components/layout/page-header";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -117,12 +116,12 @@ export default function SocialPage() {
 
   return (
     <PageTransition>
-      <PageHeader
-        title="Publications"
-        subtitle="Vues, portée et engagement de vos publications Instagram — et ce que l'IA en sait."
-      />
+      <p className="max-w-[70ch] text-body text-ink2">
+        Ce que vos publications Instagram ont produit — vues, portée et engagement.
+        Le Copilote lit ces chiffres et peut vous dire quoi publier ensuite.
+      </p>
 
-      {error && <Card className="p-6 text-sm text-neon-pinksoft">{error}</Card>}
+      {error && <Card className="p-6 text-[17px] text-bad">{error}</Card>}
 
       {!data && !error && (
         <div className="flex flex-col gap-4" aria-busy>
@@ -154,11 +153,11 @@ export default function SocialPage() {
           {!data.connected &&
             (isAdmin ? (
               <Card className="flex flex-wrap items-center gap-4 p-5">
-                <span className="grid h-10 w-10 flex-none place-items-center rounded-xl border border-glass-hi bg-glass-2">
-                  <Plug className="h-4 w-4 text-neon-cyan" aria-hidden />
+                <span className="grid h-11 w-11 flex-none place-items-center rounded-[12px] border border-line bg-panel2">
+                  <Plug className="h-5 w-5 text-accent-text" aria-hidden />
                 </span>
-                <p className="min-w-[240px] flex-1 text-[13px] leading-relaxed text-ink-dim">
-                  Connecte <b className="text-white">Instagram</b> dans
+                <p className="min-w-[240px] flex-1 text-[17px] leading-relaxed text-ink2">
+                  Connecte <b className="text-ink">Instagram</b> dans
                   Intégrations pour voir tes publications ici. Aucune Page
                   Facebook n&apos;est nécessaire.
                 </p>
@@ -168,11 +167,11 @@ export default function SocialPage() {
               </Card>
             ) : (
               <Card className="flex flex-wrap items-center gap-4 p-5">
-                <span className="grid h-10 w-10 flex-none place-items-center rounded-xl border border-glass-hi bg-glass-2">
-                  <Clock className="h-4 w-4 text-neon-amber" aria-hidden />
+                <span className="grid h-11 w-11 flex-none place-items-center rounded-[12px] border border-line bg-panel2">
+                  <Clock className="h-5 w-5 text-warn" aria-hidden />
                 </span>
-                <div className="min-w-[240px] flex-1 text-[13px] leading-relaxed text-ink-dim">
-                  <b className="text-white">
+                <div className="min-w-[240px] flex-1 text-[17px] leading-relaxed text-ink2">
+                  <b className="text-ink">
                     La connexion Instagram est en cours de validation par Meta.
                   </b>{" "}
                   Dès qu&apos;elle est accordée, vos publications et leurs
@@ -183,62 +182,61 @@ export default function SocialPage() {
             ))}
 
           {data.error && (
-            <Card className="flex gap-3 border-neon-amber/35 p-5">
-              <AlertTriangle className="mt-0.5 h-4 w-4 flex-none text-neon-amber" aria-hidden />
-              <p className="text-[13px] leading-relaxed text-ink-dim">
+            <div className="rounded-[12px] border border-line border-l-4 border-l-warn bg-warn-bg p-5">
+              <p className="text-[17px] leading-relaxed text-ink2">
                 {data.error}
               </p>
-            </Card>
+            </div>
           )}
 
           {/* ── The AI actually reads this ── */}
           {data.posts.length > 0 && (
-            <Card className="flex gap-3 border-neon-violet/30 p-5">
-              <Sparkles className="mt-0.5 h-4 w-4 flex-none text-neon-violet" aria-hidden />
-              <div className="text-[13px] leading-relaxed text-ink-dim">
-                <b className="text-white">Le Copilot voit ces chiffres.</b> Vous
+            <div className="flex gap-3 rounded-[12px] border border-line bg-panel2 p-5">
+              <Sparkles className="mt-0.5 h-5 w-5 flex-none text-accent-text" aria-hidden />
+              <div className="text-[17px] leading-relaxed text-ink2">
+                <b className="text-ink">Le Copilot voit ces chiffres.</b> Vous
                 pouvez lui demander quelle publication a le mieux marché, ou ce
                 qu&apos;il faut publier ensuite — il répond sur vos vraies
                 données, pas sur des moyennes du marché.{" "}
-                <Link href="/copilot" className="text-neon-cyansoft hover:underline">
+                <Link href="/copilot" className="text-accent-text hover:underline">
                   Ouvrir le Copilot
                 </Link>
               </div>
-            </Card>
+            </div>
           )}
 
           {/* ── The honest bit about attribution ── */}
           {data.attribution.postsWithoutCode > 0 && (
-            <Card className="flex gap-3 p-5">
-              <AlertTriangle className="mt-0.5 h-4 w-4 flex-none text-neon-amber" aria-hidden />
-              <div className="text-[13px] leading-relaxed text-ink-dim">
-                <b className="text-white">
+            <div className="flex gap-3 rounded-[12px] border border-line border-l-4 border-l-warn bg-warn-bg p-5">
+              <AlertTriangle className="mt-0.5 h-5 w-5 flex-none text-warn" aria-hidden />
+              <div className="text-[17px] leading-relaxed text-ink2">
+                <b className="text-ink">
                   {data.attribution.postsWithoutCode} publication
                   {data.attribution.postsWithoutCode > 1 ? "s" : ""} sans lien de suivi.
                 </b>{" "}
                 Elles renvoient vers le lien en bio, qui est le même pour toutes —
                 impossible de savoir laquelle a amené un visiteur. Pour les
                 départager, mettez un lien{" "}
-                <code className="rounded bg-glass-2 px-1 text-neon-cyansoft">
+                <code className="rounded bg-panel2 px-1.5 text-accent-text">
                   ?a=CODE
                 </code>{" "}
                 différent dans chaque légende.
               </div>
-            </Card>
+            </div>
           )}
 
           {/* ── Posts ── */}
           <section>
-            <h2 className="mb-3 flex flex-wrap items-center gap-2 text-[10px] font-bold tracking-[1.6px] text-ink-mut">
+            <h2 className="mb-3 flex flex-wrap items-center gap-2 text-[15px] font-bold tracking-[0.06em] text-ink3">
               PUBLICATIONS
               {data.source && (
                 <Badge
                   variant={
                     data.source === "instagram"
-                      ? "pink"
+                      ? "bad"
                       : data.source === "meta"
-                        ? "cyan"
-                        : "violet"
+                        ? "cool"
+                        : "neutral"
                   }
                 >
                   via {SOURCE_LABEL[data.source]}
@@ -246,7 +244,7 @@ export default function SocialPage() {
               )}
             </h2>
             {data.posts.length === 0 ? (
-              <Card className="p-6 text-center text-[13px] text-ink-mut">
+              <Card className="p-6 text-center text-[17px] text-ink3">
                 {data.connected
                   ? "Aucune publication trouvée."
                   : "Rien à afficher tant qu'aucun compte n'est connecté."}
@@ -254,21 +252,21 @@ export default function SocialPage() {
             ) : (
               <div className="flex flex-col gap-3">
                 {data.posts.map((p) => (
-                  <Card key={p.id} className="p-4">
+                  <Card key={p.id} className="p-6">
                     <div className="flex flex-wrap items-start gap-3">
                       <div className="min-w-[220px] flex-1">
                         <div className="mb-1 flex flex-wrap items-center gap-2">
-                          <Badge variant={p.isReel ? "violet" : "cyan"}>
+                          <Badge variant={p.isReel ? "cool" : "neutral"}>
                             {p.isReel ? "Reel" : "Post"}
                           </Badge>
-                          <span className="text-[11px] text-ink-mut">
+                          <span className="text-[16px] text-ink3">
                             {shortDate(p.date)}
                           </span>
                           {p.trackingCode && (
-                            <Badge variant="lime">{p.trackingCode}</Badge>
+                            <Badge variant="good">{p.trackingCode}</Badge>
                           )}
                         </div>
-                        <p className="text-[13px] font-semibold leading-snug text-ink">
+                        <p className="text-[18px] font-semibold leading-snug text-ink">
                           {excerpt(p.caption)}
                         </p>
                         {p.permalink && (
@@ -276,7 +274,7 @@ export default function SocialPage() {
                             href={p.permalink}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="mt-1 inline-flex items-center gap-1 text-[11px] text-neon-cyansoft hover:underline"
+                            className="mt-1.5 inline-flex items-center gap-1 text-[16px] text-accent-text hover:underline"
                           >
                             Voir sur Instagram
                             <ExternalLink className="h-3 w-3" aria-hidden />
@@ -312,7 +310,7 @@ export default function SocialPage() {
           {/* ── Tracking codes — owner only ── */}
           {isAdmin && data.codes.length > 0 && (
             <section>
-              <h2 className="mb-3 text-[10px] font-bold tracking-[1.6px] text-ink-mut">
+              <h2 className="mb-3 text-[15px] font-bold tracking-[0.06em] text-ink3">
                 CONVERSIONS PAR LIEN DE SUIVI
               </h2>
               <Card className="p-5">
@@ -320,23 +318,23 @@ export default function SocialPage() {
                   {data.codes.map((c) => (
                     <li
                       key={c.code}
-                      className="flex flex-wrap items-center gap-3 rounded-xl border border-glass-border bg-glass px-3.5 py-3"
+                      className="flex flex-wrap items-center gap-3 rounded-[12px] border border-line bg-panel2 px-4 py-3.5"
                     >
-                      <Users className="h-4 w-4 flex-none text-neon-lime" aria-hidden />
-                      <code className="text-[13px] font-bold text-ink">{c.code}</code>
-                      <span className="text-[11px] text-ink-mut">
+                      <Users className="h-5 w-5 flex-none text-good" aria-hidden />
+                      <code className="text-[17px] font-bold text-ink">{c.code}</code>
+                      <span className="text-[16px] text-ink3">
                         {shortDate(c.firstSeen ?? "")} → {shortDate(c.lastSeen ?? "")}
                       </span>
-                      <span className="ml-auto text-[15px] font-extrabold text-neon-lime">
+                      <span className="ml-auto text-[18px] font-extrabold text-good">
                         {nf(c.visits)}
-                        <span className="ml-1 text-[11px] font-semibold text-ink-mut">
+                        <span className="ml-1 text-[15px] font-semibold text-ink3">
                           visiteur{c.visits > 1 ? "s" : ""}
                         </span>
                       </span>
                     </li>
                   ))}
                 </ul>
-                <p className="mt-3 text-[11px] leading-relaxed text-ink-mut">
+                <p className="mt-3 text-[15px] leading-relaxed text-ink3">
                   Un visiteur n&apos;est compté qu&apos;une fois par jour et par
                   code. Aucune donnée personnelle n&apos;est enregistrée.
                 </p>
@@ -362,16 +360,15 @@ function Stat({
   sub: string;
   tone: string;
 }) {
+  void tone;
   return (
-    <Card className="p-4">
-      <div className="mb-2 flex items-center gap-2">
-        <Icon className="h-4 w-4" style={{ color: tone }} aria-hidden />
-        <span className="text-[11px] font-bold uppercase tracking-wider text-ink-mut">
-          {label}
-        </span>
+    <Card className="p-6">
+      <div className="flex items-center gap-2 text-small font-semibold text-ink2">
+        <Icon className="h-5 w-5 flex-none" strokeWidth={2} aria-hidden />
+        {label}
       </div>
-      <div className="text-[22px] font-extrabold leading-none text-ink">{value}</div>
-      <div className="mt-1 text-[11px] text-ink-mut">{sub}</div>
+      <div className="mt-1.5 font-display text-[40px] font-extrabold text-ink" data-numeric>{value}</div>
+      <div className="mt-1 text-[16px] text-ink3">{sub}</div>
     </Card>
   );
 }
@@ -388,13 +385,9 @@ function Metric({
   title?: string;
 }) {
   return (
-    <div className="min-w-[64px]" title={title}>
-      <div className="text-[10px] font-bold uppercase tracking-wider text-ink-mut">
-        {label}
-      </div>
-      <div
-        className={`text-[16px] font-extrabold ${muted ? "text-ink-mut" : "text-ink"}`}
-      >
+    <div className="min-w-[72px]" title={title}>
+      <div className="text-[15px] font-bold tracking-[0.06em] text-ink3">{label}</div>
+      <div className={`font-display text-[26px] font-extrabold ${muted ? "text-ink3" : "text-ink"}`} data-numeric>
         {value}
       </div>
     </div>

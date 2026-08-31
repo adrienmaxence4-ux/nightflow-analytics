@@ -183,14 +183,14 @@ export default function IntegrationsPage() {
 
       <Card className="p-5 [background:linear-gradient(110deg,rgba(154,107,255,0.14),rgba(61,242,255,0.06))]">
         <div className="flex items-start gap-3">
-          <span className="grid h-10 w-10 flex-none place-items-center rounded-xl border border-glass-hi bg-glass-2 text-lg">
+          <span className="grid h-10 w-10 flex-none place-items-center rounded-xl border border-line bg-panel2 text-lg">
             🔌
           </span>
           <div>
             <h3 className="text-[14px] font-bold">
               TikTok Ads — en attente d&apos;approbation
             </h3>
-            <p className="mt-1 text-[13px] leading-relaxed text-ink-dim">
+            <p className="mt-1 text-[13px] leading-relaxed text-ink2">
               La connexion directe à TikTok demande une revue
               sandbox→production et un audit de sécurité des données — c&apos;est
               l&apos;API publicitaire la plus verrouillée. En attendant, TikTok
@@ -204,18 +204,18 @@ export default function IntegrationsPage() {
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
         {/* Suggest an integration */}
         <Card className="flex h-full flex-col items-center justify-center gap-3 border-dashed p-5 text-center">
-          <span className="grid h-12 w-12 place-items-center rounded-xl border border-dashed border-glass-hi text-xl text-ink-mut">
+          <span className="grid h-12 w-12 place-items-center rounded-xl border border-dashed border-line text-xl text-ink3">
             ＋
           </span>
           <div>
             <h3 className="text-[14px] font-bold">Un outil manquant ?</h3>
-            <p className="mt-1 text-[12px] text-ink-mut">
+            <p className="mt-1 text-[12px] text-ink3">
               Gorgias, Amazon, PayPal… dites-nous lequel.
             </p>
           </div>
           <button
             onClick={() => toast("Merci ! Votre suggestion a été enregistrée.")}
-            className="rounded-xl border border-glass-border bg-glass px-4 py-2 text-[12px] font-semibold text-ink-dim transition hover:border-neon-cyan hover:text-white"
+            className="rounded-xl border border-line bg-panel2 px-4 py-2 text-[12px] font-semibold text-ink2 transition hover:border-accent hover:text-ink"
           >
             Suggérer une intégration
           </button>
@@ -237,10 +237,10 @@ function CategorySection({
   return (
     <div className="flex flex-col gap-3">
       <div>
-        <div className="text-[11px] font-bold uppercase tracking-[1.5px] text-neon-cyansoft">
+        <div className="text-[11px] font-bold tracking-[1.5px] text-accent-text">
           {label}
         </div>
-        <p className="mt-0.5 text-[11px] text-ink-mut">{hint}</p>
+        <p className="mt-0.5 text-[11px] text-ink3">{hint}</p>
       </div>
       {children}
     </div>

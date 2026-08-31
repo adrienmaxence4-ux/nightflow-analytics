@@ -32,10 +32,10 @@ interface LoggedAction {
 }
 
 const STATUS = {
-  applied: { icon: Check, tone: "text-neon-lime", label: "Appliquée" },
-  undone: { icon: Undo2, tone: "text-ink-mut", label: "Annulée" },
-  failed: { icon: AlertTriangle, tone: "text-neon-pinksoft", label: "Échouée" },
-  planned: { icon: History, tone: "text-ink-mut", label: "En attente" },
+  applied: { icon: Check, tone: "text-good", label: "Appliquée" },
+  undone: { icon: Undo2, tone: "text-ink3", label: "Annulée" },
+  failed: { icon: AlertTriangle, tone: "text-bad", label: "Échouée" },
+  planned: { icon: History, tone: "text-ink3", label: "En attente" },
 } as const;
 
 function when(iso: string): string {
@@ -98,8 +98,8 @@ export function ActionLog({ refreshKey = 0 }: { refreshKey?: number }) {
   return (
     <section>
       <div className="mb-3 flex items-center gap-2">
-        <History className="h-4 w-4 text-neon-cyansoft" aria-hidden />
-        <h2 className="text-[10px] font-bold tracking-[1.6px] text-ink-mut">
+        <History className="h-4 w-4 text-accent-text" aria-hidden />
+        <h2 className="text-[10px] font-bold tracking-[1.6px] text-ink3">
           CE QUE NIGHTFLOW A FAIT
         </h2>
       </div>
@@ -109,20 +109,20 @@ export function ActionLog({ refreshKey = 0 }: { refreshKey?: number }) {
           return (
             <li
               key={a.id}
-              className="flex flex-wrap items-center gap-3 rounded-xl border border-glass-border bg-glass px-3.5 py-3"
+              className="flex flex-wrap items-center gap-3 rounded-xl border border-line bg-panel2 px-3.5 py-3"
             >
               <s.icon className={`h-4 w-4 flex-none ${s.tone}`} aria-hidden />
               <div className="min-w-0 flex-1">
                 <p className="flex items-center gap-1.5 text-[13px] font-semibold text-ink">
                   <span className="truncate">{a.summary}</span>
                   {a.simulated && (
-                    <span className="inline-flex flex-none items-center gap-1 rounded-md bg-neon-violet/15 px-1.5 py-0.5 text-[9.5px] font-bold uppercase tracking-wider text-neon-violet">
+                    <span className="inline-flex flex-none items-center gap-1 rounded-md bg-panel2 px-1.5 py-0.5 text-[9.5px] font-bold tracking-[0.06em] text-cool">
                       <FlaskConical className="h-2.5 w-2.5" aria-hidden />
                       Démo
                     </span>
                   )}
                 </p>
-                <p className="mt-0.5 text-[11px] text-ink-mut">
+                <p className="mt-0.5 text-[11px] text-ink3">
                   {s.label} · {when(a.executedAt ?? a.createdAt)}
                   {a.error ? ` · ${a.error}` : ""}
                 </p>

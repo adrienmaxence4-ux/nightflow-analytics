@@ -26,12 +26,12 @@ export function EmptyState({
         className
       )}
     >
-      <span className="grid h-12 w-12 place-items-center rounded-md border border-glass-border bg-glass-2">
-        <Icon className="h-5 w-5 text-neon-cyan" aria-hidden />
+      <span className="grid h-12 w-12 place-items-center rounded-[12px] border border-line bg-panel2">
+        <Icon className="h-6 w-6 text-accent-text" aria-hidden />
       </span>
       <div className="max-w-[46ch]">
         <h3 className="text-head text-ink">{title}</h3>
-        <p className="mt-1 text-body text-ink-mut">{description}</p>
+        <p className="mt-1 text-body text-ink2">{description}</p>
       </div>
       {action && <div className="mt-2">{action}</div>}
     </div>
@@ -60,12 +60,12 @@ export function ErrorState({
         className
       )}
     >
-      <span className="grid h-12 w-12 place-items-center rounded-md border border-neon-pink/40 bg-neon-pink/10">
-        <Icon className="h-5 w-5 text-neon-pinksoft" aria-hidden />
+      <span className="grid h-12 w-12 place-items-center rounded-[12px] border border-bad/40 bg-bad-bg">
+        <Icon className="h-6 w-6 text-bad" aria-hidden />
       </span>
       <div className="max-w-[46ch]">
         <h3 className="text-head text-ink">{title}</h3>
-        <p className="mt-1 text-body text-ink-mut">{description}</p>
+        <p className="mt-1 text-body text-ink2">{description}</p>
       </div>
       {action && <div className="mt-2">{action}</div>}
     </div>
