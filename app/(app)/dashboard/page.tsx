@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { RefreshCw } from "lucide-react";
+import { RefreshCw, FlaskConical } from "lucide-react";
 import { PageTransition } from "@/components/layout/page-transition";
 import { DemoBanner } from "@/components/demo-banner";
 import { RangeToggle } from "@/components/ui/range-toggle";
@@ -110,17 +110,17 @@ export default function DashboardPage() {
           loadRange(range);
         }}
       />
-      <div className="flex flex-wrap items-center gap-3.5">
+      <div className="flex flex-wrap items-center gap-4">
         <div>
-          <h2 className="text-base font-extrabold">Vue d&apos;ensemble</h2>
-          <div className="text-xs text-ink-mut">{data.sub}</div>
+          <h2 className="font-display text-title">Vue d&apos;ensemble</h2>
+          <div className="mt-1 text-small text-ink3">{data.sub}</div>
         </div>
         <RangeToggle value={range} onChange={setRange} />
         <button
           onClick={refresh}
-          className="flex items-center gap-1.5 rounded-xl border border-glass-border bg-glass px-3.5 py-2 text-xs font-semibold text-ink-dim transition hover:border-glass-hi hover:text-white hover:shadow-glow"
+          className="inline-flex min-h-tap items-center gap-2.5 rounded-[12px] border border-line bg-panel px-4 text-label font-semibold text-ink transition duration-base ease-out hover:bg-panel2"
         >
-          <RefreshCw className="h-3.5 w-3.5" />
+          <RefreshCw className="h-[18px] w-[18px]" aria-hidden />
           Actualiser
         </button>
         {isAdmin && (
@@ -128,9 +128,10 @@ export default function DashboardPage() {
             onClick={seedSample}
             disabled={seeding}
             title="Admin — remplit la boutique avec des ventes/visiteurs de test"
-            className="flex items-center gap-1.5 rounded-xl border border-glass-border bg-glass px-3.5 py-2 text-xs font-semibold text-ink-dim transition hover:border-glass-hi hover:text-white hover:shadow-glow disabled:opacity-60"
+            className="inline-flex min-h-tap items-center gap-2.5 rounded-[12px] border border-line bg-panel px-4 text-label font-semibold text-ink transition duration-base ease-out hover:bg-panel2 disabled:opacity-60"
           >
-            🧪 {seeding ? "Génération…" : "Données de test"}
+            <FlaskConical className="h-[18px] w-[18px]" aria-hidden />
+            {seeding ? "Génération…" : "Données de test"}
           </button>
         )}
         <ReportMenu />
@@ -141,17 +142,11 @@ export default function DashboardPage() {
 
       {/* Trois chiffres, pas douze. Le détail vit dans Analyses, Produits et
           Copilote — inutile de le dupliquer ici. */}
-      <div className="grid grid-cols-1 gap-5 sm:grid-cols-3">
+      <div className="grid gap-5 [grid-template-columns:repeat(auto-fit,minmax(300px,1fr))]">
         {data.kpis
           .filter((k) => KPIS_ACCUEIL.includes(k.key))
-          .map((k, i) => (
-            <KpiCard
-              key={k.key}
-              kpi={k}
-              index={i}
-              series={data.series}
-              onClick={() => setActiveKpi(k)}
-            />
+          .map((k) => (
+            <KpiCard key={k.key} kpi={k} onClick={() => setActiveKpi(k)} />
           ))}
       </div>
 
