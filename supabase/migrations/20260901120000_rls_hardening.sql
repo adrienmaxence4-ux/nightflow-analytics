@@ -1,17 +1,22 @@
 -- ═══════════════════════════════════════════════════════════════
--- RLS hardening — close client-writable columns that grant privilege.
--- Audit findings A / B / C / D / E + storage.
+-- RLS hardening — audit findings A / B / C / D / E.
 --
--- Requires the matching code change (billing + integration token reads move to
--- the service-role client). Deploy the app first, then run this.
+-- APPLIED TO PRODUCTION 2026-09-01 via the Supabase MCP, in two parts
+-- (recorded there as `rls_hardening_subscriptions_integrations_applied_actions`
+--  and `rls_hardening_column_grants_integrations_profiles`). This file is the
+-- consolidated source of truth — deploy the matching app code first, then run.
+--
+-- NOTE: Supabase grants ALL on every public table to anon/authenticated and
+-- relies on RLS as the gate, so a column-level `REVOKE (col)` is a no-op — the
+-- table grant wins. To actually hide a column you must revoke the table
+-- privilege and re-grant it on the safe columns only (see B and D).
 -- ═══════════════════════════════════════════════════════════════
 
--- ── A. subscriptions — the client may only READ its own row. ──────────────────
--- Was: FOR ALL / WITH CHECK (auth.uid() = user_id) → any signed-in user could
---   POST {plan:"scale",status:"active"} for their own user_id and self-upgrade.
--- Now: SELECT only. Every write goes through the service role (Stripe webhook +
---   the /api/billing/* routes, which already verify the user + the Stripe
---   session before writing).
+-- ── A. subscriptions — client may only READ its own row. ─────────────────────
+-- Was FOR ALL / WITH CHECK (auth.uid() = user_id): any signed-in user could
+-- POST {plan:"scale",status:"active"} for their own user_id and self-upgrade.
+-- Writes now go through the service role only (Stripe webhook + /api/billing/*,
+-- which verify the user + the Stripe session first).
 drop policy if exists "subscriptions_owner" on public.subscriptions;
 
 create policy "subscriptions_select_own"
@@ -20,20 +25,19 @@ create policy "subscriptions_select_own"
   to authenticated
   using (auth.uid() = user_id);
 
--- ── B. integrations — hide the credential columns from the client. ────────────
--- The row-owner could `select access_token` and read the stored OAuth / API
--- tokens (ciphertext, or plaintext if INTEGRATIONS_ENC_KEY is unset).
--- PostgREST enforces column privileges, so revoking SELECT on those columns
--- makes `?select=access_token` fail while leaving the rest of the row readable.
--- The RLS policy is unchanged; server code reads tokens via the service role.
-revoke select (access_token, refresh_token, token_expires_at)
-  on public.integrations from anon, authenticated;
+-- ── B. integrations — client may read a row but NOT its credential columns. ──
+revoke select on public.integrations from anon, authenticated;
+grant select (
+  id, store_id, provider, status, metadata,
+  connected_at, created_at, updated_at, last_synced_at, last_error
+) on public.integrations to anon, authenticated;
+-- access_token / refresh_token / token_expires_at are intentionally excluded.
+-- Server code reads them with the service-role client.
 
 -- ── C. applied_actions — a client INSERT may only create a fresh planned row. ─
--- Prevents fabricating a pre-"applied" row with a poisoned before_state (which
--- undo() would then replay). Combined with the re-validation added to
--- executeAction()/undoAction(), a hand-crafted plan can no longer bypass the
--- price-change ceiling.
+-- Blocks fabricating a pre-"applied" row with a poisoned before_state (which
+-- undo() would replay). executeAction()/undoAction() also re-validate the
+-- price-change ceiling against the live price.
 drop policy if exists "applied_actions_owner" on public.applied_actions;
 
 create policy "applied_actions_owner"
@@ -43,14 +47,14 @@ create policy "applied_actions_owner"
   using (owns_store(store_id) and auth.uid() = user_id)
   with check (owns_store(store_id) and auth.uid() = user_id and status = 'planned');
 
--- ── D. profiles.plan — not client-writable (entitlements come from
---        subscriptions; profiles.plan is display-only and should mirror it). ──
-revoke update (plan) on public.profiles from anon, authenticated;
+-- ── D. profiles — client may not write `plan` (entitlements come from
+--        subscriptions; nothing reads profiles.plan). ────────────────────────
+revoke update on public.profiles from anon, authenticated;
+grant update (email, full_name, avatar_url, locale, timezone, currency)
+  on public.profiles to anon, authenticated;
 
--- ── E. site_settings — keep the anonymous read (the middleware reads the
---        maintenance flag pre-auth with the anon key) but scope the blanket
---        `using (true)` to just the global flag row, so a future row can't be
---        world-readable by accident. ─────────────────────────────────────────
+-- ── E. site_settings — keep the anon read (middleware maintenance check) but
+--        scope the blanket `using (true)` to the single global flag row. ─────
 drop policy if exists "site_settings_read" on public.site_settings;
 
 create policy "site_settings_read"
@@ -59,18 +63,8 @@ create policy "site_settings_read"
   to anon, authenticated
   using (id = 'global');
 
--- NOTE on owns_store(): the linter (0028/0029) flags it as callable via
--- /rest/v1/rpc/owns_store, but it is used inside ~10 RLS policies — revoking
--- EXECUTE from `authenticated` would break every store-scoped policy. It is left
--- callable: it takes no data, returns only a boolean, and for a caller without a
--- session (or for a store they don't own) it returns false. Accepted risk.
-
--- ── Storage ────────────────────────────────────────────────────────────────
--- Redundant "temp" read policies (the buckets are already public=true).
-drop policy if exists "reel-assets public read temp" on storage.objects;
-drop policy if exists "temp anon read reel assets" on storage.objects;
-
--- Bound what the service-role pipeline can drop into these buckets.
+-- ── Storage — bound what the service-role pipeline can drop into the asset
+--        buckets. (public=true is kept — CDN marketing assets.) ─────────────
 update storage.buckets
 set file_size_limit = 52428800,  -- 50 MB
     allowed_mime_types = array[
@@ -79,6 +73,12 @@ set file_size_limit = 52428800,  -- 50 MB
       'audio/mpeg','audio/wav','audio/mp4'
     ]
 where id in ('nightflow-reel-assets','reel-assets','temp-voiceover');
--- NOTE: buckets stay public=true (served as marketing assets over CDN). If any
--- private data ever lands here, flip public=false and switch the video/reel
--- pipeline + /admin/reels to createSignedUrl().
+
+-- NOT applied yet (held back — redundant while the buckets are public=true, and
+-- a stray .list() on them would break). Drop once confirmed nothing lists them:
+--   drop policy if exists "reel-assets public read temp" on storage.objects;
+--   drop policy if exists "temp anon read reel assets" on storage.objects;
+
+-- owns_store(): flagged by the linter as an exposed RPC, but it is used inside
+-- ~10 RLS policies — revoking EXECUTE from `authenticated` breaks them all. Left
+-- callable: no data in, boolean out, false for a caller without a session.
