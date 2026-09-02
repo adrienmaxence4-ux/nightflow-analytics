@@ -18,6 +18,38 @@ import { LandingThemeToggle } from "@/components/landing/theme-toggle-landing";
 /** Applique la préférence clair/sombre de la landing avant le premier rendu. */
 const LANDING_THEME_SCRIPT = `try{if(localStorage.getItem('nightflow:landing-theme')==='clair'){document.getElementById('landing-root').setAttribute('data-theme','clair')}}catch(e){}`;
 
+const SITE_URL =
+  process.env.NEXT_PUBLIC_SITE_URL ?? "https://nightflow-analytics.vercel.app";
+
+/**
+ * Données structurées de la page d'accueil. Indiquent explicitement à Google le
+ * nom du site (« Nightflow Analytics » et pas « Vercel ») et le logo à afficher
+ * à côté du résultat. Sur un sous-domaine *.vercel.app, Google ignore souvent
+ * ce nom — un domaine personnalisé reste le seul correctif fiable.
+ */
+const STRUCTURED_DATA = {
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Organization",
+      "@id": `${SITE_URL}/#organization`,
+      name: "Nightflow Analytics",
+      url: SITE_URL,
+      logo: `${SITE_URL}/icons/icon-512.png`,
+      email: "adrienmaxence4@gmail.com",
+    },
+    {
+      "@type": "WebSite",
+      "@id": `${SITE_URL}/#website`,
+      name: "Nightflow Analytics",
+      alternateName: "Nightflow",
+      url: SITE_URL,
+      inLanguage: "fr-FR",
+      publisher: { "@id": `${SITE_URL}/#organization` },
+    },
+  ],
+};
+
 /**
  * Landing publique — la porte d'entrée des visiteurs non connectés.
  * Toujours en mode sombre : le conteneur racine force `data-theme="sombre"`,
@@ -90,6 +122,12 @@ export default function LandingPage() {
         nonce={nonce}
         suppressHydrationWarning
         dangerouslySetInnerHTML={{ __html: LANDING_THEME_SCRIPT }}
+      />
+      {/* JSON-LD : données, pas du JS exécutable — non soumis à script-src, donc
+          pas de nonce (éviterait un warning d'hydratation sur l'attribut). */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(STRUCTURED_DATA) }}
       />
       <div className="mx-auto w-full max-w-[1160px] px-6">
         {/* ── Nav ── */}

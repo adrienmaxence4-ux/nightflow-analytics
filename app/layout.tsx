@@ -41,9 +41,8 @@ export const metadata: Metadata = {
     title: "Nightflow",
     statusBarStyle: "black-translucent",
   },
-  icons: {
-    apple: "/icons/apple-touch-icon.png",
-  },
+  // Les icônes (favicon.ico, icon.png, apple-icon.png) sont servies par les
+  // fichiers de convention dans app/ — Next injecte les <link> automatiquement.
   openGraph: {
     type: "website",
     siteName: "Nightflow Analytics",
