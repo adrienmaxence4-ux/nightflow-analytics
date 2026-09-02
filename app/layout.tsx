@@ -36,6 +36,7 @@ export const metadata: Metadata = {
     "Nightflow Analytics transforme vos données e-commerce en décisions claires. Comprenez ce qui se passe, pourquoi, et quoi faire — en moins de 30 secondes.",
   keywords: ["e-commerce", "analytics", "AI", "Shopify", "dashboard", "copilot"],
   applicationName: "Nightflow Analytics",
+  verification: { google: "aPwj4M_OUWXwGwfzYYWkHTBtdW7yeW90qwrHUewjwzg" },
   appleWebApp: {
     capable: true,
     title: "Nightflow",
