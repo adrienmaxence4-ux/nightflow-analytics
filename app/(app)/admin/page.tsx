@@ -47,8 +47,60 @@ interface StripeCheck {
   checks: { name: string; mode: string; ok: boolean; detail: string }[];
 }
 
+interface AiCheck {
+  preferred: "gemini" | "anthropic" | "none";
+  answering: string | null;
+  working: boolean;
+  verdict: string;
+  probes: { provider: string; ok: boolean; detail: string }[];
+  aiProvider: string;
+  checks: { name: string; ok: boolean; value: string; detail: string }[];
+}
+
+const AI_LABEL: Record<string, string> = { gemini: "Gemini", anthropic: "Claude" };
+
+interface ShopifyCheck {
+  working: boolean;
+  verdict: string;
+  appUrl: string;
+  redirectUri: string;
+  scopes: string;
+  host: string;
+  checks: { name: string; ok: boolean; detail: string }[];
+}
+
 const euros = (cents: number) =>
   `€${(cents / 100).toLocaleString("fr-FR", { maximumFractionDigits: 2 })}`;
+
+/** Read-only value with a one-click copy — for config strings to paste elsewhere. */
+function CopyField({ label, value }: { label: string; value: string }) {
+  const [copied, setCopied] = useState(false);
+  return (
+    <div>
+      <div className="text-[11px] font-semibold text-ink3">{label}</div>
+      <div className="mt-1 flex items-center gap-2">
+        <code className="min-w-0 flex-1 truncate rounded-lg border border-line bg-panel2 px-2.5 py-1.5 text-[12px] text-ink">
+          {value || "—"}
+        </code>
+        <button
+          type="button"
+          onClick={() => {
+            navigator.clipboard?.writeText(value).then(
+              () => {
+                setCopied(true);
+                setTimeout(() => setCopied(false), 1500);
+              },
+              () => {}
+            );
+          }}
+          className="flex-none rounded-lg border border-line px-2.5 py-1.5 text-[11px] font-bold text-ink2 transition hover:text-ink"
+        >
+          {copied ? "copié ✓" : "copier"}
+        </button>
+      </div>
+    </div>
+  );
+}
 
 const TOOLTIP_STYLE = {
   backgroundColor: "#0d1230",
@@ -68,6 +120,8 @@ export default function AdminStatsPage() {
   const [maintenance, setMaintenance] = useState<boolean | null>(null);
   const [maintBusy, setMaintBusy] = useState(false);
   const [stripe, setStripe] = useState<StripeCheck | null>(null);
+  const [ai, setAi] = useState<AiCheck | null>(null);
+  const [shopify, setShopify] = useState<ShopifyCheck | null>(null);
 
   const toggleMaintenance = async () => {
     if (maintBusy || maintenance === null) return;
@@ -135,6 +189,14 @@ export default function AdminStatsPage() {
       .then((r) => (r.ok ? r.json() : null))
       .then((j) => j && setStripe(j as StripeCheck))
       .catch(() => {});
+    fetch("/api/admin/ai-check", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j) => j && setAi(j as AiCheck))
+      .catch(() => {});
+    fetch("/api/admin/shopify-check", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j) => j && setShopify(j as ShopifyCheck))
+      .catch(() => {});
   }, []);
 
   return (
@@ -175,6 +237,125 @@ export default function AdminStatsPage() {
           </div>
           <div className="mt-4 flex flex-col gap-2.5">
             {stripe.checks.map((c) => (
+              <div key={c.name} className="flex items-start gap-2.5">
+                <span
+                  className={`mt-0.5 text-[13px] ${c.ok ? "text-good" : "text-bad"}`}
+                >
+                  {c.ok ? "✓" : "!"}
+                </span>
+                <div>
+                  <div className="text-[13px] font-semibold text-ink">{c.name}</div>
+                  <div className="text-[12px] text-ink3">{c.detail}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
+
+      {/* Audit Copilot IA : moteur réel ou réponses pré-écrites ? */}
+      {ai && (
+        <Card
+          className={`p-5 ${ai.working ? "border-good/40" : "border-bad/40 bg-bad-bg"}`}
+        >
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h3 className="text-[15px] font-bold">🤖 Copilot IA — moteur de réponse</h3>
+            <span
+              className={`rounded-full px-2.5 py-1 text-[10px] font-extrabold ${
+                ai.working ? "bg-good-bg text-good" : "bg-bad-bg text-bad"
+              }`}
+            >
+              {ai.working
+                ? `● ${AI_LABEL[ai.answering ?? ""] ?? ai.answering} répond`
+                : "● RÉPONSES PRÉ-ÉCRITES"}
+            </span>
+          </div>
+          <p className="mt-2 text-[12px] text-ink3">{ai.verdict}</p>
+
+          {/* Résultat d'un vrai appel 1 token à chaque fournisseur configuré */}
+          {ai.probes.length > 0 && (
+            <div className="mt-4 flex flex-col gap-2.5">
+              {ai.probes.map((p) => (
+                <div key={p.provider} className="flex items-start gap-2.5">
+                  <span
+                    className={`mt-0.5 text-[13px] ${p.ok ? "text-good" : "text-bad"}`}
+                  >
+                    {p.ok ? "✓" : "!"}
+                  </span>
+                  <div>
+                    <div className="text-[13px] font-semibold text-ink">
+                      {AI_LABEL[p.provider] ?? p.provider}
+                      {ai.preferred === p.provider && (
+                        <span className="ml-2 text-[10px] font-bold text-ink3">
+                          (essayé en premier)
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-[12px] text-ink3">{p.detail}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Présence des clés (AI_PROVIDER = {ai.aiProvider}) */}
+          <div className="mt-4 flex flex-col gap-2.5 border-t border-line pt-4">
+            {ai.checks.map((c) => (
+              <div key={c.name} className="flex items-start gap-2.5">
+                <span
+                  className={`mt-0.5 text-[13px] ${c.ok ? "text-good" : "text-bad"}`}
+                >
+                  {c.ok ? "✓" : "!"}
+                </span>
+                <div>
+                  <div className="text-[13px] font-semibold text-ink">
+                    {c.name}{" "}
+                    <span className="font-normal text-ink3">— {c.value}</span>
+                  </div>
+                  <div className="text-[12px] text-ink3">{c.detail}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {!ai.working && (
+            <p className="mt-4 rounded-xl border border-line bg-panel2 px-3 py-2.5 text-[12.5px] text-ink2">
+              👉 Ajoute <span className="font-bold text-ink">GEMINI_API_KEY</span>{" "}
+              (gratuit, sans carte — aistudio.google.com) dans les variables
+              d&apos;environnement Vercel, puis redéploie.
+            </p>
+          )}
+        </Card>
+      )}
+
+      {/* Audit Shopify OAuth : la connexion boutique peut-elle aboutir ? */}
+      {shopify && (
+        <Card
+          className={`p-5 ${
+            shopify.working ? "border-good/40" : "border-bad/40 bg-bad-bg"
+          }`}
+        >
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h3 className="text-[15px] font-bold">🛍 Shopify — connexion boutique (OAuth)</h3>
+            <span
+              className={`rounded-full px-2.5 py-1 text-[10px] font-extrabold ${
+                shopify.working ? "bg-good-bg text-good" : "bg-bad-bg text-bad"
+              }`}
+            >
+              {shopify.working ? "● CONFIG PRÊTE" : "● BLOQUÉ"}
+            </span>
+          </div>
+          <p className="mt-2 text-[12px] text-ink3">{shopify.verdict}</p>
+
+          {/* Les chaînes exactes à coller dans la config de l'app Shopify */}
+          <div className="mt-4 flex flex-col gap-2 border-t border-line pt-4">
+            <CopyField label="App URL" value={shopify.appUrl} />
+            <CopyField label="Allowed redirection URL(s)" value={shopify.redirectUri} />
+            <CopyField label="Scopes" value={shopify.scopes} />
+          </div>
+
+          <div className="mt-4 flex flex-col gap-2.5 border-t border-line pt-4">
+            {shopify.checks.map((c) => (
               <div key={c.name} className="flex items-start gap-2.5">
                 <span
                   className={`mt-0.5 text-[13px] ${c.ok ? "text-good" : "text-bad"}`}

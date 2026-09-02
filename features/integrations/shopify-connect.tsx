@@ -25,15 +25,23 @@ export function ShopifyConnect() {
   const { status, busy } = connection;
   const [domain, setDomain] = useState("");
 
-  /** "ma-boutique" and "https://ma-boutique.myshopify.com/admin" both work. */
+  /**
+   * Accepts every shape a merchant is likely to paste:
+   *   "ma-boutique"
+   *   "ma-boutique.myshopify.com" (with or without a trailing path)
+   *   "https://ma-boutique.myshopify.com/admin"
+   *   "https://admin.shopify.com/store/ma-boutique/settings/domains/123"  ← the
+   *     URL the current Shopify admin shows in the address bar
+   */
   const normalizeShop = (raw: string): string => {
-    const shop = raw
-      .trim()
-      .toLowerCase()
-      .replace(/^https?:\/\//, "")
-      .replace(/\/.*$/, "");
-    if (shop && !shop.includes(".")) return `${shop}.myshopify.com`;
-    return shop;
+    const cleaned = raw.trim().toLowerCase().replace(/^https?:\/\//, "");
+    const adminMatch = cleaned.match(
+      /^admin\.shopify\.com\/store\/([a-z0-9][a-z0-9-]*)/
+    );
+    if (adminMatch) return `${adminMatch[1]}.myshopify.com`;
+    const host = cleaned.replace(/\/.*$/, "");
+    if (host && !host.includes(".")) return `${host}.myshopify.com`;
+    return host;
   };
 
   // Shopify's OAuth is shop-scoped, so it starts from a full page redirect.
