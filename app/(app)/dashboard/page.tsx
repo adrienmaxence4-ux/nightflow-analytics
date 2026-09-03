@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { RefreshCw, FlaskConical } from "lucide-react";
+import { RefreshCw, FlaskConical, Eraser } from "lucide-react";
 import { PageTransition } from "@/components/layout/page-transition";
 import { DemoBanner } from "@/components/demo-banner";
 import { RangeToggle } from "@/components/ui/range-toggle";
@@ -71,10 +71,44 @@ export default function DashboardPage() {
   }, [range, source]);
 
   const [seeding, setSeeding] = useState(false);
+  const [clearing, setClearing] = useState(false);
 
   const refresh = () => {
     loadRange(range);
     toast("Données actualisées");
+  };
+
+  const clearDemo = async () => {
+    if (clearing) return;
+    if (
+      !window.confirm(
+        "Supprimer toutes les données de démo (métriques, campagnes, commandes, produits de démo) ? Les produits Shopify réels sont conservés et re-synchronisés."
+      )
+    ) {
+      return;
+    }
+    setClearing(true);
+    toast("Nettoyage des données de démo…", "info");
+    try {
+      const res = await fetch("/api/demo/clear", { method: "POST" });
+      const d = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        toast(d.error ?? "Nettoyage impossible", "info");
+        return;
+      }
+      if (d.shopifyConnected) {
+        toast("Démo supprimée — re-synchronisation Shopify…", "info");
+        await fetch("/api/integrations/shopify/sync", { method: "POST" }).catch(
+          () => {}
+        );
+      }
+      toast("Données de démo supprimées ✓");
+      loadRange(range);
+    } catch {
+      toast("Nettoyage impossible", "info");
+    } finally {
+      setClearing(false);
+    }
   };
 
   const seedSample = async () => {
@@ -132,6 +166,17 @@ export default function DashboardPage() {
           >
             <FlaskConical className="h-[18px] w-[18px]" aria-hidden />
             {seeding ? "Génération…" : "Données de test"}
+          </button>
+        )}
+        {isAdmin && (
+          <button
+            onClick={clearDemo}
+            disabled={clearing}
+            title="Admin — supprime les données de démo, garde le store réel"
+            className="inline-flex h-tap items-center gap-2 rounded-[12px] border border-line bg-panel px-4 text-label font-semibold text-ink transition duration-base ease-out hover:bg-panel2 disabled:opacity-60"
+          >
+            <Eraser className="h-[18px] w-[18px]" aria-hidden />
+            {clearing ? "Nettoyage…" : "Nettoyer la démo"}
           </button>
         )}
         <ReportMenu />

@@ -206,6 +206,16 @@ export async function syncShopify(
     await db
       .from("products")
       .upsert(productRows, { onConflict: "store_id,external_id" });
+    // Prune anything not in the live catalogue: products deleted upstream, and
+    // leftovers from a different store previously linked to this account. Only
+    // when the products fetch actually returned rows — never wipe on an empty
+    // or failed fetch.
+    const liveIds = productRows.map((r) => `"${r.external_id}"`).join(",");
+    await db
+      .from("products")
+      .delete()
+      .eq("store_id", storeId)
+      .not("external_id", "in", `(${liveIds})`);
   }
 
   const metricRows = [...metricsByDate.entries()].map(([date, m]) => ({
