@@ -133,13 +133,22 @@ export async function syncShopify(
     token,
     "products.json?limit=250"
   );
-  const { orders = [] } = await shopifyGet<{ orders: ShopifyOrder[] }>(
-    shop,
-    token,
-    `orders.json?status=any&limit=250&created_at_min=${encodeURIComponent(
-      since.toISOString()
-    )}`
-  );
+  // Orders need read_orders, which a store may not have granted (e.g. the app
+  // was installed under an older scope set). Import the catalogue anyway rather
+  // than failing the whole sync — the merchant re-grants and the next sync
+  // fills in sales.
+  let orders: ShopifyOrder[] = [];
+  try {
+    ({ orders = [] } = await shopifyGet<{ orders: ShopifyOrder[] }>(
+      shop,
+      token,
+      `orders.json?status=any&limit=250&created_at_min=${encodeURIComponent(
+        since.toISOString()
+      )}`
+    ));
+  } catch (e) {
+    console.error("[shopify] orders fetch skipped (scope not granted?)", e);
+  }
 
   const salesByProduct = new Map<number, { qty: number; rev: number }>();
   const metricsByDate = new Map<string, { rev: number; orders: number }>();
