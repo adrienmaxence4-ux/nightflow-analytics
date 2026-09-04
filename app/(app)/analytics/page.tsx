@@ -1,8 +1,12 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
+import { BarChart3, Globe2 } from "lucide-react";
 import { PageTransition } from "@/components/layout/page-transition";
 import { DemoBanner } from "@/components/demo-banner";
+import { EmptyState } from "@/components/ui/empty-state";
+import { Button } from "@/components/ui/button";
 import { RangeToggle } from "@/components/ui/range-toggle";
 import { GaPropertySelect } from "@/features/integrations/ga-property-select";
 import { useRange } from "@/hooks/use-range";
@@ -13,13 +17,6 @@ interface GaChannel {
   channel: string;
   share: number;
 }
-
-const DEMO_SOURCES: GaChannel[] = [
-  { channel: "Réseaux sociaux", share: 38 },
-  { channel: "Recherche Google", share: 27 },
-  { channel: "Accès direct", share: 19 },
-  { channel: "Email", share: 16 },
-];
 
 export default function AnalyticsPage() {
   const { range, setRange } = useRange("week");
@@ -66,10 +63,14 @@ export default function AnalyticsPage() {
     (topTwo.reduce((a, b) => a + b, 0) / Math.max(1, series.reduce((a, s) => a + s.revenue, 0))) * 100
   );
 
-  const sources =
+  // No fallback to a fixed set of percentages here on purpose: that used to
+  // show "38% réseaux sociaux" next to "0 visiteurs" the moment Google
+  // Analytics wasn't connected — numbers that looked real but were the same
+  // four values for every store, seen or not.
+  const sources: GaChannel[] =
     ga?.connected && ga.channels?.length
       ? [...ga.channels].sort((a, b) => b.share - a.share)
-      : DEMO_SOURCES;
+      : [];
 
   const funnel = data.funnel ?? [];
   const visitors = funnel[0]?.value ?? 0;
@@ -94,51 +95,74 @@ export default function AnalyticsPage() {
       <section className="panel p-7">
         <h2 className="font-display text-title">Ventes heure par heure</h2>
         <p className="mb-6 mt-1.5 text-small text-ink3">{data.sub}</p>
-        <div className="flex h-[220px] items-end gap-3">
-          {series.map((s) => {
-            const isPeak = topTwo.includes(s.revenue);
-            return (
-              <div key={s.label} className="flex flex-1 flex-col items-center gap-2">
-                <div
-                  className={`w-full rounded-t-[6px] ${isPeak ? "bg-accent" : "bg-cool"}`}
-                  style={{ height: `${Math.max(6, (s.revenue / maxRev) * 200)}px` }}
-                />
-                <span
-                  className={`text-[14px] ${isPeak ? "font-bold text-ink" : "text-ink3"}`}
-                >
-                  {s.label}
-                </span>
-              </div>
-            );
-          })}
-        </div>
-        <p className="mt-5 border-t border-line pt-5 text-[17px] leading-relaxed text-ink2">
-          En clair : <b className="text-ink">{peakShare} % de vos ventes se concentrent sur
-          les deux meilleures tranches horaires.</b> C&apos;est le moment de publier et de
-          lancer vos campagnes.
-        </p>
+        {series.length === 0 ? (
+          <EmptyState
+            icon={BarChart3}
+            title="Pas encore de ventes sur cette période"
+            description="Dès que ta boutique enregistre des commandes, cette courbe montrera tes heures de pointe."
+          />
+        ) : (
+          <>
+            <div className="flex h-[220px] items-end gap-3">
+              {series.map((s) => {
+                const isPeak = topTwo.includes(s.revenue);
+                return (
+                  <div key={s.label} className="flex flex-1 flex-col items-center gap-2">
+                    <div
+                      className={`w-full rounded-t-[6px] ${isPeak ? "bg-accent" : "bg-cool"}`}
+                      style={{ height: `${Math.max(6, (s.revenue / maxRev) * 200)}px` }}
+                    />
+                    <span
+                      className={`text-[14px] ${isPeak ? "font-bold text-ink" : "text-ink3"}`}
+                    >
+                      {s.label}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+            <p className="mt-5 border-t border-line pt-5 text-[17px] leading-relaxed text-ink2">
+              En clair : <b className="text-ink">{peakShare} % de vos ventes se concentrent sur
+              les deux meilleures tranches horaires.</b> C&apos;est le moment de publier et de
+              lancer vos campagnes.
+            </p>
+          </>
+        )}
       </section>
 
       <div className="grid gap-5 [grid-template-columns:repeat(auto-fit,minmax(340px,1fr))]">
         {/* D'où viennent vos visiteurs */}
         <section className="panel p-7">
           <h2 className="mb-6 font-display text-title">D&apos;où viennent vos visiteurs</h2>
-          <div className="flex flex-col gap-5">
-            {sources.map((c, i) => (
-              <div key={c.channel}>
-                <div className="mb-2 flex justify-between text-[17px] font-semibold">
-                  <span>{c.channel}</span>
-                  <span data-numeric>{c.share} %</span>
+          {sources.length === 0 ? (
+            <EmptyState
+              icon={Globe2}
+              title="Sources de trafic pas encore connues"
+              description="Connecte Google Analytics pour voir la part des réseaux sociaux, de la recherche, de l'accès direct et de l'email dans tes visites."
+              action={
+                <Link href="/integrations">
+                  <Button size="sm">Connecter Google Analytics</Button>
+                </Link>
+              }
+            />
+          ) : (
+            <div className="flex flex-col gap-5">
+              {sources.map((c, i) => (
+                <div key={c.channel}>
+                  <div className="mb-2 flex justify-between text-[17px] font-semibold">
+                    <span>{c.channel}</span>
+                    <span data-numeric>{c.share} %</span>
+                  </div>
+                  <div className="h-3.5 overflow-hidden rounded-pill bg-panel2">
+                    <div
+                      className={`h-full rounded-pill ${i === 0 ? "bg-accent" : "bg-cool"}`}
+                      style={{ width: `${c.share}%` }}
+                    />
+                  </div>
                 </div>
-                <div className="h-3.5 overflow-hidden rounded-pill bg-panel2">
-                  <div
-                    className={`h-full rounded-pill ${i === 0 ? "bg-accent" : "bg-cool"}`}
-                    style={{ width: `${c.share}%` }}
-                  />
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </section>
 
         {/* Le parcours d'achat */}
