@@ -1,3 +1,4 @@
+import { createHmac } from "crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { env } from "@/lib/env";
 
@@ -70,6 +71,18 @@ interface TokenResponse {
 
 async function graphGet<T>(path: string, params: Record<string, string>): Promise<T | null> {
   const qs = new URLSearchParams(params);
+  // Meta rejects server-side calls make on behalf of a user token with 403
+  // "require an appsecret_proof argument" once the app has that protection
+  // enabled — every data read passes access_token, so sign it here once
+  // rather than at each of the ten call sites.
+  if (params.access_token && env.metaAppSecret) {
+    qs.set(
+      "appsecret_proof",
+      createHmac("sha256", env.metaAppSecret)
+        .update(params.access_token)
+        .digest("hex")
+    );
+  }
   try {
     const res = await fetch(`${GRAPH}/${V()}/${path}?${qs}`, {
       headers: { Accept: "application/json" },
