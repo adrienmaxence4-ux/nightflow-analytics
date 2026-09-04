@@ -128,7 +128,8 @@ export function geminiBody(system: string, user: string, maxTokens: number) {
 async function callGemini(
   system: string,
   user: string,
-  maxTokens: number
+  maxTokens: number,
+  retriedOn503 = false
 ): Promise<string | null> {
   try {
     const res = await fetch(`${env.geminiEndpoint}/chat/completions`, {
@@ -143,6 +144,15 @@ async function callGemini(
     if (!res.ok) {
       const detail = await res.text().catch(() => "");
       console.error(`[AI:gemini] ${res.status} ${detail.slice(0, 200)}`);
+      // 503 UNAVAILABLE is Google's own "high demand, usually temporary" —
+      // the free tier gets this often enough that failing straight to the
+      // pre-written answer on the first hit wastes the one retry that
+      // regularly succeeds. One retry only, so a genuine outage still falls
+      // back fast instead of doubling every request's latency.
+      if (res.status === 503 && !retriedOn503) {
+        await new Promise((r) => setTimeout(r, 1200));
+        return callGemini(system, user, maxTokens, true);
+      }
       return null;
     }
     const data = (await res.json()) as {
