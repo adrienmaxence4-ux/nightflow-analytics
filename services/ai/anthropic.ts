@@ -125,11 +125,16 @@ export function geminiBody(system: string, user: string, maxTokens: number) {
   };
 }
 
+// With ANTHROPIC_API_KEY out of credit and staying that way for now (cost),
+// Gemini's free tier is the ONLY path that actually answers — so it's worth
+// fighting harder for than a normal fallback provider would be.
+const GEMINI_503_RETRIES = 2;
+
 async function callGemini(
   system: string,
   user: string,
   maxTokens: number,
-  retriedOn503 = false
+  attempt = 0
 ): Promise<string | null> {
   try {
     const res = await fetch(`${env.geminiEndpoint}/chat/completions`, {
@@ -145,13 +150,13 @@ async function callGemini(
       const detail = await res.text().catch(() => "");
       console.error(`[AI:gemini] ${res.status} ${detail.slice(0, 200)}`);
       // 503 UNAVAILABLE is Google's own "high demand, usually temporary" —
-      // the free tier gets this often enough that failing straight to the
-      // pre-written answer on the first hit wastes the one retry that
-      // regularly succeeds. One retry only, so a genuine outage still falls
-      // back fast instead of doubling every request's latency.
-      if (res.status === 503 && !retriedOn503) {
-        await new Promise((r) => setTimeout(r, 1200));
-        return callGemini(system, user, maxTokens, true);
+      // the free tier hits this often enough, and with no paid fallback right
+      // now, that giving up on the first one throws away answers that would
+      // have gone through a couple seconds later. Backs off a bit more each
+      // try so a genuine outage still fails in a few seconds, not forever.
+      if (res.status === 503 && attempt < GEMINI_503_RETRIES) {
+        await new Promise((r) => setTimeout(r, 1200 * (attempt + 1)));
+        return callGemini(system, user, maxTokens, attempt + 1);
       }
       return null;
     }
