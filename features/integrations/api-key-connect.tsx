@@ -62,10 +62,16 @@ export function ApiKeyConnect({
     setApiKey("");
     // Flip the card immediately, then let the real status catch up.
     connection.setStatus((s) => ({ ...s, connected: true, state: "connected" }));
-    const imported = Math.round((data.revenueCents ?? 0) / 100).toLocaleString(
-      "fr-FR"
-    );
-    toast(`${name} connecté ✓ — ${data.orders ?? 0} commandes, ${imported} € importés`);
+    if (data.syncWarning) {
+      // The key itself was accepted — the card stays "Connecté" — but the
+      // first import failed, so say that instead of a false "0 € importés ✓".
+      toast(`${name} connecté, mais le premier import a échoué : ${data.syncWarning}`, "info");
+    } else {
+      const imported = Math.round((data.revenueCents ?? 0) / 100).toLocaleString(
+        "fr-FR"
+      );
+      toast(`${name} connecté ✓ — ${data.orders ?? 0} commandes, ${imported} € importés`);
+    }
     connection.reload();
   };
 

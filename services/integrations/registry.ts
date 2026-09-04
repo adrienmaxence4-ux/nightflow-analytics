@@ -35,8 +35,19 @@ export interface KeyedProviderDef {
    * self-inflicted support ticket.
    */
   normalize?: (raw: string) => string;
-  /** Returns true when the pasted key is valid (can read the account). */
-  validate: (key: string) => Promise<boolean>;
+  /**
+   * Shown instead of the generic "Clé API manquante" when normalize() empties
+   * the paste — for a provider whose dashboard hands out a URL, that's the
+   * one moment worth explaining which part of it is the actual credential.
+   */
+  missingKeyHint?: string;
+  /**
+   * True (or `{ ok: true }`) when the pasted key is valid. Most providers only
+   * ever say yes/no; Windsor additionally reports *why* it said no
+   * (`{ ok: false, reason }`) so the connect route can show that instead of
+   * one fixed "invalid key" string regardless of the actual cause.
+   */
+  validate: (key: string) => Promise<boolean | { ok: boolean; reason?: string }>;
   /** Pulls the provider's data into Supabase. */
   sync: (key: string, storeId: string, db: SupabaseClient) => Promise<SyncSummary>;
 }
@@ -75,6 +86,8 @@ export const KEYED_PROVIDERS: Record<string, KeyedProviderDef> = {
     id: "windsor",
     label: "Windsor.ai",
     normalize: extractWindsorKey,
+    missingKeyHint:
+      "Colle la clé API Windsor.ai, ou l'URL de requête complète (avec ?api_key=…) — pas le lien onboard.windsor.ai de la page d'accueil.",
     validate: validateWindsorKey,
     sync: syncWindsor,
   },

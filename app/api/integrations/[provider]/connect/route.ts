@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { ownedStoreId } from "@/lib/store";
 import { encryptToken } from "@/lib/integrations/crypto";
 import { getUserSubscription } from "@/services/billing/subscription";
@@ -27,7 +28,10 @@ export async function POST(
   // whatever wrapper the provider's dashboard displayed around it.
   const key = def.normalize ? def.normalize(raw) : raw;
   if (!key) {
-    return NextResponse.json({ error: "Clé API manquante" }, { status: 400 });
+    return NextResponse.json(
+      { error: def.missingKeyHint ?? "Clé API manquante" },
+      { status: 400 }
+    );
   }
 
   const supabase = createClient();
@@ -55,16 +59,26 @@ export async function POST(
     return NextResponse.json({ error: "Aucune boutique" }, { status: 404 });
   }
 
-  const valid = await def.validate(key);
+  const validation = await def.validate(key);
+  const valid = typeof validation === "boolean" ? validation : validation.ok;
+  const reason = typeof validation === "boolean" ? undefined : validation.reason;
   if (!valid) {
     return NextResponse.json(
-      { error: `Clé ${def.label} invalide ou sans les permissions requises` },
+      { error: reason ?? `Clé ${def.label} invalide ou sans les permissions requises` },
       { status: 400 }
     );
   }
 
-  const db = supabase as unknown as SupabaseClient;
-  await db.from("integrations").upsert(
+  // Writes run service-role, scoped to the store id resolved above under RLS.
+  // The connect route previously wrote with the user's own client and never
+  // checked the result — a rejected upsert (stale session JWT on this
+  // request, a grants change, anything) reported success while storing
+  // nothing, and the card flipped back to "not connected" a moment later with
+  // no visible error. Same class of bug as the Shopify OAuth callback.
+  const admin = createAdminClient();
+  const writer = (admin ?? (supabase as unknown as SupabaseClient)) as SupabaseClient;
+
+  const { error: upsertErr } = await writer.from("integrations").upsert(
     {
       store_id: storeId,
       provider: def.id,
@@ -75,14 +89,31 @@ export async function POST(
     },
     { onConflict: "store_id,provider" }
   );
-
-  // Initial sync — never let a sync failure undo a valid connection.
-  let summary = { orders: 0, revenueCents: 0, days: 0 };
-  try {
-    summary = await def.sync(key, storeId, db);
-  } catch (e) {
-    console.error(`[${def.id}] initial sync failed`, e);
+  if (upsertErr) {
+    console.error(`[${def.id}] connect upsert failed`, upsertErr);
+    return NextResponse.json(
+      { error: "La connexion n'a pas pu être enregistrée — réessaie." },
+      { status: 500 }
+    );
   }
 
-  return NextResponse.json({ ok: true, connected: true, ...summary });
+  // Initial sync — never let a sync failure undo a valid connection (the key
+  // IS valid, that's what def.validate just confirmed). But don't dress up a
+  // real failure as success either: report it as a warning so "connecté ✓ —
+  // 0 commandes, 0 € importés" doesn't read like everything worked.
+  let summary: { orders: number; revenueCents: number; days: number } = {
+    orders: 0,
+    revenueCents: 0,
+    days: 0,
+  };
+  let syncWarning: string | undefined;
+  try {
+    summary = await def.sync(key, storeId, writer);
+  } catch (e) {
+    console.error(`[${def.id}] initial sync failed`, e);
+    syncWarning =
+      e instanceof Error ? e.message : "Le premier import a échoué, réessaie via Synchroniser.";
+  }
+
+  return NextResponse.json({ ok: true, connected: true, ...summary, syncWarning });
 }

@@ -132,13 +132,19 @@ const isoDay = (d: Date) => d.toISOString().slice(0, 10);
 
 /**
  * The key travels in the Authorization header, never in the query string:
- * a URL with a credential in it ends up in logs and proxies.
+ * a URL with a credential in it ends up in logs and proxies. (Confirmed
+ * against Windsor's own docs: header bearer auth is a first-class option,
+ * not a workaround — https://windsor.ai/api-documentation/.)
  */
+type WindsorFetch =
+  | { ok: true; rows: WindsorRow[] }
+  | { ok: false; status: number; detail: string };
+
 async function windsorGet(
   key: string,
   connector: string,
   params: Record<string, string>
-): Promise<WindsorRow[] | null> {
+): Promise<WindsorFetch> {
   const qs = new URLSearchParams(params);
   try {
     const res = await fetch(`${WINDSOR_API}/${connector}?${qs}`, {
@@ -151,12 +157,13 @@ async function windsorGet(
     if (!res.ok) {
       // The body carries Windsor's own reason (expired trial, unknown field,
       // revoked key). Logging only the status turned every one of those into
-      // the same unhelpful "cle invalide".
+      // the same unhelpful "cle invalide" — surface it up to the caller too,
+      // not just the server console, so the person pasting the key can see it.
       const detail = await res.text().catch(() => "");
       console.error(
         `[windsor] ${res.status} on ${connector} ${detail.slice(0, 200)}`
       );
-      return null;
+      return { ok: false, status: res.status, detail: detail.slice(0, 300) };
     }
     // Windsor has shipped more than one envelope: `{data}`, `{result}`, and a
     // bare array. Accepting all three costs nothing, and reading only one of
@@ -164,14 +171,15 @@ async function windsorGet(
     const json = (await res.json()) as
       | { data?: WindsorRow[]; result?: WindsorRow[] }
       | WindsorRow[];
-    if (Array.isArray(json)) return json;
-    if (Array.isArray(json?.data)) return json.data;
-    if (Array.isArray(json?.result)) return json.result;
+    if (Array.isArray(json)) return { ok: true, rows: json };
+    if (Array.isArray(json?.data)) return { ok: true, rows: json.data };
+    if (Array.isArray(json?.result)) return { ok: true, rows: json.result };
     console.error(`[windsor] unexpected response shape on ${connector}`);
-    return null;
+    return { ok: false, status: res.status, detail: "réponse inattendue" };
   } catch (e) {
     console.error(`[windsor] request failed on ${connector}`, e);
-    return null;
+    const detail = e instanceof Error ? e.message : "requête échouée";
+    return { ok: false, status: 0, detail };
   }
 }
 
@@ -194,17 +202,50 @@ async function hasDirectMeta(
   }
 }
 
-/** The pasted key can read the customer's blended data. */
-export async function validateWindsorKey(key: string): Promise<boolean> {
+/**
+ * The pasted key can read the customer's blended data. Returns *why* it
+ * failed, not just whether it did — a boolean here meant the connect route
+ * could only ever say "invalid key", whether Windsor actually said 401
+ * (revoked key), 403 (trial expired) or 429 (rate-limited), each of which
+ * needs a different action from the person staring at the toast.
+ */
+export async function validateWindsorKey(
+  key: string
+): Promise<{ ok: boolean; reason?: string }> {
   const apiKey = extractWindsorKey(key);
-  if (!apiKey) return false;
+  if (!apiKey) {
+    return {
+      ok: false,
+      reason:
+        "Clé illisible — colle la clé (ou l'URL de requête) fournie par Windsor.ai, pas le lien d'inscription onboard.windsor.ai.",
+    };
+  }
   // An account with no source connected yet still answers 200 with an empty
   // array — that's a valid key, just nothing plugged in on Windsor's side.
-  const rows = await windsorGet(apiKey, "all", {
+  const r = await windsorGet(apiKey, "all", {
     fields: "date,source",
     date_preset: "last_7d",
   });
-  return rows !== null;
+  if (r.ok) return { ok: true };
+  if (r.status === 401 || r.status === 403) {
+    return {
+      ok: false,
+      reason: `Windsor.ai a refusé cette clé (${r.status}) — vérifie qu'elle est active sur ton compte Windsor et qu'elle n'a pas été régénérée.`,
+    };
+  }
+  if (r.status === 429) {
+    return {
+      ok: false,
+      reason: "Windsor.ai limite le débit (429) — réessaie dans une minute.",
+    };
+  }
+  if (r.status === 0) {
+    return { ok: false, reason: "Windsor.ai est injoignable — réessaie dans un instant." };
+  }
+  return {
+    ok: false,
+    reason: `Windsor.ai a répondu ${r.status}${r.detail ? ` : ${r.detail}` : ""}`,
+  };
 }
 
 interface ChannelTotals {
@@ -236,14 +277,19 @@ export async function syncWindsor(
   const from = new Date();
   from.setDate(from.getDate() - DAYS);
 
-  const rows = await windsorGet(apiKey, "all", {
+  const r = await windsorGet(apiKey, "all", {
     fields: FIELDS,
     date_from: isoDay(from),
     date_to: isoDay(to),
   });
-  if (rows === null) {
-    throw new Error("Windsor.ai n'a pas répondu — vérifie ta clé API.");
+  if (!r.ok) {
+    throw new Error(
+      r.status
+        ? `Windsor.ai a répondu ${r.status}${r.detail ? ` : ${r.detail}` : ""}`
+        : "Windsor.ai n'a pas répondu — vérifie ta clé API."
+    );
   }
+  const rows = r.rows;
 
   // When the merchant connected Meta directly, that first-party data wins:
   // Windsor stands aside on that one channel rather than the two connectors
@@ -287,14 +333,17 @@ export async function syncWindsor(
 
   // Replace only what this connector owns, so Klaviyo's row and anything the
   // merchant added by hand survive a re-sync.
-  await db
+  const { error: deleteErr } = await db
     .from("campaigns")
     .delete()
     .eq("store_id", storeId)
     .in("channel", owned);
+  if (deleteErr) {
+    throw new Error(`Écriture des campagnes impossible : ${deleteErr.message}`);
+  }
 
   if (paid.length > 0) {
-    await db.from("campaigns").insert(
+    const { error: insertErr } = await db.from("campaigns").insert(
       paid.map(([channel, t]) => ({
         store_id: storeId,
         channel,
@@ -305,6 +354,9 @@ export async function syncWindsor(
         delta: `${t.campaigns.size} campagne(s) · ${t.clicks.toLocaleString("fr-FR")} clics (60j)`,
       }))
     );
+    if (insertErr) {
+      throw new Error(`Écriture des campagnes impossible : ${insertErr.message}`);
+    }
   }
 
   const revenueCents = paid.reduce((s, [, t]) => s + t.revenueCents, 0);
@@ -402,16 +454,20 @@ export async function fetchInstagramPosts(
   const from = new Date();
   from.setDate(from.getDate() - days);
 
-  const rows = (await windsorGet(apiKey, "instagram", {
+  const r = await windsorGet(apiKey, "instagram", {
     fields: IG_FIELDS,
     date_from: isoDay(from),
     date_to: isoDay(to),
-  })) as IgRow[] | null;
-  if (rows === null) {
-    throw new Error("Windsor.ai n'a pas répondu — vérifie ta clé API.");
+  });
+  if (!r.ok) {
+    throw new Error(
+      r.status
+        ? `Windsor.ai a répondu ${r.status}${r.detail ? ` : ${r.detail}` : ""}`
+        : "Windsor.ai n'a pas répondu — vérifie ta clé API."
+    );
   }
 
-  return rows
+  return (r.rows as IgRow[])
     .filter((r) => r.media_id)
     .map((r): InstagramPost => {
       const caption = String(r.media_caption ?? "");

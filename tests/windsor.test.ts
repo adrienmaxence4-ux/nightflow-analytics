@@ -98,17 +98,21 @@ describe("windsor key validation", () => {
 
   it("accepts a valid key even when nothing is connected on Windsor yet", async () => {
     mockFetch({ data: [] });
-    expect(await validateWindsorKey("k")).toBe(true);
+    expect(await validateWindsorKey("k")).toEqual({ ok: true });
   });
 
-  it("rejects a key the API refuses", async () => {
+  it("rejects a key the API refuses, and says why", async () => {
     mockFetch({ error: "unauthorized" }, false);
-    expect(await validateWindsorKey("k")).toBe(false);
+    const result = await validateWindsorKey("k");
+    expect(result.ok).toBe(false);
+    expect(result.reason).toMatch(/401/);
   });
 
   it("rejects an empty key without calling the API", async () => {
     const calls = mockFetch({ data: [] });
-    expect(await validateWindsorKey("   ")).toBe(false);
+    const result = await validateWindsorKey("   ");
+    expect(result.ok).toBe(false);
+    expect(result.reason).toBeTruthy();
     expect(calls).toHaveLength(0);
   });
 });
@@ -155,10 +159,10 @@ describe("pasted credential", () => {
 
   it("validates a key pasted as a URL, sending only the key upstream", async () => {
     const calls = mockFetch({ data: [] });
-    const ok = await validateWindsorKey(
+    const result = await validateWindsorKey(
       `https://connectors.windsor.ai/all?api_key=${KEY}&fields=date`
     );
-    expect(ok).toBe(true);
+    expect(result.ok).toBe(true);
     expect(calls[0].headers.Authorization).toBe(`Bearer ${KEY}`);
   });
 });

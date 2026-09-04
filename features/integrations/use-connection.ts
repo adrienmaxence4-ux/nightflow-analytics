@@ -22,6 +22,8 @@ export interface SyncSummary {
   products?: number;
   revenueCents?: number;
   error?: string;
+  /** Set when the key was valid but the initial import itself failed. */
+  syncWarning?: string;
 }
 
 const euros = (cents = 0) =>
