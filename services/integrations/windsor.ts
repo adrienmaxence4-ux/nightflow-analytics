@@ -131,10 +131,15 @@ const cents = (v: unknown): number =>
 const isoDay = (d: Date) => d.toISOString().slice(0, 10);
 
 /**
- * The key travels in the Authorization header, never in the query string:
- * a URL with a credential in it ends up in logs and proxies. (Confirmed
- * against Windsor's own docs: header bearer auth is a first-class option,
- * not a workaround — https://windsor.ai/api-documentation/.)
+ * Windsor documents THREE equivalent ways to authenticate — `api_key` query
+ * param, `X-Api-Key` header, or `Authorization: Bearer` — and states that
+ * when more than one is present the query param wins
+ * (https://windsor.ai/api-documentation/). We got real 400 "Not authorized"
+ * responses in prod with the Bearer header alone even for keys the customer
+ * insists are current, which points at that path being the less-exercised
+ * one on Windsor's side. So: send the key as `api_key` (their documented
+ * primary/precedence method) AND keep the header as a redundant second
+ * chance — never as a log-visible value, only in the outbound request.
  */
 type WindsorFetch =
   | { ok: true; rows: WindsorRow[] }
@@ -145,11 +150,14 @@ async function windsorGet(
   connector: string,
   params: Record<string, string>
 ): Promise<WindsorFetch> {
-  const qs = new URLSearchParams(params);
+  // NEVER interpolate `qs` (it carries api_key) into a console.log/error —
+  // only the connector name and Windsor's own response body are logged.
+  const qs = new URLSearchParams({ ...params, api_key: key });
   try {
     const res = await fetch(`${WINDSOR_API}/${connector}?${qs}`, {
       headers: {
         Authorization: `Bearer ${key}`,
+        "X-Api-Key": key,
         Accept: "application/json",
       },
       signal: AbortSignal.timeout(TIMEOUT_MS),
@@ -177,8 +185,11 @@ async function windsorGet(
     console.error(`[windsor] unexpected response shape on ${connector}`);
     return { ok: false, status: res.status, detail: "réponse inattendue" };
   } catch (e) {
-    console.error(`[windsor] request failed on ${connector}`, e);
+    // Log the message only, never the raw error/cause object — a fetch
+    // TypeError's `cause` chain can stringify the failing URL, which now
+    // carries api_key.
     const detail = e instanceof Error ? e.message : "requête échouée";
+    console.error(`[windsor] request failed on ${connector}: ${detail}`);
     return { ok: false, status: 0, detail };
   }
 }

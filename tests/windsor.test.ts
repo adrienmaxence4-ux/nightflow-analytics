@@ -11,9 +11,10 @@ import {
 
 /**
  * Windsor is the path Meta Ads and TikTok Ads actually reach Nightflow, so the
- * things worth pinning down are: the key never travels in a URL, an organic
- * source is not mistaken for a paid channel, and a re-sync replaces only the
- * rows this connector owns.
+ * things worth pinning down are: the key reaches Windsor every documented way
+ * at once (header-only auth 400'd with "Not authorized" in production for a
+ * key that was actually valid), an organic source is not mistaken for a paid
+ * channel, and a re-sync replaces only the rows this connector owns.
  */
 
 interface Captured {
@@ -88,12 +89,17 @@ function fakeDb(metaConnected = false) {
 afterEach(() => vi.unstubAllGlobals());
 
 describe("windsor key validation", () => {
-  it("sends the key as a Bearer header, never in the query string", async () => {
+  it("authenticates all three of Windsor's documented ways at once", async () => {
+    // A Bearer-header-only request came back "Not authorized" from Windsor in
+    // production for a key the customer swore was current — so on top of the
+    // header, the key also travels as api_key (Windsor's own docs list it as
+    // the method that takes precedence when more than one is supplied).
     const calls = mockFetch({ data: [] });
     await validateWindsorKey("secret-key");
     expect(calls).toHaveLength(1);
-    expect(calls[0].url).not.toContain("secret-key");
+    expect(calls[0].url).toContain("api_key=secret-key");
     expect(calls[0].headers.Authorization).toBe("Bearer secret-key");
+    expect(calls[0].headers["X-Api-Key"]).toBe("secret-key");
   });
 
   it("accepts a valid key even when nothing is connected on Windsor yet", async () => {
