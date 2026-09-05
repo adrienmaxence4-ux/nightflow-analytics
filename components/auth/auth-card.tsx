@@ -2,10 +2,13 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Moon } from "lucide-react";
+import type HCaptcha from "@hcaptcha/react-hcaptcha";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
+import { HcaptchaWidget } from "@/components/auth/hcaptcha-widget";
+import { isHcaptchaConfigured } from "@/lib/env";
 
 export function AuthCard({ mode }: { mode: "login" | "signup" }) {
   const router = useRouter();
@@ -17,12 +20,13 @@ export function AuthCard({ mode }: { mode: "login" | "signup" }) {
   const [googleBusy, setGoogleBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [captchaToken, setCaptchaToken] = useState<string | undefined>();
+  const captchaRef = useRef<HCaptcha>(null);
 
   const isLogin = mode === "login";
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setBusy(true);
     setError(null);
     setNotice(null);
 
@@ -31,13 +35,21 @@ export function AuthCard({ mode }: { mode: "login" | "signup" }) {
     const mail = demoMode ? email || "demo@nightflow.app" : email.trim();
     const pass = demoMode ? password || "demo1234" : password;
     if (!demoMode && (!mail || !pass)) {
-      setBusy(false);
       setError("Renseigne ton adresse email et ton mot de passe.");
       return;
     }
+    if (!demoMode && isHcaptchaConfigured && !captchaToken) {
+      setError("Complète le captcha ci-dessous.");
+      return;
+    }
 
-    const res = isLogin ? await signIn(mail, pass) : await signUp(mail, pass);
+    setBusy(true);
+    const res = isLogin
+      ? await signIn(mail, pass, captchaToken)
+      : await signUp(mail, pass, captchaToken);
     setBusy(false);
+    captchaRef.current?.resetCaptcha();
+    setCaptchaToken(undefined);
     if (res.error) {
       setError(res.error);
       return;
@@ -149,6 +161,12 @@ export function AuthCard({ mode }: { mode: "login" | "signup" }) {
             </span>
           )}
         </label>
+
+        <HcaptchaWidget
+          ref={captchaRef}
+          onVerify={setCaptchaToken}
+          onExpire={() => setCaptchaToken(undefined)}
+        />
 
         {error && (
           <div className="rounded-[10px] border border-bad/40 bg-bad-bg px-3 py-2 text-[15px] text-bad">

@@ -34,6 +34,10 @@ function readEnv(canonical: string, loose: RegExp): string {
 export const env = {
   supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL ?? "",
   supabaseAnonKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "",
+  // hCaptcha sitekey — public identifier, safe in client bundles. Supabase's
+  // "Attack Protection" requires a captchaToken on signUp/signIn/resetPassword
+  // once enabled in the dashboard; without this the auth forms 400.
+  hcaptchaSiteKey: process.env.NEXT_PUBLIC_HCAPTCHA_SITE_KEY ?? "",
   // Service-role key — SERVER-ONLY, used exclusively by signature-verified
   // webhooks and secret-guarded cron workers (no user session). NEVER reaches
   // the browser or any user-facing route.
@@ -143,6 +147,9 @@ export const env = {
 /** True when real Supabase credentials are configured. */
 export const isSupabaseConfigured =
   env.supabaseUrl.length > 0 && env.supabaseAnonKey.length > 0;
+
+/** True when the hCaptcha sitekey is configured. */
+export const isHcaptchaConfigured = env.hcaptchaSiteKey.length > 0;
 
 /** True when the Anthropic (Claude) key is configured. */
 export const isAiConfigured = env.anthropicKey.length > 0;

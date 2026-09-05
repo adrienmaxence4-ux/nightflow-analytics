@@ -1,24 +1,35 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Moon } from "lucide-react";
+import type HCaptcha from "@hcaptcha/react-hcaptcha";
 import { useAuth } from "@/hooks/use-auth";
+import { HcaptchaWidget } from "@/components/auth/hcaptcha-widget";
+import { isHcaptchaConfigured } from "@/lib/env";
 
 export default function ForgotPasswordPage() {
-  const { resetPassword } = useAuth();
+  const { resetPassword, demoMode } = useAuth();
   const [email, setEmail] = useState("");
   const [busy, setBusy] = useState(false);
   const [sent, setSent] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [captchaToken, setCaptchaToken] = useState<string | undefined>();
+  const captchaRef = useRef<HCaptcha>(null);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email.trim()) return;
+    if (!demoMode && isHcaptchaConfigured && !captchaToken) {
+      setError("Complète le captcha ci-dessous.");
+      return;
+    }
     setBusy(true);
     setError(null);
-    const { error } = await resetPassword(email.trim());
+    const { error } = await resetPassword(email.trim(), captchaToken);
     setBusy(false);
+    captchaRef.current?.resetCaptcha();
+    setCaptchaToken(undefined);
     // Always show the same confirmation: never reveal whether an address exists.
     if (error) setError(error);
     else setSent(true);
@@ -63,6 +74,11 @@ export default function ForgotPasswordPage() {
               autoComplete="email"
               required
               className={fieldClass}
+            />
+            <HcaptchaWidget
+              ref={captchaRef}
+              onVerify={setCaptchaToken}
+              onExpire={() => setCaptchaToken(undefined)}
             />
             {error && (
               <div className="rounded-[10px] border border-bad/40 bg-bad-bg px-3 py-2 text-[15px] text-bad">

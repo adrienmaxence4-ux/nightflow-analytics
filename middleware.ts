@@ -72,7 +72,10 @@ function buildCsp(nonce: string): string {
     "img-src 'self' data: blob: https:",
     "font-src 'self' data:",
     "connect-src 'self' https: wss:",
-    "frame-src 'self'",
+    // hCaptcha renders its checkbox/challenge in an iframe from its own origin —
+    // 'self' alone leaves the widget a blank box (the parent page can load the
+    // hCaptcha script via strict-dynamic, but can't frame its UI).
+    "frame-src 'self' https://*.hcaptcha.com",
     "frame-ancestors 'none'",
     "base-uri 'self'",
     "form-action 'self'",

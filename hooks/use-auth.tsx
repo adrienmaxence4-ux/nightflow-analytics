@@ -15,15 +15,23 @@ interface AuthContextValue {
   user: AppUser | null;
   loading: boolean;
   demoMode: boolean;
-  signIn: (email: string, password: string) => Promise<{ error?: string }>;
+  signIn: (
+    email: string,
+    password: string,
+    captchaToken?: string
+  ) => Promise<{ error?: string }>;
   signUp: (
     email: string,
-    password: string
+    password: string,
+    captchaToken?: string
   ) => Promise<{ error?: string; needsConfirmation?: boolean }>;
   signInWithGoogle: () => Promise<{ error?: string; redirecting?: boolean }>;
   signOut: () => Promise<void>;
   /** Sends a password-reset email (Supabase recovery link → /update-password). */
-  resetPassword: (email: string) => Promise<{ error?: string }>;
+  resetPassword: (
+    email: string,
+    captchaToken?: string
+  ) => Promise<{ error?: string }>;
   /** Sets a new password for the current session, then revokes other sessions. */
   updatePassword: (password: string) => Promise<{ error?: string }>;
   /** Revokes every session for this user, on all devices. */
@@ -100,7 +108,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [demoMode]);
 
   const signIn = useCallback(
-    async (email: string, password: string) => {
+    async (email: string, password: string, captchaToken?: string) => {
       if (demoMode) {
         const u = { ...DEMO_USER, email };
         window.localStorage.setItem(STORAGE_KEY, JSON.stringify(u));
@@ -109,14 +117,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
       const supabase = createClient();
       if (!supabase) return { error: "Supabase non configuré" };
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+        options: { captchaToken },
+      });
       return error ? { error: error.message } : {};
     },
     [demoMode]
   );
 
   const signUp = useCallback(
-    async (email: string, password: string) => {
+    async (email: string, password: string, captchaToken?: string) => {
       if (demoMode) {
         const u = { ...DEMO_USER, email };
         window.localStorage.setItem(STORAGE_KEY, JSON.stringify(u));
@@ -131,7 +143,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
-        options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
+        options: {
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
+          captchaToken,
+        },
       });
       if (error) return { error: error.message };
       // No session back → the project requires email confirmation. Don't pretend
@@ -174,12 +189,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [demoMode]);
 
   const resetPassword = useCallback(
-    async (email: string) => {
+    async (email: string, captchaToken?: string) => {
       if (demoMode) return {};
       const supabase = createClient();
       if (!supabase) return { error: "Supabase non configuré" };
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
         redirectTo: `${window.location.origin}/auth/callback?type=recovery`,
+        captchaToken,
       });
       return error ? { error: error.message } : {};
     },
