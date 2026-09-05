@@ -67,10 +67,12 @@ export function ApiKeyConnect({
       // first import failed, so say that instead of a false "0 € importés ✓".
       toast(`${name} connecté, mais le premier import a échoué : ${data.syncWarning}`, "info");
     } else {
-      const imported = Math.round((data.revenueCents ?? 0) / 100).toLocaleString(
-        "fr-FR"
-      );
-      toast(`${name} connecté ✓ — ${data.orders ?? 0} commandes, ${imported} € importés`);
+      const noun = data.resultNoun ?? "commande(s)";
+      const revenueClause =
+        data.tracksRevenue === false
+          ? ""
+          : `, ${Math.round((data.revenueCents ?? 0) / 100).toLocaleString("fr-FR")} € importés`;
+      toast(`${name} connecté ✓ — ${data.orders ?? 0} ${noun}${revenueClause}`);
     }
     connection.reload();
   };

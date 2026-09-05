@@ -103,7 +103,10 @@ const THIRTY_DAYS_MS = 30 * 86_400_000;
 
 // ── PayPal ───────────────────────────────────────────────────────────────
 // OAuth2 client_credentials, then the Transaction Search API.
-async function paypalEvents(ctx: ConnectorContext): Promise<NormalizedEvent[]> {
+// Exported: also the credential check behind the Integrations page "Connecter"
+// button (services/integrations/keyed-adapters.ts) — one real API call, no
+// separate stub, so validation can never drift from what sync actually does.
+export async function paypalEvents(ctx: ConnectorContext): Promise<NormalizedEvent[]> {
   const parts = splitCredential(ctx.tokens?.accessToken, 2);
   if (!parts) throw new Error("attendu clientId::clientSecret");
   const [clientId, clientSecret] = parts;
@@ -165,7 +168,7 @@ async function paypalEvents(ctx: ConnectorContext): Promise<NormalizedEvent[]> {
 }
 
 // ── ShipStation ──────────────────────────────────────────────────────────
-async function shipstationEvents(ctx: ConnectorContext): Promise<NormalizedEvent[]> {
+export async function shipstationEvents(ctx: ConnectorContext): Promise<NormalizedEvent[]> {
   const parts = splitCredential(ctx.tokens?.accessToken, 2);
   if (!parts) throw new Error("attendu apiKey::apiSecret");
   const [apiKey, apiSecret] = parts;
@@ -193,10 +196,28 @@ async function shipstationEvents(ctx: ConnectorContext): Promise<NormalizedEvent
 }
 
 // ── Gorgias ──────────────────────────────────────────────────────────────
-async function gorgiasEvents(ctx: ConnectorContext): Promise<NormalizedEvent[]> {
+/**
+ * The subdomain is the one piece of a credential here that lands in a
+ * request HOST rather than a header or a path segment. A value like
+ * "evil.com#" would make the actual request go to `evil.com` — `#` truncates
+ * the URL at the fragment, silently dropping `.gorgias.com` — turning a typo'd
+ * or malicious paste into an SSRF primitive that fires from this server.
+ * Every Gorgias subdomain is alphanumeric + hyphens; reject anything else
+ * before it ever reaches `fetch`.
+ */
+function assertSafeGorgiasDomain(domain: string): void {
+  if (!/^[a-z0-9-]+$/i.test(domain)) {
+    throw new Error(
+      "domaine Gorgias invalide — attendu le sous-domaine seul (ex. « acme », pas une URL complète)"
+    );
+  }
+}
+
+export async function gorgiasEvents(ctx: ConnectorContext): Promise<NormalizedEvent[]> {
   const parts = splitCredential(ctx.tokens?.accessToken, 3);
   if (!parts) throw new Error("attendu domaine::email::apiKey");
   const [domain, email, apiKey] = parts;
+  assertSafeGorgiasDomain(domain);
   const res = await fetch(
     `https://${domain}.gorgias.com/api/tickets?limit=100&order_by=created_datetime:desc`,
     {
@@ -226,7 +247,7 @@ async function gorgiasEvents(ctx: ConnectorContext): Promise<NormalizedEvent[]> 
 // ── Hotjar ───────────────────────────────────────────────────────────────
 // The API exists, but its data endpoints are Scale-plan only. Fail with an
 // explicit message rather than silently.
-async function hotjarEvents(ctx: ConnectorContext): Promise<NormalizedEvent[]> {
+export async function hotjarEvents(ctx: ConnectorContext): Promise<NormalizedEvent[]> {
   const parts = splitCredential(ctx.tokens?.accessToken, 2);
   if (!parts) throw new Error("attendu siteId::apiToken");
   const [siteId, token] = parts;
@@ -256,7 +277,7 @@ async function hotjarEvents(ctx: ConnectorContext): Promise<NormalizedEvent[]> {
 
 // ── Mondial Relay ────────────────────────────────────────────────────────
 // Shipment tracking through the Connect API (merchant credentials).
-async function mondialRelayEvents(ctx: ConnectorContext): Promise<NormalizedEvent[]> {
+export async function mondialRelayEvents(ctx: ConnectorContext): Promise<NormalizedEvent[]> {
   const parts = splitCredential(ctx.tokens?.accessToken, 2);
   if (!parts) throw new Error("attendu enseigne::clePrivee");
   const [brandId, privateKey] = parts;

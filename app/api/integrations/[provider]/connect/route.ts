@@ -115,5 +115,12 @@ export async function POST(
       e instanceof Error ? e.message : "Le premier import a échoué, réessaie via Synchroniser.";
   }
 
-  return NextResponse.json({ ok: true, connected: true, ...summary, syncWarning });
+  return NextResponse.json({
+    ok: true,
+    connected: true,
+    ...summary,
+    syncWarning,
+    resultNoun: def.resultNoun,
+    tracksRevenue: def.tracksRevenue,
+  });
 }

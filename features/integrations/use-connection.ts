@@ -24,6 +24,10 @@ export interface SyncSummary {
   error?: string;
   /** Set when the key was valid but the initial import itself failed. */
   syncWarning?: string;
+  /** e.g. "ticket(s)" for Gorgias — "commande(s)" reads wrong on a support connector. */
+  resultNoun?: string;
+  /** False hides the "X € importés" clause for a connector with no revenue at all. */
+  tracksRevenue?: boolean;
 }
 
 const euros = (cents = 0) =>
