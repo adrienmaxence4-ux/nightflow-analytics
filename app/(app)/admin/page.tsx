@@ -17,6 +17,7 @@ import { PageHeader } from "@/components/layout/page-header";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useIsAdmin } from "@/hooks/use-admin";
+import { FeedbackPanel } from "@/features/admin/feedback-panel";
 
 /**
  * Founder-only dashboard: site visitors, signups, paying plans and REAL Stripe
@@ -473,6 +474,8 @@ export default function AdminStatsPage() {
             </div>
             {vipMsg && <p className="mt-2 text-[12px] text-ink2">{vipMsg}</p>}
           </Card>
+
+          <FeedbackPanel />
 
           {/* Quelle pub marche (attribution ?a=CODE) */}
           <Card className="p-5">

@@ -16,6 +16,7 @@ import { PLAN_LIST } from "@/lib/plans";
 import { LandingThemeToggle } from "@/components/landing/theme-toggle-landing";
 import { CopilotDemo } from "@/components/landing/copilot-demo";
 import { PricingTable } from "@/components/landing/pricing-table";
+import { FeedbackForm } from "@/components/landing/feedback-form";
 
 /** Applique la préférence clair/sombre de la landing avant le premier rendu. */
 const LANDING_THEME_SCRIPT = `try{if(localStorage.getItem('nightflow:landing-theme')==='clair'){document.getElementById('landing-root').setAttribute('data-theme','clair')}}catch(e){}`;
@@ -408,6 +409,20 @@ export default function LandingPage() {
                 </details>
               ))}
             </div>
+          </section>
+
+          {/* ── Avis ── remplace le widget de retours d'un tiers : la donnée
+              arrive dans /admin, et les bons avis alimenteront la preuve
+              sociale qui manque encore à cette page. ── */}
+          <section id="avis" className="border-t border-line py-[72px]">
+            <h2 className="text-center font-display text-[36px] font-extrabold tracking-[-0.02em]">
+              Vous en pensez quoi ?
+            </h2>
+            <p className="mx-auto mb-10 mt-3 max-w-[52ch] text-center text-[19px] leading-relaxed text-ink3">
+              Nightflow est jeune et je le construis seul. Dix secondes de votre part
+              orientent ce que je fais ensuite.
+            </p>
+            <FeedbackForm />
           </section>
 
           {/* ── CTA final ── */}
