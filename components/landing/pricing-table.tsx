@@ -41,7 +41,10 @@ export function PricingTable() {
         <div
           role="group"
           aria-label="Période de facturation"
-          className="inline-flex gap-1 rounded-[14px] border border-line bg-panel2 p-1"
+          // Rail sur --panel et non --panel2 : la mention « −2 mois » est en
+          // terre cuite, qui tombe à 3,5:1 sur le puits. Un contrôle qui se
+          // clique se lit d'ailleurs mieux posé au-dessus de la page qu'en creux.
+          className="inline-flex gap-1 rounded-[14px] border border-line bg-panel p-1"
         >
           {(
             [

@@ -52,8 +52,11 @@ export function RecommendationsPanel({
           <h2 className="text-[10px] font-bold tracking-[1.6px] text-ink3">
             ACTIONS RECOMMANDÉES
           </h2>
+          {/* Pastille en cool/cool-bg plutôt qu'accent-text sur panel2 : la
+              terre cuite tombe à 3,5:1 sur le puits, cette paire tient dans les
+              deux thèmes. */}
           {automatable > 0 && (
-            <span className="rounded-full bg-panel2 px-2 py-0.5 text-[10px] font-bold text-accent-text">
+            <span className="rounded-full bg-cool-bg px-2 py-0.5 text-[10px] font-bold text-cool">
               {automatable} applicable{automatable > 1 ? "s" : ""} en un clic
             </span>
           )}

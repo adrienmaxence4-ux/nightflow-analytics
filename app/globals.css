@@ -19,21 +19,31 @@
     /* Rampe de marque : #3A211A → #5A3025 → #6B3E30 → #8A5140 → #C49A6C →
        #D8BD91 → #E8DCC5. Les quatre premières sont sombres, les trois
        dernières claires — d'où la répartition surfaces / textes ci-dessous.
-       Ratios recalculés sur ces surfaces, pas hérités de l'ancienne palette. */
-    --bg: #d8bd91; /* fond de page */
-    --panel: #e8dcc5; /* cartes, sidebar, topbar */
-    --panel2: #d8bd91; /* puits : champs, lignes de tableau, états inactifs */
+       Ratios recalculés sur ces surfaces, pas hérités de l'ancienne palette.
+
+       Règle de surface : la plus GRANDE zone prend la valeur la plus CLAIRE.
+       Une première version donnait #D8BD91 au fond de page — un tan soutenu
+       sur 80 % de l'écran, qui écrasait tout et faisait lire la page entière
+       comme un puits, puisque --panel2 valait la même valeur.
+
+       --panel est la seule couleur dérivée : #E8DCC5 éclairci de 35 % vers le
+       blanc. Le côté clair de la rampe n'a que trois marches, et il lui en
+       faut une de plus pour que la carte se pose AU-DESSUS de la page tout en
+       gardant un puits en dessous. */
+    --bg: #e8dcc5; /* fond de page — la plus grande surface, la plus claire */
+    --panel: #f0e8d9; /* cartes, sidebar, topbar — posées au-dessus */
+    --panel2: #d8bd91; /* puits : champs, tuiles, lignes de tableau */
     --line: #c49a6c; /* bordures 1px */
     --ink: #3a211a; /* texte principal   — 10.9:1 sur --panel */
     --ink2: #5a3025; /* texte secondaire  — 8.2:1  */
     --ink3: #6b3e30; /* labels, méta      — 6.6:1  */
 
     --accent: #8a5140;
-    --accent-ink: #e8dcc5; /* texte sur terre cuite — 4.6:1 */
-    --accent-text: #6b3e30; /* accent lisible en texte sur papier — 6.6:1 */
+    --accent-ink: #f0e8d9; /* texte sur terre cuite — 5.2:1 */
+    --accent-text: #8a5140; /* terre cuite lisible en texte — 5.2:1 sur --panel */
 
     --cool: #6b3e30; /* bordures + texte de la pastille sur --cool-bg — 5.8:1 */
-    --cool-bg: #e0d2b8;
+    --cool-bg: #e9dfc9;
     /* Sémantiques : hors palette, à dessein. La rampe n'a ni vert ni rouge, et
        un « +12,4 % » qui ne se distingue pas d'un « −14 % » d'un coup d'œil
        casse la lecture d'un KPI. Teintes réchauffées pour s'y accorder, et
