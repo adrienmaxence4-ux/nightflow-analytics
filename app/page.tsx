@@ -11,6 +11,7 @@ import {
   Smartphone,
   Sparkles,
   Store,
+  TriangleAlert,
 } from "lucide-react";
 import { PLAN_LIST } from "@/lib/plans";
 import { LandingThemeToggle } from "@/components/landing/theme-toggle-landing";
@@ -263,9 +264,41 @@ export default function LandingPage() {
               </ul>
             </div>
 
-            <div id="demo" className="fade-up-2 scroll-mt-8">
-              <CopilotDemo />
+          {/* Aperçu produit : une vraie analyse, telle que l'app la rend.
+              Volontairement statique et sans commande à actionner — le haut
+              de page pose la promesse, il ne demande rien. La version jouable
+              est plus bas, une fois la promesse lue. */}
+          <div className="fade-up-2 rounded-xl border border-line bg-panel p-6">
+            <div className="mb-5 grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(140px,1fr))]">
+              {[
+                ["Revenu (7j)", "€4 820", "+12,4 %", "text-good"],
+                ["Commandes", "142", "+8,1 %", "text-good"],
+                ["Conversion", "2,1 %", "−14 %", "text-bad"],
+              ].map(([l, v, d, tone]) => (
+                <div key={l} className="rounded-[12px] border border-line bg-panel2 p-4">
+                  <div className="whitespace-nowrap text-[14px] font-semibold text-ink3">{l}</div>
+                  <div className="mt-1.5 whitespace-nowrap font-display text-[26px] font-extrabold" data-numeric>
+                    {v}
+                  </div>
+                  <div className={`whitespace-nowrap text-[15px] font-bold ${tone}`}>{d}</div>
+                </div>
+              ))}
             </div>
+            <div className="rounded-[14px] border border-warn/30 bg-warn-bg p-5">
+              <div className="flex items-center gap-2 text-[15px] font-extrabold tracking-[0.06em] text-accent-text">
+                <TriangleAlert className="h-[18px] w-[18px]" aria-hidden /> RISQUE DÉTECTÉ
+              </div>
+              <p className="mt-3 text-[19px] font-bold leading-snug">
+                Votre best-seller sera en rupture dans ~4 jours (25 unités, ~5,8 ventes/jour).
+              </p>
+              <p className="mt-2.5 text-[17px] leading-relaxed text-ink2">
+                → Passez une commande de réassort d&apos;urgence (min. 60 unités) — ≈ €1 600/sem de CA en jeu.
+              </p>
+            </div>
+            <p className="mt-3.5 text-center text-[15px] text-ink3">
+              Exemple réel d&apos;analyse générée par le Copilot
+            </p>
+          </div>
           </section>
 
           {/* ── Connecteurs ── */}
@@ -278,9 +311,26 @@ export default function LandingPage() {
             </div>
           </section>
 
+          {/* ── Démo jouable ── le hero pose la promesse, ici on la laisse
+              vérifier. Placée après les connecteurs plutôt que dans le hero :
+              des commandes à actionner en haut de page rendent l'accueil
+              nerveux, alors que l'aperçu statique le laisse respirer. ── */}
+          <section id="demo" className="scroll-mt-8 py-[72px]">
+            <h2 className="text-center font-display text-[40px] font-extrabold tracking-[-0.02em]">
+              Posez-lui une question
+            </h2>
+            <p className="mx-auto mb-10 mt-3 max-w-[54ch] text-center text-[19px] leading-relaxed text-ink3">
+              Quatre questions que vous vous posez déjà. Les réponses sont celles du
+              Copilot sur la boutique d&apos;exemple.
+            </p>
+            <div className="mx-auto max-w-[760px]">
+              <CopilotDemo />
+            </div>
+          </section>
+
           {/* ── Le contraste ── la même journée, vue par un dashboard puis par
               Nightflow. C'est l'écart qui vend, pas la liste de features. ── */}
-          <section className="py-[72px]">
+          <section className="border-t border-line py-[72px]">
             <h2 className="text-center font-display text-[40px] font-extrabold tracking-[-0.02em]">
               Le même mardi, deux fois
             </h2>
