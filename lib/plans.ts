@@ -110,7 +110,20 @@ export function priceCents(plan: Plan, interval: BillingInterval): number {
   return interval === "year" ? plan.yearlyCents : plan.monthlyCents;
 }
 
+/**
+ * Prix en euros, formaté en français : séparateur de milliers par espace
+ * insécable, virgule décimale, et pas de « ,00 » sur un montant rond.
+ *
+ * L'ancienne version appelait `.toLocaleString("fr-FR")` sur le retour de
+ * `toFixed(2)` — donc sur une chaîne, où la méthode renvoie la chaîne telle
+ * quelle. Tout montant non entier sortait avec un point : « €7.50 ». Invisible
+ * tant que les plans étaient à 0/9/19 €, mais déjà faux sur le prix mensualisé
+ * de l'abonnement annuel.
+ */
 export function formatEuro(cents: number): string {
   const v = cents / 100;
-  return `€${(Number.isInteger(v) ? v : v.toFixed(2)).toLocaleString("fr-FR")}`;
+  return `€${v.toLocaleString("fr-FR", {
+    minimumFractionDigits: Number.isInteger(v) ? 0 : 2,
+    maximumFractionDigits: 2,
+  })}`;
 }
