@@ -20,7 +20,7 @@ import { PricingTable } from "@/components/landing/pricing-table";
 import { FeedbackForm } from "@/components/landing/feedback-form";
 
 /** Applique la préférence clair/sombre de la landing avant le premier rendu. */
-const LANDING_THEME_SCRIPT = `try{if(localStorage.getItem('nightflow:landing-theme')==='clair'){document.getElementById('landing-root').setAttribute('data-theme','clair')}}catch(e){}`;
+const LANDING_THEME_SCRIPT = `try{if(localStorage.getItem('nightflow:landing-theme')==='sombre'){document.getElementById('landing-root').setAttribute('data-theme','sombre')}}catch(e){}`;
 
 const SITE_URL =
   process.env.NEXT_PUBLIC_SITE_URL ?? "https://nightflow-analytics.vercel.app";
@@ -153,9 +153,13 @@ const STRUCTURED_DATA = {
 
 /**
  * Landing publique — la porte d'entrée des visiteurs non connectés.
- * Toujours en mode sombre par défaut : le conteneur racine force
- * `data-theme="sombre"`, qui redéclare les variables de thème pour toute la
- * page, quel que soit le thème global de l'utilisateur.
+ * Clair par défaut, comme l'application : le conteneur racine porte
+ * `data-theme="clair"`, qui redéclare les variables de thème pour toute la
+ * page. Le visiteur peut basculer en sombre ; son choix est relu avant le
+ * premier rendu par le script ci-dessus, donc sans clignotement.
+ *
+ * Le fond est un dégradé --panel → --bg : une seule règle qui suit le thème,
+ * plutôt qu'un dégradé sombre écrit en dur doublé d'une variante claire.
  *
  * Server Component. Seuls trois îlots sont clients : l'interrupteur de thème,
  * la démo du copilote et la bascule de tarifs.
@@ -165,8 +169,8 @@ export default function LandingPage() {
   return (
     <div
       id="landing-root"
-      data-theme="sombre"
-      className="min-h-screen text-ink [background:linear-gradient(180deg,#5a3025,#3a211a_55%)] data-[theme=clair]:[background:linear-gradient(180deg,var(--panel),var(--bg)_55%)]"
+      data-theme="clair"
+      className="min-h-screen text-ink [background:linear-gradient(180deg,var(--panel),var(--bg)_55%)]"
     >
       <script
         nonce={nonce}
