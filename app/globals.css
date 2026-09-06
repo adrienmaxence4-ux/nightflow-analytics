@@ -246,4 +246,22 @@
   .fade-up-3 {
     animation: fadeUp 0.7s ease-out 0.38s both;
   }
+
+  /* Apparition échelonnée de la réponse du copilote (démo du hero).
+     Le décalage se pose en `animation-delay` inline, ligne par ligne, pour
+     donner l'impression que la réponse s'écrit. La règle globale
+     prefers-reduced-motion plus haut la neutralise sans rien à ajouter. */
+  @keyframes revealUp {
+    from {
+      opacity: 0;
+      transform: translateY(6px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+  .nf-reveal {
+    animation: revealUp var(--dur-slow) var(--ease-out) both;
+  }
 }
