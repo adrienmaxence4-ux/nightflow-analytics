@@ -291,13 +291,13 @@ export default function LandingPage() {
             <div className="mt-12 grid items-stretch gap-5 [grid-template-columns:repeat(auto-fit,minmax(320px,1fr))]">
               {/* Avant — volontairement terne. Les chiffres sont exacts et muets. */}
               <div className="flex flex-col rounded-lg border border-line bg-panel2 p-8">
-                <span className="text-[14px] font-bold tracking-[0.1em] text-ink3">
+                <span className="text-[15px] font-bold tracking-[0.1em] text-ink3">
                   VOTRE DASHBOARD AUJOURD&apos;HUI
                 </span>
                 <div className="mt-6 grid flex-1 gap-x-6 gap-y-5 [grid-template-columns:repeat(auto-fit,minmax(110px,1fr))]">
                   {RAW_METRICS.map(([label, value]) => (
                     <div key={label}>
-                      <div className="text-[14px] text-ink3">{label}</div>
+                      <div className="text-[15px] text-ink3">{label}</div>
                       <div
                         className="mt-0.5 font-display text-[22px] font-extrabold text-ink3"
                         data-numeric
@@ -315,7 +315,7 @@ export default function LandingPage() {
 
               {/* Après — une phrase, une action, un montant. */}
               <div className="flex flex-col rounded-lg border border-accent bg-panel p-8">
-                <span className="text-[14px] font-bold tracking-[0.1em] text-accent-text">
+                <span className="text-[15px] font-bold tracking-[0.1em] text-accent-text">
                   LE MÊME MARDI, AVEC NIGHTFLOW
                 </span>
                 <p className="mt-6 font-display text-[26px] font-extrabold leading-[1.25] tracking-[-0.015em]">

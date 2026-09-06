@@ -95,7 +95,7 @@ export function PricingTable() {
                 <h3 className="font-display text-[24px] font-extrabold">{plan.name}</h3>
                 <span
                   className={[
-                    "rounded-pill px-3 py-1 text-[14px] font-bold",
+                    "rounded-pill px-3 py-1 text-[15px] font-bold",
                     plan.highlight
                       ? "bg-accent text-accent-ink"
                       : "border border-cool text-accent-text",
@@ -154,7 +154,7 @@ export function PricingTable() {
               </Link>
 
               {plan.id === "pro" && (
-                <p className="mt-3 text-center text-[14px] text-ink3">
+                <p className="mt-3 text-center text-[15px] text-ink3">
                   Aucune carte demandée. Annulation en 2 clics.
                 </p>
               )}
