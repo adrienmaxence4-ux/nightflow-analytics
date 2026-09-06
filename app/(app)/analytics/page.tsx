@@ -18,11 +18,52 @@ interface GaChannel {
   share: number;
 }
 
+type GaReason = "not_connected" | "no_property" | "auth" | "no_data" | "ok";
+
+// Ce que dit la carte "D'où viennent vos visiteurs" quand elle n'a aucun canal
+// à montrer. Avant, elle affichait toujours "Connecte Google Analytics" — même
+// quand GA était déjà connecté mais que le token avait expiré ou qu'aucune
+// propriété n'était choisie.
+const GA_EMPTY: Record<GaReason, { title: string; description: string; cta?: string }> = {
+  not_connected: {
+    title: "Sources de trafic pas encore connues",
+    description:
+      "Connecte Google Analytics pour voir la part des réseaux sociaux, de la recherche, de l'accès direct et de l'email dans tes visites.",
+    cta: "Connecter Google Analytics",
+  },
+  no_property: {
+    title: "Choisis ta propriété Google Analytics",
+    description:
+      "Google Analytics est connecté, mais aucune propriété GA4 n'est reliée à cette boutique. Sélectionne celle qui reçoit ton trafic réel.",
+    cta: "Choisir la propriété",
+  },
+  auth: {
+    title: "La connexion Google Analytics a expiré",
+    description:
+      "Reconnecte Google Analytics pour remettre tes sources de trafic à jour.",
+    cta: "Reconnecter",
+  },
+  no_data: {
+    title: "Aucune visite enregistrée pour l'instant",
+    description:
+      "Google Analytics est connecté, mais aucune visite n'a été reçue sur les 12 derniers mois.",
+  },
+  ok: {
+    title: "Aucune visite enregistrée pour l'instant",
+    description:
+      "Google Analytics est connecté, mais aucune visite n'a été reçue sur les 12 derniers mois.",
+  },
+};
+
 export default function AnalyticsPage() {
   const { range, setRange } = useRange("week");
   const [data, setData] = useState(getRangeDataSync("week"));
   const [source, setSource] = useState<"db" | "mock" | null>(null);
-  const [ga, setGa] = useState<{ connected: boolean; channels?: GaChannel[] } | null>(null);
+  const [ga, setGa] = useState<{
+    connected: boolean;
+    channels?: GaChannel[];
+    reason?: GaReason;
+  } | null>(null);
 
   const loadGa = useCallback(() => {
     fetch("/api/analytics/ga")
@@ -71,6 +112,12 @@ export default function AnalyticsPage() {
     ga?.connected && ga.channels?.length
       ? [...ga.channels].sort((a, b) => b.share - a.share)
       : [];
+
+  // Quand il n'y a aucun canal, on explique pourquoi plutôt que de toujours
+  // proposer "Connecter" : la connexion peut être en place mais expirée, ou
+  // sans propriété GA4 choisie.
+  const gaEmpty =
+    GA_EMPTY[ga?.reason ?? (ga?.connected ? "no_data" : "not_connected")];
 
   const funnel = data.funnel ?? [];
   const visitors = funnel[0]?.value ?? 0;
@@ -137,12 +184,14 @@ export default function AnalyticsPage() {
           {sources.length === 0 ? (
             <EmptyState
               icon={Globe2}
-              title="Sources de trafic pas encore connues"
-              description="Connecte Google Analytics pour voir la part des réseaux sociaux, de la recherche, de l'accès direct et de l'email dans tes visites."
+              title={gaEmpty.title}
+              description={gaEmpty.description}
               action={
-                <Link href="/integrations">
-                  <Button size="sm">Connecter Google Analytics</Button>
-                </Link>
+                gaEmpty.cta ? (
+                  <Link href="/integrations">
+                    <Button size="sm">{gaEmpty.cta}</Button>
+                  </Link>
+                ) : undefined
               }
             />
           ) : (
