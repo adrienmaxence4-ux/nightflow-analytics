@@ -53,7 +53,16 @@ export const metadata: Metadata = {
     description:
       "Comprenez ce qui se passe dans votre boutique, pourquoi, et quoi faire — en moins de 30 secondes.",
     locale: "fr_FR",
-    images: [{ url: "/icons/icon-512.png", width: 512, height: 512 }],
+    // Pas d'`images` ici : app/opengraph-image.tsx fournit la carte 1200×630
+    // par convention. Une entrée explicite prendrait le pas sur elle et on
+    // repartirait sur l'icône carrée, rognée par tous les réseaux.
+  },
+  // Sans ce type, X rend une vignette minuscule au lieu de la carte large.
+  twitter: {
+    card: "summary_large_image",
+    title: "Nightflow Analytics — Votre copilote IA e-commerce",
+    description:
+      "Comprenez ce qui se passe dans votre boutique, pourquoi, et quoi faire — en moins de 30 secondes.",
   },
 };
 
