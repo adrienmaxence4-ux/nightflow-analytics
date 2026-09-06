@@ -5,6 +5,8 @@ import "./globals.css";
 import { Providers } from "@/components/providers";
 import { VisitTracker } from "@/components/visit-tracker";
 import { VipCapture } from "@/components/vip-capture";
+import { ConsentBanner } from "@/components/consent-banner";
+import { Contentsquare } from "./contentsquare";
 
 const publicSans = Public_Sans({
   subsets: ["latin"],
@@ -85,9 +87,11 @@ export default function RootLayout({
         />
       </head>
       <body className="min-h-screen">
+        <Contentsquare />
         <VisitTracker />
         <VipCapture />
         <Providers>{children}</Providers>
+        <ConsentBanner />
       </body>
     </html>
   );

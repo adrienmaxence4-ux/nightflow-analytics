@@ -40,3 +40,6 @@ yarn-error.log*
 # Supabase CLI local link state
 /supabase/.temp
 /supabase/.branches
+
+# Contentsquare wizard verification reports
+/.cs-wizard/

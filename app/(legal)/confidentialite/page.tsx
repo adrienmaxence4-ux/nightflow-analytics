@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { ConsentReset } from "@/components/consent-reset";
 
 export const metadata: Metadata = {
   title: "Politique de confidentialité — Nightflow Analytics",
@@ -8,7 +9,7 @@ export default function ConfidentialitePage() {
   return (
     <>
       <h1>Politique de confidentialité</h1>
-      <p className="updated">Dernière mise à jour : 24 août 2026</p>
+      <p className="updated">Dernière mise à jour : 6 septembre 2026</p>
 
       <p>
         Nightflow Analytics («&nbsp;Nightflow&nbsp;», «&nbsp;nous&nbsp;») aide
@@ -89,17 +90,37 @@ export default function ConfidentialitePage() {
 
       <h2>7. Cookies et traceurs</h2>
       <p>
-        Nightflow ne dépose <b>aucun cookie</b> de mesure d&apos;audience ou de
-        publicité. Le seul compteur de visite du site utilise un identifiant
-        aléatoire stocké dans le <b>stockage local de votre navigateur</b>{" "}
-        (localStorage), jamais un cookie&nbsp;: il n&apos;est pas envoyé à
-        chaque requête, ne traverse aucun domaine tiers, et ne contient ni
-        adresse IP ni donnée personnelle. Les cookies techniques que nous
-        posons (session de connexion, et un jeton temporaire de 10 minutes
-        pendant la connexion d&apos;une intégration) sont strictement
-        nécessaires au fonctionnement du service et ne demandent pas de
-        consentement. Pour faire supprimer les statistiques associées à votre
-        navigateur, écrivez-nous.
+        Nightflow ne dépose <b>aucun cookie publicitaire</b> et ne revend rien.
+        Trois catégories seulement&nbsp;:
+      </p>
+      <ul>
+        <li>
+          <b>Strictement nécessaires — sans consentement.</b> Session de
+          connexion, et un jeton temporaire de 10 minutes pendant la connexion
+          d&apos;une intégration. Le service ne peut pas fonctionner sans eux.
+        </li>
+        <li>
+          <b>Compteur de visite interne — sans consentement.</b> Un identifiant
+          aléatoire stocké dans le <b>stockage local de votre navigateur</b>{" "}
+          (localStorage), jamais un cookie&nbsp;: il n&apos;est pas envoyé à
+          chaque requête, ne traverse aucun domaine tiers, ne contient ni
+          adresse IP ni donnée personnelle, et sert uniquement à compter les
+          visites de ce site. Il relève de l&apos;exemption de mesure
+          d&apos;audience.
+        </li>
+        <li>
+          <b>Mesure d&apos;audience détaillée (Contentsquare) — soumise à votre
+          accord.</b> Ce traceur analyse la façon dont les pages sont utilisées.
+          Il <b>ne se charge pas du tout</b> tant que vous n&apos;avez pas
+          cliqué «&nbsp;Accepter&nbsp;» dans la bannière. Refuser n&apos;a
+          aucune conséquence sur le fonctionnement du site, et votre choix est
+          révocable à tout moment ci-dessous.
+        </li>
+      </ul>
+      <ConsentReset />
+      <p>
+        Pour faire supprimer les statistiques associées à votre navigateur,
+        écrivez-nous.
       </p>
 
       <h2>8. Sous-traitants</h2>
@@ -107,6 +128,16 @@ export default function ConfidentialitePage() {
         <li><b>Supabase</b> — base de données & authentification.</li>
         <li><b>Vercel</b> — hébergement de l&apos;application.</li>
         <li><b>Stripe</b> — paiement des abonnements.</li>
+        <li>
+          <b>Contentsquare</b> — mesure d&apos;audience détaillée du site
+          public. Chargé uniquement si vous l&apos;acceptez dans la bannière
+          (voir §7).
+        </li>
+        <li>
+          <b>hCaptcha (Intuition Machines)</b> — protection des formulaires de
+          connexion et d&apos;inscription contre les robots. Nécessaire à la
+          sécurité du service.
+        </li>
         <li>
           <b>Google (Gemini) et Anthropic (Claude)</b> — génération des
           analyses IA. Un résumé chiffré et anonyme de votre activité leur est
