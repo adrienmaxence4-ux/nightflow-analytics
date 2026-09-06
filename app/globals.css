@@ -16,53 +16,69 @@
   [data-theme="clair"] {
     color-scheme: light;
 
-    --bg: #e7e0d1; /* fond de page */
-    --panel: #f4efe4; /* cartes, sidebar, topbar */
-    --panel2: #ece5d7; /* puits : champs, lignes de tableau, états inactifs */
-    --line: #d3cab8; /* bordures 1px */
-    --ink: #14171b; /* texte principal   — 14.9:1 sur --panel */
-    --ink2: #4a4e46; /* texte secondaire  — 8.1:1  */
-    --ink3: #6e6a5f; /* labels, méta      — 4.9:1  */
+    /* Rampe de marque : #3A211A → #5A3025 → #6B3E30 → #8A5140 → #C49A6C →
+       #D8BD91 → #E8DCC5. Les quatre premières sont sombres, les trois
+       dernières claires — d'où la répartition surfaces / textes ci-dessous.
+       Ratios recalculés sur ces surfaces, pas hérités de l'ancienne palette. */
+    --bg: #d8bd91; /* fond de page */
+    --panel: #e8dcc5; /* cartes, sidebar, topbar */
+    --panel2: #d8bd91; /* puits : champs, lignes de tableau, états inactifs */
+    --line: #c49a6c; /* bordures 1px */
+    --ink: #3a211a; /* texte principal   — 10.9:1 sur --panel */
+    --ink2: #5a3025; /* texte secondaire  — 8.2:1  */
+    --ink3: #6b3e30; /* labels, méta      — 6.6:1  */
 
-    --accent: #d08b4f;
-    --accent-ink: #14171b; /* texte sur ambre */
-    --accent-text: #a8652b; /* ambre lisible en texte sur papier */
+    --accent: #8a5140;
+    --accent-ink: #e8dcc5; /* texte sur terre cuite — 4.6:1 */
+    --accent-text: #6b3e30; /* accent lisible en texte sur papier — 6.6:1 */
 
-    --cool: #2c4f5e;
-    --cool-bg: #dfe4e4;
-    --good: #3f6b4f;
-    --good-bg: #e3e8de;
-    --bad: #a2432c;
-    --bad-bg: #f0e2dc;
-    --warn: #8a6a2f;
-    --warn-bg: #f1e6d3;
+    --cool: #6b3e30; /* bordures + texte de la pastille sur --cool-bg — 5.8:1 */
+    --cool-bg: #e0d2b8;
+    /* Sémantiques : hors palette, à dessein. La rampe n'a ni vert ni rouge, et
+       un « +12,4 % » qui ne se distingue pas d'un « −14 % » d'un coup d'œil
+       casse la lecture d'un KPI. Teintes réchauffées pour s'y accorder, et
+       toutes vérifiées ≥ 4,6:1 sur bg, panel, panel2 et leur propre fond. */
+    --good: #215737;
+    --good-bg: #dce6d5;
+    --bad: #873222;
+    --bad-bg: #f0dacf;
+    --warn: #694716;
+    --warn-bg: #efe0c0;
 
-    --shadow: 0 1px 2px rgba(20, 23, 27, 0.06);
+    --shadow: 0 1px 2px rgba(58, 33, 26, 0.1);
   }
 
   [data-theme="sombre"] {
     color-scheme: dark;
 
-    --bg: #08090c;
-    --panel: #0e151d;
-    --panel2: #121b24;
-    --line: #22303a;
-    --ink: #ece7dd;
-    --ink2: #b3b8b9;
-    --ink3: #8d9599;
+    --bg: #3a211a;
+    --panel: #5a3025;
+    --panel2: #6b3e30;
+    --line: #8a5140;
+    --ink: #e8dcc5; /* texte principal   — 8.2:1 sur --panel */
+    --ink2: #d8bd91; /* texte secondaire  — 6.2:1  */
+    /* ink3 vaut ink2 ici, à regret : #C49A6C tombe à 4,3:1 sur --panel et
+       4,9:1 seulement sur --panel2. Le côté clair de la rampe n'a que trois
+       marches, il ne peut pas porter trois niveaux de texte sur trois niveaux
+       de surface sans passer sous AA. Le clair, lui, les tient tous. */
+    --ink3: #d8bd91; /* labels, méta      — 6.2:1  */
 
-    --accent: #d08b4f;
-    --accent-ink: #08090c;
-    --accent-text: #e09a55;
+    --accent: #c49a6c;
+    --accent-ink: #3a211a; /* texte sur camel — 5.8:1 */
+    --accent-text: #d8bd91;
 
-    --cool: #2c4f5e;
-    --cool-bg: #16242c;
-    --good: #8fbf9c;
-    --good-bg: #15251b;
-    --bad: #e0907a;
-    --bad-bg: #2a1713;
-    --warn: #e0b978;
-    --warn-bg: #2a2114;
+    /* --cool ne sert qu'aux BORDURES et à la pastille posée sur --cool-bg.
+       Comme texte sur --panel2 il tomberait à 3,5:1 : les quelques usages en
+       texte sont passés à --accent-text, lisible sur toutes les surfaces. */
+    --cool: #c49a6c; /* bordure sur --bg 5.8:1 · texte sur --cool-bg 5.1:1 */
+    --cool-bg: #4a2a20;
+    /* Voir la note du thème clair : hors palette, à dessein. */
+    --good: #84ca9b;
+    --good-bg: #23331f;
+    --bad: #e4afa2;
+    --bad-bg: #43231b;
+    --warn: #deb47a;
+    --warn-bg: #43301a;
 
     --shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
   }

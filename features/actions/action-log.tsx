@@ -116,7 +116,7 @@ export function ActionLog({ refreshKey = 0 }: { refreshKey?: number }) {
                 <p className="flex items-center gap-1.5 text-[13px] font-semibold text-ink">
                   <span className="truncate">{a.summary}</span>
                   {a.simulated && (
-                    <span className="inline-flex flex-none items-center gap-1 rounded-md bg-panel2 px-1.5 py-0.5 text-[9.5px] font-bold tracking-[0.06em] text-cool">
+                    <span className="inline-flex flex-none items-center gap-1 rounded-md bg-panel2 px-1.5 py-0.5 text-[9.5px] font-bold tracking-[0.06em] text-accent-text">
                       <FlaskConical className="h-2.5 w-2.5" aria-hidden />
                       Démo
                     </span>

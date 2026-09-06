@@ -21,7 +21,7 @@ const KIND_TEXT: Record<AnalysisCardType["accent"], string> = {
   pink: "text-bad",
   violet: "text-warn",
   lime: "text-good",
-  cyan: "text-cool",
+  cyan: "text-accent-text",
 };
 
 export function AnalysisCard({

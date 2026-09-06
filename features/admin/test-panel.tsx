@@ -58,7 +58,7 @@ export function TestPanel({ onApplied }: { onApplied?: () => void }) {
     <div className="rounded-[16px] border border-dashed border-line bg-panel2 p-3">
       <button
         onClick={() => setOpen((o) => !o)}
-        className="flex w-full items-center gap-2 text-left text-[12px] font-bold text-cool"
+        className="flex w-full items-center gap-2 text-left text-[12px] font-bold text-accent-text"
       >
         <FlaskConical className="h-4 w-4" />
         Mode test (admin) — déclencher une détection

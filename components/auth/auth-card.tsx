@@ -106,7 +106,7 @@ export function AuthCard({ mode }: { mode: "login" | "signup" }) {
         type="button"
         onClick={google}
         disabled={googleBusy || busy}
-        className="flex min-h-[56px] w-full items-center justify-center gap-3 rounded-[12px] border border-line bg-[#f4efe4] text-[18px] font-bold text-[#14171b] transition hover:brightness-[0.97] disabled:opacity-60"
+        className="flex min-h-[56px] w-full items-center justify-center gap-3 rounded-[12px] border border-line bg-[#e8dcc5] text-[18px] font-bold text-[#3a211a] transition hover:brightness-[0.97] disabled:opacity-60"
       >
         <GoogleIcon />
         {googleBusy

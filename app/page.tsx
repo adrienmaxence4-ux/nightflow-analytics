@@ -166,7 +166,7 @@ export default function LandingPage() {
     <div
       id="landing-root"
       data-theme="sombre"
-      className="min-h-screen text-ink [background:linear-gradient(180deg,#0d1219,#08090c_55%)] data-[theme=clair]:[background:linear-gradient(180deg,var(--panel),var(--bg)_55%)]"
+      className="min-h-screen text-ink [background:linear-gradient(180deg,#5a3025,#3a211a_55%)] data-[theme=clair]:[background:linear-gradient(180deg,var(--panel),var(--bg)_55%)]"
     >
       <script
         nonce={nonce}
