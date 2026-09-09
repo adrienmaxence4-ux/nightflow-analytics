@@ -2,9 +2,11 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { headers } from "next/headers";
 import {
+  AppWindow,
   ArrowRight,
   BellRing,
   Check,
+  Download,
   FileText,
   Moon,
   Radar,
@@ -13,6 +15,7 @@ import {
   Store,
 } from "lucide-react";
 import { PLAN_LIST } from "@/lib/plans";
+import { DESKTOP, desktopDownloadReady } from "@/lib/desktop";
 import { LandingThemeToggle } from "@/components/landing/theme-toggle-landing";
 import { CopilotDemo } from "@/components/landing/copilot-demo";
 import { PricingTable } from "@/components/landing/pricing-table";
@@ -161,6 +164,9 @@ const STRUCTURED_DATA = {
  */
 export default function LandingPage() {
   const nonce = headers().get("x-nonce") ?? undefined;
+  // Server Component : on sait ici si une source de téléchargement est
+  // configurée, donc on n'affiche jamais un bouton qui mène au vide.
+  const bureauDisponible = desktopDownloadReady();
   return (
     <div
       id="landing-root"
@@ -383,7 +389,43 @@ export default function LandingPage() {
             </div>
           </section>
 
-          {/* ── Tarifs ── */}
+          {/* ── App Windows ── placée juste après les fonctionnalités, là où le
+            lecteur vient de voir « App desktop & mobile » : la page /telecharger
+            était jusqu'ici orpheline, aucun lien n'y menait depuis l'accueil.
+            Le bouton mène à cette page plutôt qu'au fichier : l'installateur
+            n'est pas signé, Windows affiche un avertissement, et /telecharger
+            l'explique avec les étapes. Envoyer droit sur le .exe ferait passer
+            l'app pour un virus. ── */}
+        {bureauDisponible && (
+          <section id="bureau" className="border-t border-line py-[72px]">
+            <div className="mx-auto flex max-w-[860px] flex-col items-center gap-7 rounded-[16px] border border-line bg-panel px-8 py-10 text-center lg:flex-row lg:text-left">
+              <span className="grid h-[68px] w-[68px] flex-none place-items-center rounded-[16px] bg-accent">
+                <AppWindow className="h-8 w-8 text-accent-ink" strokeWidth={2} aria-hidden />
+              </span>
+              <div className="flex-1">
+                <h2 className="font-display text-[26px] font-extrabold tracking-[-0.015em]">
+                  Il veille même quand votre navigateur est fermé
+                </h2>
+                <p className="mt-2.5 text-[17px] leading-relaxed text-ink2">
+                  L&apos;agent Windows interroge le moteur de détection toutes les
+                  30 minutes et vous envoie une notification native dès qu&apos;une
+                  alerte tombe — rupture de stock, chute de CA, pub déficitaire.
+                </p>
+              </div>
+              <Link
+                href="/telecharger"
+                className="inline-flex min-h-[56px] flex-none items-center gap-2.5 rounded-[12px] bg-accent px-7 text-[18px] font-bold text-accent-ink transition hover:brightness-95"
+              >
+                <Download className="h-5 w-5" aria-hidden /> Télécharger pour Windows
+              </Link>
+            </div>
+            <p className="mt-4 text-center text-[15px] text-ink3">
+              {DESKTOP.minOs} · ≈ {DESKTOP.windowsSizeMb} Mo · inclus avec votre compte
+            </p>
+          </section>
+        )}
+
+        {/* ── Tarifs ── */}
           <section id="tarifs" className="border-t border-line py-[72px]">
             <h2 className="text-center font-display text-[40px] font-extrabold tracking-[-0.02em]">
               Tarifs simples, sans surprise
