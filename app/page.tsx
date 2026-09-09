@@ -11,7 +11,6 @@ import {
   Smartphone,
   Sparkles,
   Store,
-  TriangleAlert,
 } from "lucide-react";
 import { PLAN_LIST } from "@/lib/plans";
 import { LandingThemeToggle } from "@/components/landing/theme-toggle-landing";
@@ -20,7 +19,7 @@ import { PricingTable } from "@/components/landing/pricing-table";
 import { FeedbackForm } from "@/components/landing/feedback-form";
 
 /** Applique la préférence clair/sombre de la landing avant le premier rendu. */
-const LANDING_THEME_SCRIPT = `try{if(localStorage.getItem('nightflow:landing-theme')==='sombre'){document.getElementById('landing-root').setAttribute('data-theme','sombre')}}catch(e){}`;
+const LANDING_THEME_SCRIPT = `try{if(localStorage.getItem('nightflow:landing-theme')==='clair'){document.getElementById('landing-root').setAttribute('data-theme','clair')}}catch(e){}`;
 
 const SITE_URL =
   process.env.NEXT_PUBLIC_SITE_URL ?? "https://nightflow-analytics.vercel.app";
@@ -153,13 +152,9 @@ const STRUCTURED_DATA = {
 
 /**
  * Landing publique — la porte d'entrée des visiteurs non connectés.
- * Clair par défaut, comme l'application : le conteneur racine porte
- * `data-theme="clair"`, qui redéclare les variables de thème pour toute la
- * page. Le visiteur peut basculer en sombre ; son choix est relu avant le
- * premier rendu par le script ci-dessus, donc sans clignotement.
- *
- * Le fond est un dégradé --panel → --bg : une seule règle qui suit le thème,
- * plutôt qu'un dégradé sombre écrit en dur doublé d'une variante claire.
+ * Toujours en mode sombre par défaut : le conteneur racine force
+ * `data-theme="sombre"`, qui redéclare les variables de thème pour toute la
+ * page, quel que soit le thème global de l'utilisateur.
  *
  * Server Component. Seuls trois îlots sont clients : l'interrupteur de thème,
  * la démo du copilote et la bascule de tarifs.
@@ -169,8 +164,8 @@ export default function LandingPage() {
   return (
     <div
       id="landing-root"
-      data-theme="clair"
-      className="min-h-screen text-ink [background:linear-gradient(180deg,var(--panel),var(--bg)_55%)]"
+      data-theme="sombre"
+      className="min-h-screen text-ink [background:linear-gradient(180deg,#0d1219,#08090c_55%)] data-[theme=clair]:[background:linear-gradient(180deg,var(--panel),var(--bg)_55%)]"
     >
       <script
         nonce={nonce}
@@ -268,41 +263,9 @@ export default function LandingPage() {
               </ul>
             </div>
 
-          {/* Aperçu produit : une vraie analyse, telle que l'app la rend.
-              Volontairement statique et sans commande à actionner — le haut
-              de page pose la promesse, il ne demande rien. La version jouable
-              est plus bas, une fois la promesse lue. */}
-          <div className="fade-up-2 rounded-xl border border-line bg-panel p-6">
-            <div className="mb-5 grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(140px,1fr))]">
-              {[
-                ["Revenu (7j)", "€4 820", "+12,4 %", "text-good"],
-                ["Commandes", "142", "+8,1 %", "text-good"],
-                ["Conversion", "2,1 %", "−14 %", "text-bad"],
-              ].map(([l, v, d, tone]) => (
-                <div key={l} className="rounded-[12px] border border-line bg-panel2 p-4">
-                  <div className="whitespace-nowrap text-[14px] font-semibold text-ink3">{l}</div>
-                  <div className="mt-1.5 whitespace-nowrap font-display text-[26px] font-extrabold" data-numeric>
-                    {v}
-                  </div>
-                  <div className={`whitespace-nowrap text-[15px] font-bold ${tone}`}>{d}</div>
-                </div>
-              ))}
+            <div id="demo" className="fade-up-2 scroll-mt-8">
+              <CopilotDemo />
             </div>
-            <div className="rounded-[14px] border border-warn/30 bg-warn-bg p-5">
-              <div className="flex items-center gap-2 text-[15px] font-extrabold tracking-[0.06em] text-accent-text">
-                <TriangleAlert className="h-[18px] w-[18px]" aria-hidden /> RISQUE DÉTECTÉ
-              </div>
-              <p className="mt-3 text-[19px] font-bold leading-snug">
-                Votre best-seller sera en rupture dans ~4 jours (25 unités, ~5,8 ventes/jour).
-              </p>
-              <p className="mt-2.5 text-[17px] leading-relaxed text-ink2">
-                → Passez une commande de réassort d&apos;urgence (min. 60 unités) — ≈ €1 600/sem de CA en jeu.
-              </p>
-            </div>
-            <p className="mt-3.5 text-center text-[15px] text-ink3">
-              Exemple réel d&apos;analyse générée par le Copilot
-            </p>
-          </div>
           </section>
 
           {/* ── Connecteurs ── */}
@@ -315,26 +278,9 @@ export default function LandingPage() {
             </div>
           </section>
 
-          {/* ── Démo jouable ── le hero pose la promesse, ici on la laisse
-              vérifier. Placée après les connecteurs plutôt que dans le hero :
-              des commandes à actionner en haut de page rendent l'accueil
-              nerveux, alors que l'aperçu statique le laisse respirer. ── */}
-          <section id="demo" className="scroll-mt-8 py-[72px]">
-            <h2 className="text-center font-display text-[40px] font-extrabold tracking-[-0.02em]">
-              Posez-lui une question
-            </h2>
-            <p className="mx-auto mb-10 mt-3 max-w-[54ch] text-center text-[19px] leading-relaxed text-ink3">
-              Quatre questions que vous vous posez déjà. Les réponses sont celles du
-              Copilot sur la boutique d&apos;exemple.
-            </p>
-            <div className="mx-auto max-w-[760px]">
-              <CopilotDemo />
-            </div>
-          </section>
-
           {/* ── Le contraste ── la même journée, vue par un dashboard puis par
               Nightflow. C'est l'écart qui vend, pas la liste de features. ── */}
-          <section className="border-t border-line py-[72px]">
+          <section className="py-[72px]">
             <h2 className="text-center font-display text-[40px] font-extrabold tracking-[-0.02em]">
               Le même mardi, deux fois
             </h2>
@@ -345,13 +291,13 @@ export default function LandingPage() {
             <div className="mt-12 grid items-stretch gap-5 [grid-template-columns:repeat(auto-fit,minmax(320px,1fr))]">
               {/* Avant — volontairement terne. Les chiffres sont exacts et muets. */}
               <div className="flex flex-col rounded-lg border border-line bg-panel2 p-8">
-                <span className="text-[15px] font-bold tracking-[0.1em] text-ink3">
+                <span className="text-[14px] font-bold tracking-[0.1em] text-ink3">
                   VOTRE DASHBOARD AUJOURD&apos;HUI
                 </span>
                 <div className="mt-6 grid flex-1 gap-x-6 gap-y-5 [grid-template-columns:repeat(auto-fit,minmax(110px,1fr))]">
                   {RAW_METRICS.map(([label, value]) => (
                     <div key={label}>
-                      <div className="text-[15px] text-ink3">{label}</div>
+                      <div className="text-[14px] text-ink3">{label}</div>
                       <div
                         className="mt-0.5 font-display text-[22px] font-extrabold text-ink3"
                         data-numeric
@@ -369,7 +315,7 @@ export default function LandingPage() {
 
               {/* Après — une phrase, une action, un montant. */}
               <div className="flex flex-col rounded-lg border border-accent bg-panel p-8">
-                <span className="text-[15px] font-bold tracking-[0.1em] text-accent-text">
+                <span className="text-[14px] font-bold tracking-[0.1em] text-accent-text">
                   LE MÊME MARDI, AVEC NIGHTFLOW
                 </span>
                 <p className="mt-6 font-display text-[26px] font-extrabold leading-[1.25] tracking-[-0.015em]">

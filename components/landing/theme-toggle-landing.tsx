@@ -8,9 +8,6 @@ import { Moon, Sun } from "lucide-react";
  * Ces pages sont indépendantes du thème global de l'app : elles portent leur
  * propre `data-theme` sur un conteneur `#<rootId>`, persisté sous une clé
  * séparée pour ne pas écraser la préférence de l'application.
- *
- * L'état initial est `clair`, comme le conteneur rendu par le serveur : partir
- * de `sombre` afficherait brièvement le mauvais libellé avant l'effet.
  */
 type Theme = "clair" | "sombre";
 
@@ -21,7 +18,7 @@ export function LandingThemeToggle({
   rootId?: string;
   storageKey?: string;
 }) {
-  const [theme, setTheme] = useState<Theme>("clair");
+  const [theme, setTheme] = useState<Theme>("sombre");
 
   useEffect(() => {
     const cur = document.getElementById(rootId)?.getAttribute("data-theme");

@@ -217,7 +217,7 @@ export default function SocialPage() {
                 Elles renvoient vers le lien en bio, qui est le même pour toutes —
                 impossible de savoir laquelle a amené un visiteur. Pour les
                 départager, mettez un lien{" "}
-                <code className="rounded bg-panel2 px-1.5 text-ink">
+                <code className="rounded bg-panel2 px-1.5 text-accent-text">
                   ?a=CODE
                 </code>{" "}
                 différent dans chaque légende.

@@ -4,10 +4,10 @@ import { LandingThemeToggle } from "@/components/landing/theme-toggle-landing";
 
 /**
  * Connexion / inscription. Indépendant du thème global de l'app : le conteneur
- * porte son propre `data-theme` (défaut clair), partagé avec la landing via la
+ * porte son propre `data-theme` (défaut sombre), partagé avec la landing via la
  * clé `nightflow:landing-theme`, et pilotable par l'interrupteur en haut.
  */
-const AUTH_THEME_SCRIPT = `try{if(localStorage.getItem('nightflow:landing-theme')==='sombre'){document.getElementById('auth-root').setAttribute('data-theme','sombre')}}catch(e){}`;
+const AUTH_THEME_SCRIPT = `try{if(localStorage.getItem('nightflow:landing-theme')==='clair'){document.getElementById('auth-root').setAttribute('data-theme','clair')}}catch(e){}`;
 
 export default function AuthLayout({
   children,
@@ -18,8 +18,8 @@ export default function AuthLayout({
   return (
     <div
       id="auth-root"
-      data-theme="clair"
-      className="flex min-h-screen flex-col items-center justify-center gap-6 px-4 py-10 text-ink [background:linear-gradient(180deg,var(--panel),var(--bg)_60%)]"
+      data-theme="sombre"
+      className="flex min-h-screen flex-col items-center justify-center gap-6 px-4 py-10 text-ink [background:linear-gradient(180deg,#0d1219,#08090c_60%)] data-[theme=clair]:[background:linear-gradient(180deg,var(--panel),var(--bg)_60%)]"
     >
       <script
         nonce={nonce}

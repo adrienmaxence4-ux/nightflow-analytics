@@ -385,9 +385,9 @@ export function ApplySheet({
 function SimulationNotice() {
   return (
     <div className="flex gap-3 rounded-xl border border-line bg-panel2 p-3.5">
-      <FlaskConical className="mt-0.5 h-4 w-4 flex-none text-accent-text" aria-hidden />
+      <FlaskConical className="mt-0.5 h-4 w-4 flex-none text-cool" aria-hidden />
       <p className="text-[12px] leading-relaxed text-ink2">
-        <b className="text-accent-text">Mode démonstration.</b> Aucune boutique
+        <b className="text-cool">Mode démonstration.</b> Aucune boutique
         réelle n&apos;est connectée : la modification s&apos;applique à tes données
         de démonstration, pour que tu voies exactement ce que Nightflow ferait.
       </p>

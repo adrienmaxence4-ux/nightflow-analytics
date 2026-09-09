@@ -41,10 +41,7 @@ export function PricingTable() {
         <div
           role="group"
           aria-label="Période de facturation"
-          // Rail sur --panel et non --panel2 : la mention « −2 mois » est en
-          // terre cuite, qui tombe à 3,5:1 sur le puits. Un contrôle qui se
-          // clique se lit d'ailleurs mieux posé au-dessus de la page qu'en creux.
-          className="inline-flex gap-1 rounded-[14px] border border-line bg-panel p-1"
+          className="inline-flex gap-1 rounded-[14px] border border-line bg-panel2 p-1"
         >
           {(
             [
@@ -98,7 +95,7 @@ export function PricingTable() {
                 <h3 className="font-display text-[24px] font-extrabold">{plan.name}</h3>
                 <span
                   className={[
-                    "rounded-pill px-3 py-1 text-[15px] font-bold",
+                    "rounded-pill px-3 py-1 text-[14px] font-bold",
                     plan.highlight
                       ? "bg-accent text-accent-ink"
                       : "border border-cool text-accent-text",
@@ -157,7 +154,7 @@ export function PricingTable() {
               </Link>
 
               {plan.id === "pro" && (
-                <p className="mt-3 text-center text-[15px] text-ink3">
+                <p className="mt-3 text-center text-[14px] text-ink3">
                   Aucune carte demandée. Annulation en 2 clics.
                 </p>
               )}

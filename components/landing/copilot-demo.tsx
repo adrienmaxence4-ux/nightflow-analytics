@@ -112,34 +112,34 @@ export function CopilotDemo() {
   const active = DEMOS.find((d) => d.id === activeId) ?? DEMOS[0];
 
   return (
-    <div className="rounded-xl border border-line bg-panel p-6 sm:p-7">
+    <div className="rounded-xl border border-line bg-panel p-5 sm:p-6">
       {/* En-tête : on annonce que c'est une démo, sans ambiguïté. */}
       <div className="mb-5 flex flex-wrap items-center gap-x-3 gap-y-1.5">
-        <span className="inline-flex items-center gap-1.5 rounded-pill bg-accent px-3.5 py-1.5 text-[15px] font-extrabold tracking-[0.04em] text-accent-ink">
+        <span className="inline-flex items-center gap-1.5 rounded-pill bg-accent px-3 py-1 text-[13px] font-extrabold tracking-[0.04em] text-accent-ink">
           <Sparkles className="h-3.5 w-3.5" aria-hidden /> DÉMO JOUABLE
         </span>
-        <span className="text-[16px] text-ink3">
+        <span className="text-[14px] text-ink3">
           Boutique d&apos;exemple MoonStore — cliquez une question
         </span>
       </div>
 
       {/* KPIs — ils suivent la question posée. */}
-      <div className="mb-4 grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(140px,1fr))]">
+      <div className="mb-4 grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(120px,1fr))]">
         {active.kpis.map((k) => (
           <div
             key={`${active.id}-${k.label}`}
-            className="nf-reveal rounded-[12px] border border-line bg-panel2 p-4"
+            className="nf-reveal rounded-[12px] border border-line bg-panel2 p-3.5"
           >
-            <div className="whitespace-nowrap text-[15px] font-semibold text-ink3">
+            <div className="whitespace-nowrap text-[13px] font-semibold text-ink3">
               {k.label}
             </div>
             <div
-              className="mt-1 whitespace-nowrap font-display text-[26px] font-extrabold"
+              className="mt-1 whitespace-nowrap font-display text-[24px] font-extrabold"
               data-numeric
             >
               {k.value}
             </div>
-            <div className={`whitespace-nowrap text-[15px] font-bold ${TONE_CLASS[k.tone]}`}>
+            <div className={`whitespace-nowrap text-[14px] font-bold ${TONE_CLASS[k.tone]}`}>
               {k.delta}
             </div>
           </div>
@@ -161,7 +161,7 @@ export function CopilotDemo() {
               onClick={() => setActiveId(d.id)}
               aria-pressed={on}
               className={[
-                "min-h-tap rounded-[12px] border px-5 text-left text-[16px] font-semibold transition duration-fast",
+                "min-h-tap rounded-[12px] border px-4 text-left text-[15px] font-semibold transition duration-fast",
                 on
                   ? "border-accent bg-accent text-accent-ink"
                   : "border-line bg-panel2 text-ink2 hover:border-accent hover:text-ink active:brightness-95",
@@ -179,9 +179,9 @@ export function CopilotDemo() {
         key={active.id}
         aria-live="polite"
         aria-atomic="true"
-        className="rounded-[14px] border border-warn/30 bg-warn-bg p-6"
+        className="rounded-[14px] border border-warn/30 bg-warn-bg p-5"
       >
-        <div className="nf-reveal flex items-center gap-2 text-[15px] font-extrabold tracking-[0.06em] text-accent-text">
+        <div className="nf-reveal flex items-center gap-2 text-[14px] font-extrabold tracking-[0.06em] text-accent-text">
           <TriangleAlert className="h-4 w-4 flex-none" aria-hidden /> RÉPONSE DU COPILOTE
         </div>
 
@@ -196,7 +196,7 @@ export function CopilotDemo() {
           {active.evidence.map((e, i) => (
             <li
               key={e}
-              className="nf-reveal flex gap-2.5 text-[17px] leading-relaxed text-ink2"
+              className="nf-reveal flex gap-2.5 text-[16px] leading-relaxed text-ink2"
               style={{ animationDelay: `${140 + i * 70}ms` }}
             >
               <span className="mt-2.5 h-1.5 w-1.5 flex-none rounded-pill bg-accent" aria-hidden />

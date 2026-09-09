@@ -28,10 +28,10 @@ export const alt = "Nightflow Analytics — Votre copilote IA e-commerce";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
-const INK = "#e8dcc5";
-const INK2 = "#d8bd91";
-const ACCENT = "#c49a6c";
-const ACCENT_INK = "#3a211a";
+const INK = "#ece7dd";
+const INK2 = "#b3b8b9";
+const ACCENT = "#d08b4f";
+const ACCENT_INK = "#08090c";
 
 export default function Image() {
   return new ImageResponse(
@@ -44,7 +44,7 @@ export default function Image() {
           flexDirection: "column",
           justifyContent: "space-between",
           padding: "72px 80px",
-          background: "linear-gradient(160deg, #5a3025 0%, #3a211a 60%)",
+          background: "linear-gradient(160deg, #0d1219 0%, #08090c 60%)",
           color: INK,
           fontFamily: "sans-serif",
         }}
