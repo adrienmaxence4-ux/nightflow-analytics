@@ -9,7 +9,7 @@ export default function ConfidentialitePage() {
   return (
     <>
       <h1>Politique de confidentialité</h1>
-      <p className="updated">Dernière mise à jour : 6 septembre 2026</p>
+      <p className="updated">Dernière mise à jour : 10 septembre 2026</p>
 
       <p>
         Nightflow Analytics («&nbsp;Nightflow&nbsp;», «&nbsp;nous&nbsp;») aide
@@ -148,6 +148,12 @@ export default function ConfidentialitePage() {
           <b>Meta / Instagram</b> — uniquement si vous connectez votre compte
           Instagram ou Meta Ads&nbsp;: nous lisons les statistiques de vos
           publications et de vos campagnes, jamais les données de vos clients.
+        </li>
+        <li>
+          <b>TikTok</b> — uniquement si vous connectez votre compte TikTok for
+          Business : nous lisons les statistiques de vos campagnes
+          publicitaires, jamais les données de vos clients. Détail dans la{" "}
+          <a href="/tiktok/privacy">politique de confidentialité TikTok</a>.
         </li>
         <li>
           <b>Windsor.ai</b> — uniquement si vous connectez une régie

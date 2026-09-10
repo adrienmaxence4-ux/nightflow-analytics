@@ -216,6 +216,20 @@
     text-decoration: underline;
     text-underline-offset: 2px;
   }
+  /* Pastilles de langue des pages légales TikTok. Elles vivent dans
+     .legal-prose : sans cette règle, le style de lien ci-dessus les
+     repeindrait en texte souligné accentué. */
+  .legal-prose .lang-pill {
+    color: var(--ink2);
+    text-decoration: none;
+  }
+  .legal-prose .lang-pill:hover {
+    color: var(--ink);
+  }
+  .legal-prose .lang-pill[aria-current] {
+    color: var(--accent-ink);
+  }
+
   .legal-prose b,
   .legal-prose strong {
     color: var(--ink);

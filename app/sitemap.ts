@@ -20,5 +20,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: `${BASE}/confidentialite`, lastModified: now, priority: 0.3 },
     { url: `${BASE}/conditions`, lastModified: now, priority: 0.3 },
     { url: `${BASE}/mentions-legales`, lastModified: now, priority: 0.3 },
+    { url: `${BASE}/tiktok/terms`, lastModified: now, priority: 0.2 },
+    { url: `${BASE}/tiktok/privacy`, lastModified: now, priority: 0.2 },
   ];
 }
