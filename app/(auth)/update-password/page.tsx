@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Moon } from "lucide-react";
+import { Field } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
@@ -49,11 +51,8 @@ export default function UpdatePasswordPage() {
     router.push("/dashboard");
   };
 
-  const fieldClass =
-    "w-full min-h-[56px] rounded-[12px] border border-line bg-panel2 px-4 text-[18px] text-ink outline-none transition placeholder:text-ink3 focus-visible:border-accent";
-
   return (
-    <div className="fade-up w-full max-w-[480px] rounded-xl border border-line bg-panel p-10 text-ink">
+    <div className="w-full max-w-[480px] rounded-xl border border-line bg-panel p-5 text-ink sm:p-10">
       <Link href="/" className="flex items-center justify-center gap-3">
         <span className="grid h-12 w-12 place-items-center rounded-[12px] bg-accent">
           <Moon className="h-6 w-6 text-accent-ink" strokeWidth={2.2} aria-hidden />
@@ -74,41 +73,46 @@ export default function UpdatePasswordPage() {
             href="/forgot-password"
             className="font-bold text-accent-text hover:underline"
           >
-            Demande-en un nouveau
+            Demandez-en un nouveau
           </Link>
           .
         </p>
       ) : (
         <>
           <p className="mb-7 mt-2 text-center text-[17px] text-ink3">
-            Choisis un mot de passe d&apos;au moins 10 caractères, différent de
-            ceux que tu utilises ailleurs.
+            Choisissez un mot de passe d&apos;au moins 10 caractères, différent
+            de ceux que vous utilisez ailleurs.
           </p>
           <form onSubmit={submit} className="flex flex-col gap-4">
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="Nouveau mot de passe"
-              autoComplete="new-password"
-              minLength={10}
-              required
-              disabled={ready !== "ok"}
-              className={fieldClass}
-            />
-            <input
-              type="password"
-              value={confirm}
-              onChange={(e) => setConfirm(e.target.value)}
-              placeholder="Confirme le mot de passe"
-              autoComplete="new-password"
-              minLength={10}
-              required
-              disabled={ready !== "ok"}
-              className={fieldClass}
-            />
+            <Field id="new-password" label="Nouveau mot de passe">
+              <Input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="10 caractères minimum"
+                autoComplete="new-password"
+                minLength={10}
+                required
+                disabled={ready !== "ok" || busy}
+              />
+            </Field>
+            <Field id="confirm-password" label="Confirmer">
+              <Input
+                type="password"
+                value={confirm}
+                onChange={(e) => setConfirm(e.target.value)}
+                placeholder="Confirmez le mot de passe"
+                autoComplete="new-password"
+                minLength={10}
+                required
+                disabled={ready !== "ok" || busy}
+              />
+            </Field>
             {error && (
-              <div className="rounded-[10px] border border-bad/40 bg-bad-bg px-3 py-2 text-[15px] text-bad">
+              <div
+                role="alert"
+                className="rounded-[10px] border border-bad/40 bg-bad-bg px-3 py-2 text-label font-medium text-bad"
+              >
                 {error}
               </div>
             )}

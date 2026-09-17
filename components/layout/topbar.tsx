@@ -24,14 +24,14 @@ export function Topbar({
 }) {
   const { user } = useAuth();
   const router = useRouter();
-  const store = user?.store ?? "MoonStore";
 
   return (
     <header className="sticky top-0 z-30 flex items-center gap-3 border-b border-line bg-panel px-4 py-3 min-[900px]:gap-4 min-[900px]:px-8 min-[900px]:py-3.5">
       <div className="min-w-0 flex-1">
         <div className="truncate text-[15px] text-ink3 min-[900px]:text-[16px]">
           {greeting()}
-          {user?.name ? ` ${user.name}` : ""} — {store}
+          {user?.name ? ` ${user.name}` : ""}
+          {user?.store ? ` — ${user.store}` : ""}
         </div>
         <h1 className="truncate font-display text-[24px] font-extrabold tracking-[-0.015em] min-[900px]:text-[30px]">
           {title}

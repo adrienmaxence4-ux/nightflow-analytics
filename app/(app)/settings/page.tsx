@@ -3,16 +3,24 @@
 import { useEffect, useState } from "react";
 import { PageTransition } from "@/components/layout/page-transition";
 import { Button } from "@/components/ui/button";
+import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { InstallApp } from "@/features/pwa/install-app";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
+import { STORE_PLATFORMS, type StorePlatform } from "@/lib/signup";
+
+type StoreField = "storeName" | "storeUrl" | "platform";
 
 export default function SettingsPage() {
   const toast = useToast();
-  const { user, updatePassword, signOutEverywhere } = useAuth();
+  const { user, demoMode, updatePassword, signOutEverywhere } = useAuth();
   const [storeName, setStoreName] = useState("");
+  const [storeUrl, setStoreUrl] = useState("");
+  const [platform, setPlatform] = useState<StorePlatform | "">("");
+  const [storeError, setStoreError] = useState<{ field?: StoreField; message: string } | null>(null);
   const [saving, setSaving] = useState(false);
   const [pw, setPw] = useState("");
   const [pw2, setPw2] = useState("");
@@ -53,31 +61,43 @@ export default function SettingsPage() {
   };
 
   useEffect(() => {
-    if (user?.store) setStoreName(user.store);
-  }, [user?.store]);
+    if (demoMode) {
+      if (user?.store) setStoreName(user.store);
+      return;
+    }
+    fetch("/api/profile")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d: { storeName?: string; storeUrl?: string; platform?: string } | null) => {
+        if (!d) return;
+        setStoreName(d.storeName ?? "");
+        setStoreUrl(d.storeUrl ?? "");
+        if (STORE_PLATFORMS.some((p) => p.id === d.platform)) setPlatform(d.platform as StorePlatform);
+      })
+      .catch(() => {});
+  }, [demoMode, user?.store]);
 
   const saveProfile = async () => {
     if (saving) return;
     setSaving(true);
+    setStoreError(null);
     try {
       const res = await fetch("/api/profile", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ storeName }),
+        body: JSON.stringify({ storeName, storeUrl, platform }),
       });
-      const data = await res.json().catch(() => ({}));
-      toast(
-        res.ok ? "Profil enregistré" : data.error ?? "Échec de l'enregistrement",
-        res.ok ? "success" : "info"
-      );
+      const data = (await res.json().catch(() => ({}))) as { error?: string; field?: StoreField };
+      if (res.ok) {
+        toast("Boutique enregistrée", "success");
+      } else {
+        setStoreError({ field: data.field, message: data.error ?? "Échec de l'enregistrement" });
+      }
     } catch {
-      toast("Échec de l'enregistrement", "info");
+      setStoreError({ message: "Connexion impossible. Vérifiez votre réseau et réessayez." });
     } finally {
       setSaving(false);
     }
   };
-
-  const fieldLabel = "mb-2 block text-[17px] font-semibold text-ink2";
 
   return (
     <PageTransition>
@@ -95,26 +115,68 @@ export default function SettingsPage() {
             </div>
           </div>
           <div className="mt-7 grid gap-5 [grid-template-columns:repeat(auto-fit,minmax(240px,1fr))]">
-            <label className="block">
-              <span className={fieldLabel}>Nom de la boutique</span>
+            <Field
+              id="store-name"
+              label="Nom de la boutique"
+              error={storeError?.field === "storeName" ? storeError.message : null}
+            >
               <Input
-                className="min-h-[52px] text-[18px]"
                 value={storeName}
                 onChange={(e) => setStoreName(e.target.value)}
-                placeholder="MoonStore"
+                placeholder="Maison Durand"
+                autoComplete="organization"
+                disabled={saving}
               />
-            </label>
+            </Field>
+            <Field
+              id="store-url"
+              label="Adresse de la boutique"
+              hint="L'adresse où vos clients commandent (ex. maboutique.fr). C'est cette boutique que vos 30 jours de Pro couvrent."
+              error={storeError?.field === "storeUrl" ? storeError.message : null}
+            >
+              <Input
+                value={storeUrl}
+                onChange={(e) => setStoreUrl(e.target.value)}
+                placeholder="maboutique.fr"
+                inputMode="url"
+                autoComplete="url"
+                disabled={saving}
+              />
+            </Field>
+            <Field
+              id="store-platform"
+              label="Plateforme"
+              error={storeError?.field === "platform" ? storeError.message : null}
+            >
+              <Select
+                value={platform}
+                onChange={(e) => setPlatform(e.target.value as StorePlatform | "")}
+                placeholder="Choisir"
+                disabled={saving}
+              >
+                {STORE_PLATFORMS.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.label}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+            {/* Préréglages non modifiables pour l'instant : affichés, pas éditables. */}
             {[
-              ["Fuseau horaire", "Europe/Paris (GMT+1)"],
-              ["Devise", "EUR (€)"],
-              ["Langue", "Français"],
-            ].map(([l, v]) => (
-              <label key={l} className="block">
-                <span className={fieldLabel}>{l}</span>
-                <Input className="min-h-[52px] text-[18px]" defaultValue={v} />
-              </label>
+              ["timezone", "Fuseau horaire", "Europe/Paris (GMT+1)"],
+              ["currency", "Devise", "EUR (€)"],
+              ["locale", "Langue", "Français"],
+            ].map(([id, l, v]) => (
+              <Field key={id} id={`preset-${id}`} label={l}>
+                <Input value={v} readOnly aria-readonly className="text-ink2" />
+              </Field>
             ))}
           </div>
+          {storeError && !storeError.field && (
+            <p role="alert" className="mt-4 text-label font-medium text-bad">
+              {storeError.message}
+            </p>
+          )}
           <Button size="lg" className="mt-7" onClick={saveProfile} disabled={saving}>
             {saving ? "Enregistrement…" : "Enregistrer"}
           </Button>
@@ -128,12 +190,8 @@ export default function SettingsPage() {
             appareils.
           </p>
           <div className="grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(240px,1fr))]">
-            <div>
-              <label className={fieldLabel} htmlFor="new-pw">
-                Nouveau mot de passe
-              </label>
+            <Field id="new-pw" label="Nouveau mot de passe">
               <Input
-                id="new-pw"
                 type="password"
                 value={pw}
                 minLength={10}
@@ -141,21 +199,17 @@ export default function SettingsPage() {
                 placeholder="10 caractères minimum"
                 onChange={(e) => setPw(e.target.value)}
               />
-            </div>
-            <div>
-              <label className={fieldLabel} htmlFor="new-pw2">
-                Confirmer
-              </label>
+            </Field>
+            <Field id="new-pw2" label="Confirmer">
               <Input
-                id="new-pw2"
                 type="password"
                 value={pw2}
                 minLength={10}
                 autoComplete="new-password"
-                placeholder="Retape le mot de passe"
+                placeholder="Confirmez le mot de passe"
                 onChange={(e) => setPw2(e.target.value)}
               />
-            </div>
+            </Field>
           </div>
           <div className="mt-5 flex flex-wrap gap-3">
             <Button

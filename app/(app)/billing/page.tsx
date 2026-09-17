@@ -167,13 +167,13 @@ export default function BillingPage() {
           <div>
             <div className="flex items-center gap-2">
               <span className="text-[15px] font-extrabold">
-                Essaie Pro gratuitement pendant 30 jours
+                Essayez Pro gratuitement pendant 30 jours
               </span>
               <Badge variant="cool">Sans carte</Badge>
             </div>
             <p className="mt-1 text-xs text-ink2">
-              Toutes tes vraies données + toutes les intégrations. Aucun paiement,
-              annulable à tout moment.
+              Vos vraies données et toutes les intégrations. Aucun paiement,
+              aucun engagement.
             </p>
           </div>
           <button
@@ -188,12 +188,12 @@ export default function BillingPage() {
       {isTrialing && trialDaysLeft !== null && (
         <Card className="flex flex-wrap items-center justify-between gap-3 border-line p-4">
           <p className="text-[13px] text-ink2">
-            <span className="font-bold text-ink">Essai Pro actif</span> — il te
+            <span className="font-bold text-ink">Essai Pro actif</span> — il vous
             reste{" "}
             <span className="font-bold text-accent-text">
               {trialDaysLeft} jour{trialDaysLeft > 1 ? "s" : ""}
             </span>
-            . Passe en payant quand tu veux pour ne pas perdre l&apos;accès.
+            . Passez en payant quand vous voulez pour garder l&apos;accès.
           </p>
         </Card>
       )}

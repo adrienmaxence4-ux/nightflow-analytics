@@ -217,6 +217,7 @@ export interface AppUser {
   email: string;
   name: string;
   initials: string;
-  store: string;
+  /** Store name from signup / settings; null until the user provides one. */
+  store: string | null;
   plan: "Starter" | "Pro" | "Scale";
 }

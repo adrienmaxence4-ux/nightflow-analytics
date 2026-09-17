@@ -1,12 +1,16 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Check, Moon } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
+import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
+import { STORE_PLATFORMS, type StorePlatform } from "@/lib/signup";
 
 const STEPS = [
   {
@@ -15,7 +19,7 @@ const STEPS = [
   },
   {
     title: "Parlez-nous de votre boutique",
-    subtitle: "Cela aide le Copilot à personnaliser ses insights.",
+    subtitle: "Le Copilot s'en sert pour ses analyses.",
   },
   {
     title: "Connectez vos sources de données",
@@ -36,14 +40,60 @@ const SOURCES = [
   { id: "klaviyo", name: "Klaviyo", logo: "✉️" },
 ];
 
+type StoreField = "storeName" | "storeUrl" | "platform";
+
 export default function OnboardingPage() {
   const router = useRouter();
   const toast = useToast();
+  const { demoMode } = useAuth();
   const [step, setStep] = useState(0);
   const [store, setStore] = useState("");
+  const [storeUrl, setStoreUrl] = useState("");
+  const [platform, setPlatform] = useState<StorePlatform | "">("");
+  const [storeError, setStoreError] = useState<{ field?: StoreField; message: string } | null>(null);
+  const [saving, setSaving] = useState(false);
   const [selected, setSelected] = useState<string[]>(["shopify"]);
 
-  const next = () => {
+  // A detailed signup already created the store: show it rather than an empty form.
+  useEffect(() => {
+    if (demoMode) return;
+    fetch("/api/profile")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d: { storeName?: string; storeUrl?: string; platform?: string } | null) => {
+        if (!d) return;
+        setStore(d.storeName ?? "");
+        setStoreUrl(d.storeUrl ?? "");
+        if (STORE_PLATFORMS.some((p) => p.id === d.platform)) setPlatform(d.platform as StorePlatform);
+      })
+      .catch(() => {});
+  }, [demoMode]);
+
+  const saveStore = async (): Promise<boolean> => {
+    if (demoMode) return true;
+    setSaving(true);
+    setStoreError(null);
+    try {
+      const res = await fetch("/api/profile", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ storeName: store, storeUrl, platform }),
+      });
+      const data = (await res.json().catch(() => ({}))) as { error?: string; field?: StoreField };
+      if (!res.ok) {
+        setStoreError({ field: data.field, message: data.error ?? "Enregistrement impossible." });
+        return false;
+      }
+      return true;
+    } catch {
+      setStoreError({ message: "Connexion impossible. Vérifiez votre réseau et réessayez." });
+      return false;
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const next = async () => {
+    if (step === 1 && !(await saveStore())) return;
     if (step < STEPS.length - 1) {
       setStep((s) => s + 1);
     } else {
@@ -82,7 +132,7 @@ export default function OnboardingPage() {
               {step === 0 && (
                 <div className="text-center">
                   <span className="mx-auto mb-5 grid h-16 w-16 place-items-center rounded-[16px]  bg-accent">
-                    <Moon className="h-7 w-7 text-ink" strokeWidth={2.2} />
+                    <Moon className="h-7 w-7 text-accent-ink" strokeWidth={2.2} aria-hidden />
                   </span>
                 </div>
               )}
@@ -90,13 +140,13 @@ export default function OnboardingPage() {
               <h1 className="text-center text-[22px] font-extrabold">
                 {STEPS[step].title}
               </h1>
-              <p className="mt-1.5 text-center text-[13px] text-ink2">
+              <p className="mt-1.5 text-center text-label font-normal text-ink2">
                 {STEPS[step].subtitle}
               </p>
 
               <div className="mt-6">
                 {step === 0 && (
-                  <p className="rounded-xl border border-line bg-panel2 p-4 text-center text-[13px] leading-relaxed text-ink2">
+                  <p className="rounded-xl border border-line bg-panel2 p-4 text-center text-label font-normal leading-relaxed text-ink2">
                     Nightflow ne vous montre pas seulement des chiffres. Il vous dit{" "}
                     <b className="text-ink">ce qui se passe</b>,{" "}
                     <b className="text-ink">pourquoi</b>, et{" "}
@@ -106,16 +156,59 @@ export default function OnboardingPage() {
                 )}
 
                 {step === 1 && (
-                  <label className="block">
-                    <span className="mb-1.5 block text-[11px] font-semibold text-ink3">
-                      Nom de votre boutique
-                    </span>
-                    <Input
-                      value={store}
-                      onChange={(e) => setStore(e.target.value)}
-                      placeholder="Ex. Nightflow Studio"
-                    />
-                  </label>
+                  <div className="flex flex-col gap-4 text-left">
+                    <Field
+                      id="onb-store-name"
+                      label="Nom de votre boutique"
+                      error={storeError?.field === "storeName" ? storeError.message : null}
+                    >
+                      <Input
+                        value={store}
+                        onChange={(e) => setStore(e.target.value)}
+                        placeholder="Ex. Maison Durand"
+                        autoComplete="organization"
+                        disabled={saving}
+                      />
+                    </Field>
+                    <Field
+                      id="onb-store-url"
+                      label="Adresse de la boutique"
+                      hint="L'adresse où vos clients commandent (ex. maboutique.fr). C'est cette boutique que vos 30 jours de Pro couvrent."
+                      error={storeError?.field === "storeUrl" ? storeError.message : null}
+                    >
+                      <Input
+                        value={storeUrl}
+                        onChange={(e) => setStoreUrl(e.target.value)}
+                        placeholder="maboutique.fr"
+                        inputMode="url"
+                        autoComplete="url"
+                        disabled={saving}
+                      />
+                    </Field>
+                    <Field
+                      id="onb-store-platform"
+                      label="Plateforme"
+                      error={storeError?.field === "platform" ? storeError.message : null}
+                    >
+                      <Select
+                        value={platform}
+                        onChange={(e) => setPlatform(e.target.value as StorePlatform | "")}
+                        placeholder="Choisir"
+                        disabled={saving}
+                      >
+                        {STORE_PLATFORMS.map((p) => (
+                          <option key={p.id} value={p.id}>
+                            {p.label}
+                          </option>
+                        ))}
+                      </Select>
+                    </Field>
+                    {storeError && !storeError.field && (
+                      <p role="alert" className="text-label font-medium text-bad">
+                        {storeError.message}
+                      </p>
+                    )}
+                  </div>
                 )}
 
                 {step === 2 && (
@@ -133,7 +226,7 @@ export default function OnboardingPage() {
                           }`}
                         >
                           <span className="text-xl">{s.logo}</span>
-                          <span className="flex-1 text-[13px] font-semibold">
+                          <span className="flex-1 text-label">
                             {s.name}
                           </span>
                           {on && (
@@ -150,7 +243,7 @@ export default function OnboardingPage() {
                     <span className="grid h-14 w-14 place-items-center rounded-full bg-good text-accent-ink">
                       <Check className="h-7 w-7" strokeWidth={3} />
                     </span>
-                    <p className="text-center text-[13px] text-ink2">
+                    <p className="text-center text-label font-normal text-ink2">
                       {selected.length} source{selected.length > 1 ? "s" : ""}{" "}
                       sélectionnée{selected.length > 1 ? "s" : ""}. Vous pourrez
                       tout configurer depuis les Paramètres.
@@ -159,16 +252,18 @@ export default function OnboardingPage() {
                 )}
               </div>
 
-              <Button size="lg" className="mt-7 w-full" onClick={next}>
-                {step === STEPS.length - 1
-                  ? "Accéder au dashboard"
-                  : "Continuer"}
+              <Button size="lg" className="mt-7 w-full" onClick={next} disabled={saving}>
+                {saving
+                  ? "Enregistrement…"
+                  : step === STEPS.length - 1
+                    ? "Accéder au dashboard"
+                    : "Continuer"}
               </Button>
 
               {step < STEPS.length - 1 && (
                 <button
                   onClick={() => router.push("/dashboard")}
-                  className="mt-3 w-full text-center text-[12px] text-ink3 transition hover:text-ink"
+                  className="mt-2 inline-flex min-h-tap w-full items-center justify-center text-label font-medium text-ink3 transition hover:text-ink"
                 >
                   Passer pour l&apos;instant
                 </button>

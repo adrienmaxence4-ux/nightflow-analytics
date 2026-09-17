@@ -196,11 +196,11 @@ export default function CopilotPage() {
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
           <div className="flex-1">
             <h1 className="font-display text-[28px] font-extrabold leading-tight">
-              Bonjour {user?.name ?? "Adrien"}
+              Bonjour{user?.name ? ` ${user.name}` : ""}
             </h1>
             <p className="mt-2.5 max-w-[60ch] text-[19px] leading-relaxed text-ink2">
               J&apos;ai analysé l&apos;activité de{" "}
-              <b className="text-ink">{user?.store ?? "MoonStore"}</b>. Voici ce qui
+              <b className="text-ink">{user?.store ?? "votre boutique"}</b>. Voici ce qui
               compte aujourd&apos;hui.
             </p>
             <div className="mt-5 flex flex-wrap gap-3">

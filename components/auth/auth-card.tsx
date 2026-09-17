@@ -8,7 +8,20 @@ import type HCaptcha from "@hcaptcha/react-hcaptcha";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { HcaptchaWidget } from "@/components/auth/hcaptcha-widget";
+import { Field } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
 import { isHcaptchaConfigured } from "@/lib/env";
+import {
+  parseSignup,
+  SIGNUP_LIMITS,
+  STORE_PLATFORMS,
+  type SignupField,
+  type SignupInput,
+  type StorePlatform,
+} from "@/lib/signup";
+
+type FieldKey = SignupField | "captcha";
 
 export function AuthCard({ mode }: { mode: "login" | "signup" }) {
   const router = useRouter();
@@ -16,52 +29,115 @@ export function AuthCard({ mode }: { mode: "login" | "signup" }) {
   const { signIn, signUp, signInWithGoogle, demoMode } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [fullName, setFullName] = useState("");
+  const [storeName, setStoreName] = useState("");
+  const [storeUrl, setStoreUrl] = useState("");
+  const [platform, setPlatform] = useState<StorePlatform | "">("");
   const [busy, setBusy] = useState(false);
   const [googleBusy, setGoogleBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [fieldError, setFieldError] = useState<{ field: FieldKey; message: string } | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [captchaToken, setCaptchaToken] = useState<string | undefined>();
   const captchaRef = useRef<HCaptcha>(null);
 
   const isLogin = mode === "login";
 
+  const fail = (message: string, field?: FieldKey) => {
+    if (field) setFieldError({ field, message });
+    else setError(message);
+  };
+  const errorFor = (field: FieldKey) =>
+    fieldError?.field === field ? fieldError.message : null;
+
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    setFieldError(null);
     setNotice(null);
 
     // Only demo mode gets the click-through defaults; a real project always
-    // requires a real email + password.
+    // requires real credentials.
     const mail = demoMode ? email || "demo@nightflow.app" : email.trim();
     const pass = demoMode ? password || "demo1234" : password;
-    if (!demoMode && (!mail || !pass)) {
-      setError("Renseigne ton adresse email et ton mot de passe.");
-      return;
-    }
-    if (!demoMode && isHcaptchaConfigured && !captchaToken) {
-      setError("Complète le captcha ci-dessous.");
+
+    if (isLogin) {
+      if (!demoMode && (!mail || !pass)) {
+        fail("Renseignez votre adresse email et votre mot de passe.");
+        return;
+      }
+      if (!demoMode && isHcaptchaConfigured && !captchaToken) {
+        fail("Complétez la vérification anti-robot.", "captcha");
+        return;
+      }
+      setBusy(true);
+      const res = await signIn(mail, pass, captchaToken);
+      setBusy(false);
+      captchaRef.current?.resetCaptcha();
+      setCaptchaToken(undefined);
+      if (res.error) {
+        fail(res.error);
+        return;
+      }
+      toast("Connexion réussie");
+      router.push("/dashboard");
       return;
     }
 
+    let input: SignupInput;
+    if (demoMode) {
+      input = {
+        fullName: fullName || "Démo",
+        storeName: storeName || "MoonStore",
+        storeDomain: "demo.nightflow.app",
+        platform: platform || "other",
+        email: mail,
+        password: pass,
+      };
+    } else {
+      const parsed = parseSignup({
+        fullName,
+        storeName,
+        storeUrl,
+        platform,
+        email: mail,
+        password: pass,
+        captchaToken,
+      });
+      if (!parsed.ok) {
+        fail(parsed.error, parsed.field);
+        return;
+      }
+      if (isHcaptchaConfigured && !captchaToken) {
+        fail("Complétez la vérification anti-robot.", "captcha");
+        return;
+      }
+      input = parsed.value;
+    }
+
     setBusy(true);
-    const res = isLogin
-      ? await signIn(mail, pass, captchaToken)
-      : await signUp(mail, pass, captchaToken);
+    const res = await signUp(input);
     setBusy(false);
     captchaRef.current?.resetCaptcha();
     setCaptchaToken(undefined);
     if (res.error) {
-      setError(res.error);
+      fail(res.error, res.field as FieldKey | undefined);
       return;
     }
-    if (!isLogin && "needsConfirmation" in res && res.needsConfirmation) {
+    if (res.needsConfirmation) {
       setNotice(
-        "Compte créé. Ouvre le lien de confirmation qu'on vient de t'envoyer par email pour activer l'accès."
+        "Compte créé. Ouvrez le lien de confirmation envoyé par email pour activer l'accès."
       );
       return;
     }
-    toast(isLogin ? "Connexion réussie" : "Compte créé");
-    router.push(isLogin ? "/dashboard" : "/onboarding");
+    toast("Compte créé");
+    if (demoMode) {
+      router.push("/onboarding");
+      return;
+    }
+    // The session cookie was set by the server: a full load so the app shell
+    // reads it (a client-side push would still see no user and bounce to /login).
+    window.location.assign("/onboarding");
   };
 
   const google = async () => {
@@ -78,11 +154,8 @@ export function AuthCard({ mode }: { mode: "login" | "signup" }) {
     router.push("/dashboard");
   };
 
-  const fieldClass =
-    "w-full min-h-[56px] rounded-[12px] border border-line bg-panel2 px-4 text-[18px] text-ink outline-none transition placeholder:text-ink3 focus-visible:border-accent";
-
   return (
-    <div className="fade-up w-full max-w-[480px] rounded-xl border border-line bg-panel p-10 text-ink">
+    <div className="w-full max-w-[480px] rounded-xl border border-line bg-panel p-5 text-ink sm:p-10">
       <Link href="/" className="flex items-center justify-center gap-3">
         <span className="grid h-12 w-12 place-items-center rounded-[12px] bg-accent">
           <Moon className="h-6 w-6 text-accent-ink" strokeWidth={2.2} aria-hidden />
@@ -98,7 +171,7 @@ export function AuthCard({ mode }: { mode: "login" | "signup" }) {
       <p className="mb-7 mt-2 text-center text-[17px] text-ink3">
         {isLogin
           ? "Connectez-vous pour piloter votre boutique."
-          : "Commencez gratuitement, sans carte bancaire."}
+          : "Gratuit, sans carte bancaire. Confirmez votre email, puis lancez vos 30 jours de Pro d'un clic dans Facturation."}
       </p>
 
       {/* Google OAuth */}
@@ -120,61 +193,135 @@ export function AuthCard({ mode }: { mode: "login" | "signup" }) {
         <span className="h-px flex-1 bg-line" />
       </div>
 
-      <form onSubmit={submit} className="flex flex-col gap-4">
-        <label className="block">
-          <span className="mb-2 block text-[16px] font-semibold text-ink2">
-            Adresse email
-          </span>
-          <input
+      <form onSubmit={submit} noValidate className="flex flex-col gap-4">
+        {!isLogin && (
+          <>
+            <Field id="signup-name" label="Votre nom" error={errorFor("fullName")}>
+              <Input
+                type="text"
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+                placeholder="Camille Durand"
+                autoComplete="name"
+                maxLength={SIGNUP_LIMITS.fullName}
+                disabled={busy}
+              />
+            </Field>
+
+            <Field id="signup-store" label="Nom de la boutique" error={errorFor("storeName")}>
+                <Input
+                  type="text"
+                  value={storeName}
+                  onChange={(e) => setStoreName(e.target.value)}
+                  placeholder="Maison Durand"
+                  autoComplete="organization"
+                  maxLength={SIGNUP_LIMITS.storeName}
+                  disabled={busy}
+                />
+            </Field>
+            <Field id="signup-platform" label="Plateforme" error={errorFor("platform")}>
+              <Select
+                value={platform}
+                onChange={(e) => setPlatform(e.target.value as StorePlatform | "")}
+                placeholder="Choisir"
+                disabled={busy}
+              >
+                {STORE_PLATFORMS.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.label}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+
+            <Field
+              id="signup-url"
+              label="Adresse de la boutique"
+              hint="L'adresse où vos clients commandent (ex. maboutique.fr). C'est cette boutique que vos 30 jours de Pro couvrent."
+              error={errorFor("storeUrl")}
+            >
+              <Input
+                type="text"
+                inputMode="url"
+                value={storeUrl}
+                onChange={(e) => setStoreUrl(e.target.value)}
+                placeholder="maboutique.fr"
+                autoComplete="url"
+                disabled={busy}
+              />
+            </Field>
+          </>
+        )}
+
+        <Field id="auth-email" label="Adresse email" error={errorFor("email")}>
+          <Input
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="vous@boutique.com"
             autoComplete="email"
-            className={fieldClass}
+            disabled={busy}
           />
-        </label>
-        <label className="block">
-          <span className="mb-2 flex items-baseline justify-between text-[16px] font-semibold text-ink2">
-            Mot de passe
-            {isLogin && (
+        </Field>
+
+        <Field
+          id="auth-password"
+          label="Mot de passe"
+          labelEnd={
+            isLogin ? (
               <Link
                 href="/forgot-password"
-                className="text-[14px] font-medium text-accent-text hover:underline"
+                className="-my-3 inline-flex min-h-tap items-center text-label font-medium text-accent-text hover:underline"
               >
                 Mot de passe oublié ?
               </Link>
-            )}
-          </span>
-          <input
+            ) : undefined
+          }
+          hint={
+            isLogin
+              ? undefined
+              : `${SIGNUP_LIMITS.passwordMin} caractères minimum. Évitez un mot de passe déjà utilisé ailleurs.`
+          }
+          error={errorFor("password")}
+        >
+          <Input
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             placeholder="••••••••"
             autoComplete={isLogin ? "current-password" : "new-password"}
-            minLength={isLogin ? undefined : 10}
-            className={fieldClass}
+            minLength={isLogin ? undefined : SIGNUP_LIMITS.passwordMin}
+            disabled={busy}
           />
-          {!isLogin && (
-            <span className="mt-1.5 block text-[13px] text-ink3">
-              10 caractères minimum. Évite un mot de passe déjà utilisé ailleurs.
-            </span>
-          )}
-        </label>
+        </Field>
 
         <HcaptchaWidget
           ref={captchaRef}
-          onVerify={setCaptchaToken}
+          onVerify={(token) => {
+            setCaptchaToken(token);
+            if (fieldError?.field === "captcha") setFieldError(null);
+          }}
           onExpire={() => setCaptchaToken(undefined)}
         />
+        {fieldError?.field === "captcha" && (
+          <p role="alert" className="-mt-2 text-center text-label font-medium text-bad">
+            {fieldError.message}
+          </p>
+        )}
 
         {error && (
-          <div className="rounded-[10px] border border-bad/40 bg-bad-bg px-3 py-2 text-[15px] text-bad">
+          <div
+            role="alert"
+            className="rounded-[10px] border border-bad/40 bg-bad-bg px-3 py-2 text-label font-medium text-bad"
+          >
             {error}
           </div>
         )}
         {notice && (
-          <div className="rounded-[10px] border border-accent/40 bg-panel2 px-3 py-2 text-[15px] text-ink2">
+          <div
+            role="status"
+            className="rounded-[10px] border border-accent/40 bg-panel2 px-3 py-2 text-label font-medium text-ink2"
+          >
             {notice}
           </div>
         )}
@@ -184,22 +331,8 @@ export function AuthCard({ mode }: { mode: "login" | "signup" }) {
           disabled={busy}
           className="mt-1 inline-flex min-h-[56px] w-full items-center justify-center rounded-[12px] bg-accent text-[19px] font-bold text-accent-ink transition hover:brightness-95 disabled:opacity-60"
         >
-          {busy ? "Un instant…" : isLogin ? "Se connecter" : "Créer mon compte"}
+          {busy ? "Un instant…" : isLogin ? "Se connecter" : "Créer mon compte gratuit"}
         </button>
-
-        {!isLogin && (
-          <p className="text-center text-[15px] leading-relaxed text-ink3">
-            En créant un compte, vous acceptez les{" "}
-            <Link href="/conditions" className="underline hover:text-ink">
-              conditions d&apos;utilisation
-            </Link>{" "}
-            et la{" "}
-            <Link href="/confidentialite" className="underline hover:text-ink">
-              politique de confidentialité
-            </Link>
-            .
-          </p>
-        )}
       </form>
 
       {demoMode && (

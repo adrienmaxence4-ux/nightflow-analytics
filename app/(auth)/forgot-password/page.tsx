@@ -6,6 +6,8 @@ import { Moon } from "lucide-react";
 import type HCaptcha from "@hcaptcha/react-hcaptcha";
 import { useAuth } from "@/hooks/use-auth";
 import { HcaptchaWidget } from "@/components/auth/hcaptcha-widget";
+import { Field } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
 import { isHcaptchaConfigured } from "@/lib/env";
 
 export default function ForgotPasswordPage() {
@@ -21,7 +23,7 @@ export default function ForgotPasswordPage() {
     e.preventDefault();
     if (!email.trim()) return;
     if (!demoMode && isHcaptchaConfigured && !captchaToken) {
-      setError("Complète le captcha ci-dessous.");
+      setError("Complétez la vérification anti-robot.");
       return;
     }
     setBusy(true);
@@ -35,11 +37,8 @@ export default function ForgotPasswordPage() {
     else setSent(true);
   };
 
-  const fieldClass =
-    "w-full min-h-[56px] rounded-[12px] border border-line bg-panel2 px-4 text-[18px] text-ink outline-none transition placeholder:text-ink3 focus-visible:border-accent";
-
   return (
-    <div className="fade-up w-full max-w-[480px] rounded-xl border border-line bg-panel p-10 text-ink">
+    <div className="w-full max-w-[480px] rounded-xl border border-line bg-panel p-5 text-ink sm:p-10">
       <Link href="/" className="flex items-center justify-center gap-3">
         <span className="grid h-12 w-12 place-items-center rounded-[12px] bg-accent">
           <Moon className="h-6 w-6 text-accent-ink" strokeWidth={2.2} aria-hidden />
@@ -62,26 +61,31 @@ export default function ForgotPasswordPage() {
       ) : (
         <>
           <p className="mb-7 mt-2 text-center text-[17px] text-ink3">
-            Entre ton adresse — on t&apos;envoie un lien pour en choisir un
-            nouveau.
+            Saisissez votre adresse — nous vous envoyons un lien pour en
+            choisir un nouveau.
           </p>
           <form onSubmit={submit} className="flex flex-col gap-4">
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="vous@boutique.com"
-              autoComplete="email"
-              required
-              className={fieldClass}
-            />
+            <Field id="reset-email" label="Adresse email">
+              <Input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="vous@boutique.com"
+                autoComplete="email"
+                required
+                disabled={busy}
+              />
+            </Field>
             <HcaptchaWidget
               ref={captchaRef}
               onVerify={setCaptchaToken}
               onExpire={() => setCaptchaToken(undefined)}
             />
             {error && (
-              <div className="rounded-[10px] border border-bad/40 bg-bad-bg px-3 py-2 text-[15px] text-bad">
+              <div
+                role="alert"
+                className="rounded-[10px] border border-bad/40 bg-bad-bg px-3 py-2 text-label font-medium text-bad"
+              >
                 {error}
               </div>
             )}

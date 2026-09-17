@@ -36,6 +36,8 @@ export type StoreRow = {
   name: string;
   slug: string | null;
   platform: string;
+  /** Public store hostname ("maboutique.fr"), normalised by lib/signup. */
+  domain: string | null;
   currency: string;
   timezone: string;
   created_at: string;
@@ -357,6 +359,10 @@ export interface Database {
       claim_pro_trial: {
         Args: Record<string, never>;
         Returns: boolean;
+      };
+      claim_pro_trial_v2: {
+        Args: { p_domain: string | null };
+        Returns: string;
       };
       has_used_trial: {
         Args: Record<string, never>;
