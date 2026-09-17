@@ -1,10 +1,13 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
+import { ChevronRight, Mail } from "lucide-react";
 import { PageTransition } from "@/components/layout/page-transition";
 import { PageHeader } from "@/components/layout/page-header";
 import { Card } from "@/components/ui/card";
-import { useToast } from "@/hooks/use-toast";
+import { buttonVariants } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/empty-state";
+import { Skeleton } from "@/components/ui/skeleton";
 import { usePlan } from "@/hooks/use-plan";
 import { ApiKeyConnect } from "@/features/integrations/api-key-connect";
 import { ShopifyConnect } from "@/features/integrations/shopify-connect";
@@ -12,167 +15,243 @@ import { WixConnect } from "@/features/integrations/wix-connect";
 import { WooConnect } from "@/features/integrations/woo-connect";
 import { OAuthConnect } from "@/features/integrations/oauth-connect";
 import { UpgradeGate } from "@/features/billing/upgrade-gate";
+import { STORE_PLATFORMS, type StorePlatform } from "@/lib/signup";
+
+/**
+ * Ordered by what fills the dashboard first: the merchant's own store, then
+ * payments, then campaigns. Connectors whose data no page reads yet sit in a
+ * collapsed section that says so, instead of promising a chart.
+ */
+const STORE_CARDS = [
+  { id: "shopify", label: "Shopify", Connect: ShopifyConnect },
+  { id: "woocommerce", label: "WooCommerce", Connect: WooConnect },
+  { id: "wix", label: "Wix", Connect: WixConnect },
+] as const;
+
+const SUPPORT_MAILTO =
+  "mailto:adrienmaxence4@gmail.com?subject=" +
+  encodeURIComponent("Nightflow — un outil à connecter");
 
 export default function IntegrationsPage() {
-  const toast = useToast();
   const { plan } = usePlan();
+  // undefined = still loading, null = no usable answer.
+  const [platform, setPlatform] = useState<StorePlatform | null | undefined>(undefined);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/profile")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d: { platform?: string } | null) => {
+        if (cancelled) return;
+        setPlatform(STORE_PLATFORMS.find((p) => p.id === d?.platform)?.id ?? null);
+      })
+      .catch(() => {
+        if (!cancelled) setPlatform(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const declared = STORE_CARDS.find((c) => c.id === platform) ?? STORE_CARDS[0];
+  const otherStores = STORE_CARDS.filter((c) => c.id !== declared.id);
+  const storeHint =
+    platform === declared.id
+      ? `Vous avez indiqué ${declared.label} : c'est la première chose à connecter, elle remplit le dashboard.`
+      : platform === "prestashop"
+        ? "PrestaShop n'est pas encore pris en charge. Connectez Stripe ci-dessous pour vos ventes, ou l'une de ces plateformes."
+        : "Connectez d'abord la boutique : c'est elle qui remplit le dashboard.";
 
   return (
     <PageTransition>
       <PageHeader
         title="Intégrations"
-        subtitle="Connectez vos outils — Nightflow centralise toutes vos données en un seul cerveau."
+        subtitle="Connectez votre boutique d'abord, le reste ensuite."
       />
 
-      {/* Connecteurs — groupés par usage (le plan Gratuit = démo). */}
       {plan.integrations ? (
-        <div className="flex flex-col gap-6">
+        <div className="flex flex-col gap-8">
+          <CategorySection label="Votre boutique" hint={storeHint}>
+            {platform === undefined ? (
+              <Skeleton className="h-[100px] w-full" />
+            ) : (
+              <>
+                <declared.Connect />
+                <CollapsedSection
+                  label="Autre plateforme ?"
+                  hint="Une boutique sur une autre plateforme, ou plusieurs boutiques."
+                >
+                  {otherStores.map((c) => (
+                    <c.Connect key={c.id} />
+                  ))}
+                </CollapsedSection>
+              </>
+            )}
+          </CategorySection>
+
           <CategorySection
-            label="Boutique & paiements"
-            hint="Vos ventes réelles : produits, commandes, revenus."
+            label="Vos paiements"
+            hint="Revenus et commandes, même sans boutique connectée."
           >
-            <ShopifyConnect />
-            <WixConnect />
-            <WooConnect />
             <OAuthConnect
               provider="stripe"
               name="Stripe"
-              logo="💳"
-              accent="from-indigo-400 to-violet-500"
+              logo="St"
               description="Connexion en un clic — autorisez votre compte, aucune clé à créer."
               connectedHint="Revenus & commandes importés depuis Stripe."
-            />
-            <ApiKeyConnect
-              provider="paypal"
-              name="PayPal"
-              logo="🅿️"
-              accent="from-blue-400 to-cyan-500"
-              description="Transactions PayPal — beaucoup d'acheteurs ne paient qu'avec ça."
-              connectedHint="Paiements et remboursements PayPal importés."
-              placeholder="idClient::secretClient"
-              helpHref="https://developer.paypal.com/api/rest/#link-getcredentials"
-              helpLabel="Créer mes identifiants"
+              fallbackLabel="Ou collez une clé restreinte"
+              // Stripe Connect has no live client ID yet: customers lead with
+              // the key, the owner keeps OAuth first.
+              fallbackPrimary
+              oauthFoldLabel="Connexion en un clic — bientôt"
+              fallback={
+                // Same provider row as the OAuth path: the key is stored where
+                // the OAuth token would be, so the card above flips to
+                // "Connecté" on its own.
+                <ApiKeyConnect
+                  compact
+                  provider="stripe"
+                  name="Stripe"
+                  logo="St"
+                  description="Clé restreinte en lecture seule."
+                  connectedHint="Revenus & commandes importés depuis Stripe."
+                  keyLabel="Clé restreinte Stripe"
+                  keyHint="Dashboard Stripe → Développeurs → Clés API → Créer une clé restreinte, lecture seule sur Charges et Balance, puis collez-la ici."
+                />
+              }
             />
           </CategorySection>
 
           <CategorySection
-            label="Publicité"
-            hint="Dépense, revenu attribué et ROAS de vos régies — Meta, TikTok, Google Ads et les autres."
+            label="Vos campagnes"
+            hint="Ce que vos emails et vos publicités rapportent, et d'où vient votre trafic."
           >
             <OAuthConnect
-              provider="meta"
-              name="Meta Ads"
-              logo="📘"
-              accent="from-blue-500 to-indigo-600"
-              description="Connexion en un clic — autorisez votre compte, aucune clé à créer. Facebook & Instagram Ads."
-              connectedHint="Dépense, revenu attribué et ROAS Meta affichés dans Marketing."
-              reviewPending
+              provider="klaviyo"
+              name="Klaviyo"
+              logo="K"
+              description="Connexion en un clic — autorisez votre compte, aucune clé à créer."
+              connectedHint="Revenu attribué Klaviyo affiché dans Marketing."
             />
             <OAuthConnect
-              provider="instagram"
-              name="Instagram"
-              logo="📸"
-              accent="from-pink-500 to-orange-400"
-              description="Connexion en un clic — vues, likes et portée de vos Reels. Aucune Page Facebook requise."
-              connectedHint="Vues, portée et engagement visibles dans Publications."
+              provider="google"
+              name="Google Analytics"
+              logo="GA"
+              description="Connexion en un clic — trafic, canaux d'acquisition & appareils."
+              connectedHint="Trafic, canaux & appareils affichés dans Analytics."
               showSync={false}
-              reviewPending
             />
             <ApiKeyConnect
               provider="windsor"
-              name="Régies publicitaires (Windsor.ai)"
-              logo="📣"
-              accent="from-sky-400 to-blue-600"
-              description="TikTok Ads, Google Ads, LinkedIn… et Meta si vous préférez ne pas le connecter directement. Autorisez vos comptes sur Windsor, puis collez ici votre clé API — ou l'URL que Windsor affiche."
+              name="Meta Ads, TikTok Ads, Google Ads — via Windsor.ai"
+              logo="Wd"
+              description="Autorisez vos comptes publicitaires sur Windsor.ai, puis collez ici la clé API que Windsor affiche."
               connectedHint="Dépense & ROAS par régie affichés dans Marketing."
-              placeholder="Clé API ou URL Windsor.ai"
+              keyLabel="Clé API Windsor.ai"
+              keyHint="La clé API, ou l'URL de requête que Windsor.ai affiche."
               helpHref="https://onboard.windsor.ai/"
               helpLabel="Connecter mes régies & copier ma clé"
             />
           </CategorySection>
 
           <CategorySection
-            label="Email & CRM"
-            hint="Revenu attribué à vos campagnes email."
+            label="Bientôt"
+            hint="Meta et TikTok valident encore Nightflow. En attendant, vos campagnes Meta Ads et TikTok Ads passent par la carte Windsor.ai ci-dessus."
           >
             <OAuthConnect
-              provider="klaviyo"
-              name="Klaviyo"
-              logo="✉️"
-              accent="from-fuchsia-400 to-pink-500"
-              description="Connexion en un clic — autorisez votre compte, aucune clé à créer."
-              connectedHint="Revenu attribué Klaviyo affiché dans Marketing."
+              provider="instagram"
+              name="Instagram"
+              logo="Ig"
+              description="Vues, likes et portée de vos Reels. Aucune Page Facebook requise."
+              connectedHint="Vues, portée et engagement visibles dans Publications."
+              showSync={false}
+              reviewPending
+              reviewHint="Dès que Meta valide Nightflow, le bouton s'active ici. Vos Reels et leur portée arriveront dans Publications."
+            />
+            <OAuthConnect
+              provider="tiktok"
+              name="TikTok"
+              logo="Tk"
+              description="Vues, likes, commentaires et partages de vos vidéos TikTok publiques, à côté de vos Reels."
+              connectedHint="Vues et engagement de vos TikToks visibles dans Publications."
+              showSync={false}
+              reviewPending
+              reviewer="TikTok"
+              reviewHint="Dès que c'est validé, le bouton s'active ici : un clic pour connecter votre compte."
+            />
+            <OAuthConnect
+              provider="meta"
+              name="Meta Ads (connexion directe)"
+              logo="M"
+              description="Facebook & Instagram Ads en un clic, sans passer par Windsor."
+              connectedHint="Dépense, revenu attribué et ROAS Meta affichés dans Marketing."
+              reviewPending
             />
           </CategorySection>
 
-          <CategorySection
-            label="Analyse d'audience"
-            hint="Pour analyser le trafic — ce n'est pas une campagne (aucune dépense / ROAS)."
+          <CollapsedSection
+            label="En préparation"
+            hint="Ces connecteurs enregistrent vos données ; l'affichage dans Nightflow arrive ensuite."
           >
-            <OAuthConnect
-              provider="google"
-              name="Google Analytics"
-              logo="📈"
-              accent="from-amber-300 to-orange-500"
-              description="Connexion en un clic — trafic, canaux d'acquisition & appareils."
-              connectedHint="Trafic, canaux & appareils affichés dans Analytics."
-              showSync={false}
+            <ApiKeyConnect
+              provider="paypal"
+              name="PayPal"
+              logo="PP"
+              description="Transactions PayPal — beaucoup d'acheteurs ne paient qu'avec ça."
+              connectedHint="Paiements et remboursements PayPal collectés."
+              keyLabel="Identifiants PayPal"
+              keyHint="Format : idClient::secretClient"
+              helpHref="https://developer.paypal.com/api/rest/#link-getcredentials"
+              helpLabel="Créer mes identifiants"
+              collectOnly
             />
             <ApiKeyConnect
               provider="hotjar"
               name="Hotjar"
-              logo="🔥"
-              accent="from-orange-400 to-red-500"
+              logo="Hj"
               description="Comportement réel des visiteurs (retours, enregistrements)."
-              connectedHint="Retours visiteurs remontés dans Analytics."
-              placeholder="idDuSite::jetonApi"
+              connectedHint="Retours visiteurs collectés."
+              keyLabel="Identifiants Hotjar"
+              keyHint="Format : idDuSite::jetonApi"
               helpHref="https://help.hotjar.com/hc/en-us/articles/36819965653009-How-to-Set-Up-the-Hotjar-API"
               helpLabel="Créer un jeton (plan Scale requis)"
+              collectOnly
             />
-          </CategorySection>
-
-          <CategorySection
-            label="Logistique & expédition"
-            hint="Suivi des envois et de leur coût — pour savoir ce que la livraison mange sur ta marge."
-          >
             <ApiKeyConnect
               provider="shipstation"
               name="ShipStation"
-              logo="📦"
-              accent="from-sky-400 to-blue-500"
-              description="Centralise tes envois et leurs coûts."
-              connectedHint="Expéditions et coûts importés."
-              placeholder="cleApi::secretApi"
+              logo="Ss"
+              description="Vos envois et leurs coûts, pour voir ce que la livraison prend sur la marge."
+              connectedHint="Expéditions et coûts collectés."
+              keyLabel="Identifiants ShipStation"
+              keyHint="Format : cleApi::secretApi"
               helpHref="https://www.shipstation.com/docs/api/"
               helpLabel="Où trouver mes clés"
+              collectOnly
             />
             <ApiKeyConnect
               provider="mondialrelay"
               name="Mondial Relay"
-              logo="🚚"
-              accent="from-emerald-400 to-teal-500"
+              logo="MR"
               description="Suivi des colis en point relais (France & Europe)."
-              connectedHint="Expéditions Mondial Relay importées."
-              placeholder="enseigne::clePrivee"
+              connectedHint="Expéditions Mondial Relay collectées."
+              keyLabel="Identifiants Mondial Relay"
+              keyHint="Format : enseigne::clePrivee"
+              collectOnly
             />
-          </CategorySection>
-
-          <CategorySection
-            label="Service client"
-            hint="Un pic de tickets précède souvent une chute de ventes."
-          >
             <ApiKeyConnect
               provider="gorgias"
               name="Gorgias"
-              logo="💬"
-              accent="from-violet-400 to-purple-500"
+              logo="G"
               description="Tickets de support, pour relier réclamations et ventes."
-              connectedHint="Volume de tickets suivi dans Analytics."
-              placeholder="domaine::email::cleApi"
+              connectedHint="Tickets Gorgias collectés."
+              keyLabel="Identifiants Gorgias"
+              keyHint="Format : domaine::email::cleApi"
               helpHref="https://developers.gorgias.com/reference/authentication"
               helpLabel="Créer une clé API"
+              collectOnly
             />
-          </CategorySection>
+          </CollapsedSection>
         </div>
       ) : (
         <UpgradeGate
@@ -181,46 +260,18 @@ export default function IntegrationsPage() {
         />
       )}
 
-      <Card className="p-5 [background:linear-gradient(110deg,rgba(154,107,255,0.14),rgba(61,242,255,0.06))]">
-        <div className="flex items-start gap-3">
-          <span className="grid h-10 w-10 flex-none place-items-center rounded-xl border border-line bg-panel2 text-lg">
-            🔌
-          </span>
-          <div>
-            <h3 className="text-[14px] font-bold">
-              TikTok Ads — en attente d&apos;approbation
-            </h3>
-            <p className="mt-1 text-[13px] leading-relaxed text-ink2">
-              La connexion directe à TikTok demande une revue
-              sandbox→production et un audit de sécurité des données — c&apos;est
-              l&apos;API publicitaire la plus verrouillée. En attendant, TikTok
-              passe par la carte «&nbsp;Régies publicitaires&nbsp;» ci-dessus, et
-              Meta Ads se connecte déjà en un clic.
-            </p>
-          </div>
-        </div>
+      <Card>
+        <EmptyState
+          icon={Mail}
+          title="Un outil manquant ?"
+          description="Dites-nous lequel : les prochains connecteurs suivent les demandes."
+          action={
+            <a href={SUPPORT_MAILTO} className={buttonVariants({ size: "sm", variant: "ghost" })}>
+              Écrire à Nightflow
+            </a>
+          }
+        />
       </Card>
-
-      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-        {/* Suggest an integration */}
-        <Card className="flex h-full flex-col items-center justify-center gap-3 border-dashed p-5 text-center">
-          <span className="grid h-12 w-12 place-items-center rounded-xl border border-dashed border-line text-xl text-ink3">
-            ＋
-          </span>
-          <div>
-            <h3 className="text-[14px] font-bold">Un outil manquant ?</h3>
-            <p className="mt-1 text-[12px] text-ink3">
-              Gorgias, Amazon, PayPal… dites-nous lequel.
-            </p>
-          </div>
-          <button
-            onClick={() => toast("Merci ! Votre suggestion a été enregistrée.")}
-            className="rounded-xl border border-line bg-panel2 px-4 py-2 text-[12px] font-semibold text-ink2 transition hover:border-accent hover:text-ink"
-          >
-            Suggérer une intégration
-          </button>
-        </Card>
-      </div>
     </PageTransition>
   );
 }
@@ -235,14 +286,37 @@ function CategorySection({
   children: ReactNode;
 }) {
   return (
-    <div className="flex flex-col gap-3">
+    <section className="flex flex-col gap-3">
       <div>
-        <div className="text-[11px] font-bold tracking-[1.5px] text-accent-text">
-          {label}
-        </div>
-        <p className="mt-0.5 text-[11px] text-ink3">{hint}</p>
+        <h2 className="text-label uppercase tracking-[0.06em] text-ink3">{label}</h2>
+        <p className="mt-0.5 text-label font-normal text-ink3">{hint}</p>
       </div>
       {children}
-    </div>
+    </section>
+  );
+}
+
+/** Same header, folded by default — for what the merchant rarely needs. */
+function CollapsedSection({
+  label,
+  hint,
+  children,
+}: {
+  label: string;
+  hint: string;
+  children: ReactNode;
+}) {
+  return (
+    <details className="group">
+      <summary className="flex min-h-tap cursor-pointer list-none items-center gap-2 text-label uppercase tracking-[0.06em] text-ink3 transition hover:text-ink [&::-webkit-details-marker]:hidden">
+        <ChevronRight
+          className="h-4 w-4 transition duration-base group-open:rotate-90"
+          aria-hidden
+        />
+        {label}
+      </summary>
+      <p className="text-label font-normal text-ink3">{hint}</p>
+      <div className="mt-3 flex flex-col gap-3">{children}</div>
+    </details>
   );
 }

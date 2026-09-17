@@ -22,20 +22,20 @@ const STEPS = [
     subtitle: "Le Copilot s'en sert pour ses analyses.",
   },
   {
-    title: "Connectez vos sources de données",
-    subtitle: "Vous pourrez en ajouter d'autres plus tard.",
+    title: "Quels outils utilisez-vous ?",
+    subtitle: "Rien n'est connecté ici : la connexion se fait à l'étape suivante.",
   },
   {
     title: "Tout est prêt ✨",
-    subtitle: "Votre directeur e-commerce IA vous attend.",
+    subtitle: "Il reste à connecter votre boutique : c'est elle qui remplit le dashboard.",
   },
 ];
 
+// Meta Ads and TikTok Ads are left out while their platform reviews are
+// pending: naming them here would promise a connection the next screen refuses.
 const SOURCES = [
   { id: "shopify", name: "Shopify", logo: "🛍" },
   { id: "ga4", name: "Google Analytics", logo: "📈" },
-  { id: "meta", name: "Meta Ads", logo: "📘" },
-  { id: "tiktok", name: "TikTok Ads", logo: "🎵" },
   { id: "stripe", name: "Stripe", logo: "💳" },
   { id: "klaviyo", name: "Klaviyo", logo: "✉️" },
 ];
@@ -105,6 +105,8 @@ export default function OnboardingPage() {
   const toggleSource = (id: string) =>
     setSelected((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]));
 
+  const lastStep = step === STEPS.length - 1;
+
   return (
     <div className="relative z-10 grid min-h-screen place-items-center px-4 py-10">
       <div className="w-full max-w-lg">
@@ -137,7 +139,7 @@ export default function OnboardingPage() {
                 </div>
               )}
 
-              <h1 className="text-center text-[22px] font-extrabold">
+              <h1 className="text-center text-title">
                 {STEPS[step].title}
               </h1>
               <p className="mt-1.5 text-center text-label font-normal text-ink2">
@@ -218,19 +220,21 @@ export default function OnboardingPage() {
                       return (
                         <button
                           key={s.id}
+                          type="button"
+                          aria-pressed={on}
                           onClick={() => toggleSource(s.id)}
-                          className={`flex items-center gap-3 rounded-xl border p-3.5 text-left transition ${
+                          className={`flex min-h-tap items-center gap-3 rounded-xl border p-3.5 text-left transition ${
                             on
                               ? "border-accent bg-panel2 "
                               : "border-line bg-panel2 hover:border-line"
                           }`}
                         >
-                          <span className="text-xl">{s.logo}</span>
+                          <span className="text-xl" aria-hidden>{s.logo}</span>
                           <span className="flex-1 text-label">
                             {s.name}
                           </span>
                           {on && (
-                            <Check className="h-4 w-4 text-accent-text" strokeWidth={3} />
+                            <Check className="h-4 w-4 text-accent-text" strokeWidth={3} aria-hidden />
                           )}
                         </button>
                       );
@@ -239,25 +243,29 @@ export default function OnboardingPage() {
                 )}
 
                 {step === 3 && (
-                  <div className="flex flex-col items-center gap-3 py-2">
+                  <div className="flex flex-col items-center gap-5 py-2">
                     <span className="grid h-14 w-14 place-items-center rounded-full bg-good text-accent-ink">
-                      <Check className="h-7 w-7" strokeWidth={3} />
+                      <Check className="h-7 w-7" strokeWidth={3} aria-hidden />
                     </span>
-                    <p className="text-center text-label font-normal text-ink2">
-                      {selected.length} source{selected.length > 1 ? "s" : ""}{" "}
-                      sélectionnée{selected.length > 1 ? "s" : ""}. Vous pourrez
-                      tout configurer depuis les Paramètres.
-                    </p>
+                    <Button
+                      size="lg"
+                      className="w-full"
+                      onClick={() => router.push("/integrations")}
+                    >
+                      Connecter ma boutique
+                    </Button>
                   </div>
                 )}
               </div>
 
-              <Button size="lg" className="mt-7 w-full" onClick={next} disabled={saving}>
-                {saving
-                  ? "Enregistrement…"
-                  : step === STEPS.length - 1
-                    ? "Accéder au dashboard"
-                    : "Continuer"}
+              <Button
+                size="lg"
+                variant={lastStep ? "ghost" : "primary"}
+                className={lastStep ? "mt-3 w-full" : "mt-7 w-full"}
+                onClick={next}
+                disabled={saving}
+              >
+                {saving ? "Enregistrement…" : lastStep ? "Accéder au dashboard" : "Continuer"}
               </Button>
 
               {step < STEPS.length - 1 && (

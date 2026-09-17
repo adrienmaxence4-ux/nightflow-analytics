@@ -231,8 +231,8 @@ export default function AnalyticsPage() {
                     last
                       ? "bg-accent font-bold text-accent-ink"
                       : pay
-                        ? "bg-bad text-white"
-                        : "bg-cool text-white"
+                        ? "bg-bad text-panel"
+                        : "bg-cool text-panel"
                   }`}
                   style={{ width: `${Math.max(24, step.pct)}%` }}
                 >

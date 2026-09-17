@@ -11,7 +11,7 @@ const badgeVariants = cva(
         bad: "bg-bad-bg text-bad",
         warn: "bg-warn-bg text-warn",
         cool: "bg-cool-bg text-cool",
-        neutral: "bg-panel2 text-ink3",
+        neutral: "bg-panel2 text-ink2",
         accent: "bg-accent text-accent-ink",
       },
     },

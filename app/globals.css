@@ -26,7 +26,7 @@
 
     --accent: #d08b4f;
     --accent-ink: #14171b; /* texte sur ambre */
-    --accent-text: #a8652b; /* ambre lisible en texte sur papier */
+    --accent-text: #965820; /* ambre en texte — 4.9:1 sur --panel, 4.5:1 sur --panel2 */
 
     --cool: #2c4f5e;
     --cool-bg: #dfe4e4;
@@ -34,7 +34,7 @@
     --good-bg: #e3e8de;
     --bad: #a2432c;
     --bad-bg: #f0e2dc;
-    --warn: #8a6a2f;
+    --warn: #7d6029; /* 4.8:1 sur --warn-bg — #8a6a2f tombait à 4.1:1 */
     --warn-bg: #f1e6d3;
 
     --shadow: 0 1px 2px rgba(20, 23, 27, 0.06);
@@ -55,7 +55,7 @@
     --accent-ink: #08090c;
     --accent-text: #e09a55;
 
-    --cool: #2c4f5e;
+    --cool: #8fb8c9; /* 7.5:1 sur --cool-bg — la valeur claire tombait à 1.8:1 */
     --cool-bg: #16242c;
     --good: #8fbf9c;
     --good-bg: #15251b;

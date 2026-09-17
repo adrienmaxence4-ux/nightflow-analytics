@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { safeHttpsHref } from "@/lib/safe-url";
 import type { SyncSummary } from "@/services/integrations/registry";
 import { META_CHANNEL } from "@/services/integrations/meta";
 
@@ -228,7 +229,7 @@ export async function validateWindsorKey(
     return {
       ok: false,
       reason:
-        "Clé illisible — colle la clé (ou l'URL de requête) fournie par Windsor.ai, pas le lien d'inscription onboard.windsor.ai.",
+        "Clé illisible — collez la clé (ou l'URL de requête) fournie par Windsor.ai, pas le lien d'inscription onboard.windsor.ai.",
     };
   }
   // An account with no source connected yet still answers 200 with an empty
@@ -241,17 +242,17 @@ export async function validateWindsorKey(
   if (r.status === 401 || r.status === 403) {
     return {
       ok: false,
-      reason: `Windsor.ai a refusé cette clé (${r.status}) — vérifie qu'elle est active sur ton compte Windsor et qu'elle n'a pas été régénérée.`,
+      reason: `Windsor.ai a refusé cette clé (${r.status}) — vérifiez qu'elle est active sur votre compte Windsor et qu'elle n'a pas été régénérée.`,
     };
   }
   if (r.status === 429) {
     return {
       ok: false,
-      reason: "Windsor.ai limite le débit (429) — réessaie dans une minute.",
+      reason: "Windsor.ai limite le débit (429) — réessayez dans une minute.",
     };
   }
   if (r.status === 0) {
-    return { ok: false, reason: "Windsor.ai est injoignable — réessaie dans un instant." };
+    return { ok: false, reason: "Windsor.ai est injoignable — réessayez dans un instant." };
   }
   return {
     ok: false,
@@ -281,7 +282,7 @@ export async function syncWindsor(
 ): Promise<SyncSummary> {
   const apiKey = extractWindsorKey(key);
   if (!apiKey) {
-    throw new Error("Clé Windsor.ai illisible — colle la clé ou l'URL fournie par Windsor.");
+    throw new Error("Clé Windsor.ai illisible — collez la clé ou l'URL fournie par Windsor.");
   }
 
   const to = new Date();
@@ -297,7 +298,7 @@ export async function syncWindsor(
     throw new Error(
       r.status
         ? `Windsor.ai a répondu ${r.status}${r.detail ? ` : ${r.detail}` : ""}`
-        : "Windsor.ai n'a pas répondu — vérifie ta clé API."
+        : "Windsor.ai n'a pas répondu — vérifiez votre clé API."
     );
   }
   const rows = r.rows;
@@ -474,7 +475,7 @@ export async function fetchInstagramPosts(
     throw new Error(
       r.status
         ? `Windsor.ai a répondu ${r.status}${r.detail ? ` : ${r.detail}` : ""}`
-        : "Windsor.ai n'a pas répondu — vérifie ta clé API."
+        : "Windsor.ai n'a pas répondu — vérifiez votre clé API."
     );
   }
 
@@ -486,7 +487,7 @@ export async function fetchInstagramPosts(
         id: String(r.media_id),
         date: String(r.date ?? ""),
         caption,
-        permalink: String(r.media_permalink ?? ""),
+        permalink: safeHttpsHref(r.media_permalink),
         isReel:
           r.media_product_type === "REELS" || r.media_type === "REELS",
         views: int(r.media_views),

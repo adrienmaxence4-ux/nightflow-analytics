@@ -30,7 +30,7 @@ function secretFor(provider: string): string {
     case "meta":
       return env.metaAppSecret;
     case "tiktok":
-      return env.tiktokAppSecret;
+      return env.tiktokClientSecret;
     default:
       return "";
   }
@@ -56,13 +56,17 @@ async function resolveStoreId(
     return rows.find((r) => r.metadata?.shop === shop)?.store_id ?? null;
   }
   if (provider === "stripe") {
+    // Connect events name the account; an event for an account nobody has
+    // connected (a merchant who disconnected here, or the platform's own
+    // account) is dropped — falling back to "the first store" would book
+    // one merchant's charges as another's revenue.
     const account = (payload as { account?: string }).account;
-    return (
-      rows.find((r) => r.metadata?.stripe_user_id === account)?.store_id ??
-      rows[0].store_id
-    );
+    if (typeof account !== "string" || !account) return null;
+    return rows.find((r) => r.metadata?.stripe_user_id === account)?.store_id ?? null;
   }
-  return rows[0].store_id;
+  // No other provider carries a tenant identifier we can trust — and none
+  // of them produces events here (Meta's normalizeWebhook is empty).
+  return null;
 }
 
 export async function POST(

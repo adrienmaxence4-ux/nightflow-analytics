@@ -1,43 +1,47 @@
 "use client";
 
-import { RefreshCw } from "lucide-react";
+import * as React from "react";
+import { ChevronRight, Eye, EyeOff, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { timeAgo } from "@/utils/format";
+import { Button } from "@/components/ui/button";
+import { Input, type InputProps } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
 import type { IntegrationStatus } from "@/features/integrations/status-pill";
 
 /**
- * The pieces every integration card is built from — logo tile, status notes and
- * the three buttons — so the five cards stay visually identical without copying
- * the same Tailwind strings five times.
+ * The pieces every integration card is built from — logo tile, loading
+ * skeleton, status notes, secret field and the two shared buttons — so the
+ * cards stay visually identical without copying the same markup five times.
  */
 
-const PRIMARY =
-  "rounded-xl bg-accent px-4 py-2.5 text-[15px] font-bold text-accent-ink transition hover:brightness-95 disabled:opacity-60";
-const GHOST =
-  "rounded-xl border border-line bg-panel2 px-4 py-2.5 text-[13px] font-semibold text-ink2 transition hover:border-line hover:text-ink disabled:opacity-60";
-
-/** Gradient tile holding the provider's emoji or initial. */
+/** Monochrome tile holding the provider's initials (decorative). */
 export function ConnectorLogo({
-  accent,
   className,
   children,
 }: {
-  /** Tailwind gradient stops, e.g. "from-indigo-400 to-violet-500". */
-  accent: string;
   className?: string;
   children: React.ReactNode;
 }) {
   return (
     <span
+      aria-hidden
       className={cn(
-        "grid h-12 w-12 flex-none place-items-center rounded-xl bg-gradient-to-br text-xl",
-        accent,
+        "grid h-12 w-12 flex-none place-items-center rounded-[12px] border border-line bg-panel2 text-head font-extrabold text-ink2",
         className
       )}
     >
       {children}
     </span>
   );
+}
+
+/**
+ * Stand-in for a card whose status has not answered yet — same height, no
+ * text. "form" matches a not-connected card with its credential fields open.
+ */
+export function ConnectorSkeleton({ variant }: { variant?: "form" }) {
+  return <Skeleton className={cn("w-full", variant === "form" ? "h-[340px]" : "h-[100px]")} />;
 }
 
 /** Last sync, error and (when the provider can expire) the reconnect nudge. */
@@ -54,36 +58,98 @@ export function ConnectionNotes({
       {status.connected && status.lastSync && (
         // timeAgo already says "il y a …" (or "hier", "à l'instant"), so no
         // prefix here — the four cards used to read "il y a il y a 3 min".
-        <p className="mt-0.5 text-[11px] text-ink3">
+        <p className="mt-1 text-label font-normal text-ink3">
           Dernière synchro : {timeAgo(status.lastSync)}
         </p>
       )}
       {status.state === "error" && status.error && (
-        <p className="mt-0.5 text-[11px] text-bad">{status.error}</p>
+        <p role="alert" className="mt-1 text-label font-medium text-bad">
+          {status.error}
+        </p>
       )}
       {status.state === "expired" && expiredHint && (
-        <p className="mt-0.5 text-[11px] text-warn">{expiredHint}</p>
+        <p className="mt-1 text-label text-warn">{expiredHint}</p>
       )}
     </>
   );
 }
 
-/** Gradient call-to-action: "Connecter", "Reconnecter", "Se connecter avec X". */
-export function PrimaryButton({
-  onClick,
-  disabled,
-  className,
+/**
+ * Password-style `<Input>` with a show/hide toggle. Forwards `id`,
+ * `aria-invalid` and `aria-describedby` from `<Field>` to the input itself.
+ */
+export const SecretInput = React.forwardRef<HTMLInputElement, InputProps>(
+  ({ className, ...props }, ref) => {
+    const [reveal, setReveal] = React.useState(false);
+    return (
+      <span className="relative block">
+        <Input
+          ref={ref}
+          type={reveal ? "text" : "password"}
+          autoComplete="off"
+          spellCheck={false}
+          className={cn("pr-14 font-mono", className)}
+          {...props}
+        />
+        <Button
+          type="button"
+          size="icon"
+          variant="ghost"
+          onClick={() => setReveal((v) => !v)}
+          aria-label={reveal ? "Masquer la clé" : "Afficher la clé"}
+          aria-pressed={reveal}
+          className="absolute right-1 top-1/2 -translate-y-1/2 border-transparent bg-transparent"
+        >
+          {reveal ? <EyeOff className="h-5 w-5" aria-hidden /> : <Eye className="h-5 w-5" aria-hidden />}
+        </Button>
+      </span>
+    );
+  }
+);
+SecretInput.displayName = "SecretInput";
+
+/**
+ * A second way to connect, folded under the main one: a ghost button that
+ * reveals the form. Used while a platform review blocks the one-click path.
+ */
+export function FoldedPath({
+  id,
+  label,
+  defaultOpen = false,
   children,
 }: {
-  onClick: () => void;
-  disabled?: boolean;
-  className?: string;
+  id: string;
+  label: string;
+  /** Unfold without a click — e.g. when the folded path just failed. */
+  defaultOpen?: boolean;
   children: React.ReactNode;
 }) {
+  const [open, setOpen] = React.useState(defaultOpen);
+  React.useEffect(() => {
+    if (defaultOpen) setOpen(true);
+  }, [defaultOpen]);
   return (
-    <button onClick={onClick} disabled={disabled} className={cn(PRIMARY, className)}>
-      {children}
-    </button>
+    <div className="mt-4 border-t border-line pt-4">
+      <Button
+        type="button"
+        size="sm"
+        variant="ghost"
+        aria-expanded={open}
+        aria-controls={id}
+        onClick={() => setOpen((v) => !v)}
+      >
+        <ChevronRight
+          className={cn("h-4 w-4 transition duration-base", open && "rotate-90")}
+          aria-hidden
+        />
+        {label}
+      </Button>
+      {open && (
+        <div id={id} className="mt-4">
+          {children}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -98,34 +164,35 @@ export function SyncButton({
   variant?: "ghost" | "primary";
 }) {
   return (
-    <button
-      onClick={onClick}
-      disabled={busy}
-      className={cn(
-        "flex items-center gap-1.5",
-        variant === "primary" ? PRIMARY : GHOST
-      )}
-    >
-      <RefreshCw className={cn("h-3.5 w-3.5", busy && "animate-spin")} />
-      {busy ? "Synchro…" : "Synchroniser"}
-    </button>
+    <Button size="sm" variant={variant} onClick={onClick} loading={busy}>
+      <RefreshCw className="h-4 w-4" aria-hidden />
+      Synchroniser
+    </Button>
   );
 }
 
+/** Asks before cutting the connection — one misclick used to drop a store. */
 export function DisconnectButton({
+  name,
   onClick,
   disabled,
 }: {
+  name: string;
   onClick: () => void;
   disabled?: boolean;
 }) {
   return (
-    <button
-      onClick={onClick}
+    <Button
+      size="sm"
+      variant="danger"
       disabled={disabled}
-      className="rounded-xl border border-line bg-panel2 px-3.5 py-2.5 text-[13px] font-semibold text-ink2 transition hover:border-bad hover:text-ink disabled:opacity-60"
+      onClick={() => {
+        if (window.confirm(`Déconnecter ${name} ? Vous pourrez le reconnecter à tout moment.`)) {
+          onClick();
+        }
+      }}
     >
       Déconnecter
-    </button>
+    </Button>
   );
 }

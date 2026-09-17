@@ -150,9 +150,10 @@ export default function ConfidentialitePage() {
           publications et de vos campagnes, jamais les données de vos clients.
         </li>
         <li>
-          <b>TikTok</b> — uniquement si vous connectez votre compte TikTok for
-          Business : nous lisons les statistiques de vos campagnes
-          publicitaires, jamais les données de vos clients. Détail dans la{" "}
+          <b>TikTok</b> — uniquement si vous connectez votre compte TikTok :
+          nous lisons la liste de vos vidéos publiques et leurs compteurs
+          (vues, likes, commentaires, partages), jamais les données de vos
+          abonnés ni de vos clients. Détail dans la{" "}
           <a href="/tiktok/privacy">politique de confidentialité TikTok</a>.
         </li>
         <li>

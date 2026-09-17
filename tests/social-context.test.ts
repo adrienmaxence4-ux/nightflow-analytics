@@ -17,6 +17,7 @@ import { emptyOverview, type SocialOverview, type SocialPost } from "@/services/
 function post(over: Partial<SocialPost> = {}): SocialPost {
   return {
     id: "1",
+    platform: "instagram",
     date: "2026-08-21",
     caption: "Une légende de test",
     permalink: "https://instagram.com/reel/x",
@@ -40,6 +41,7 @@ function overview(posts: SocialPost[]): SocialOverview {
     ...emptyOverview(),
     connected: true,
     source: "instagram",
+    sources: ["instagram"],
     posts,
     totals: {
       posts: posts.length,
@@ -96,6 +98,20 @@ describe("social context for the AI", () => {
     expect(text).toContain("engagement 1.3%");
   });
 
+  it("labels a TikTok as such and never hands the AI a reach it does not have", () => {
+    const text = formatSocialContext(
+      overview([
+        post({ id: "t", platform: "tiktok", reach: 0, views: 500, shares: 12, engagementRate: 4.4 }),
+        post({ id: "i", platform: "instagram", views: 95, reach: 76 }),
+      ])
+    ).join("\n");
+    expect(text).toContain("Instagram + TikTok");
+    expect(text).toMatch(/· TikTok · 500 vues, 10 likes, 0 commentaires, 12 partages, engagement 4.4% \(sur vues\)/);
+    expect(text).not.toMatch(/TikTok · .*touchés/);
+    expect(text).toMatch(/ne compare pas un taux TikTok à un taux Instagram/i);
+    expect(text).toMatch(/· Reel · 95 vues, 76 touchés/);
+  });
+
   it("caps the post list so a prolific account cannot flood the context", () => {
     const many = Array.from({ length: 30 }, (_, i) =>
       post({ id: String(i), caption: `Publication numéro ${i}` })
@@ -104,5 +120,27 @@ describe("social context for the AI", () => {
     const postLines = lines.filter((l) => l.startsWith("- 2026-"));
     expect(postLines.length).toBeLessThanOrEqual(12);
     expect(lines.join("\n")).toContain("30 publication(s)");
+  });
+});
+
+describe("social context when a platform failed to answer", () => {
+  it("never turns an outage into 'no posts'", () => {
+    const text = formatSocialContext({
+      ...emptyOverview(),
+      connected: true,
+      error: "TikTok est injoignable pour le moment.",
+    }).join("\n");
+    expect(text).toMatch(/SOURCE INDISPONIBLE : TikTok est injoignable/);
+    expect(text).toMatch(/ne conclus pas à une absence de publications/i);
+    expect(text).not.toMatch(/aucune publication trouvée/i);
+  });
+
+  it("names the failed platform next to the healthy one's posts", () => {
+    const text = formatSocialContext({
+      ...overview([post()]),
+      error: "TikTok : Jeton TikTok expiré — reconnecte ton compte dans Intégrations.",
+    }).join("\n");
+    expect(text).toContain("100 vues");
+    expect(text).toMatch(/SOURCE INDISPONIBLE : TikTok : Jeton TikTok expiré/);
   });
 });

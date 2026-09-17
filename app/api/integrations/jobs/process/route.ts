@@ -10,6 +10,7 @@ import {
   failJob,
 } from "@/lib/integrations/queue";
 import { runProviderSync } from "@/lib/integrations/sync-runner";
+import { PermanentError } from "@/lib/integrations/retry";
 import { getConnector } from "@/services/integrations/engine/connectors";
 
 /**
@@ -47,8 +48,8 @@ async function handle(req: Request) {
         await runProviderSync(db, job.store_id, job.provider);
       } else if (job.kind === "webhook") {
         const connector = getConnector(job.provider);
-        const body = (job.payload as { body?: string }).body;
-        if (connector && body) {
+        const body = (job.payload as { body?: unknown } | null)?.body;
+        if (connector && typeof body === "string" && body) {
           const events = connector.normalizeWebhook(JSON.parse(body), job.store_id);
           await enqueueEvents(db, events);
         }
@@ -57,6 +58,13 @@ async function handle(req: Request) {
       done++;
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
+      // A permanent failure is complete as far as the queue is concerned —
+      // the row already says "error" and why; replaying it changes nothing.
+      if (e instanceof PermanentError) {
+        await completeJob(db, job.id);
+        done++;
+        continue;
+      }
       await failJob(db, job, msg);
       retried++;
     }

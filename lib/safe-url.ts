@@ -45,3 +45,18 @@ export function safePublicHttpsBase(raw: string): string | null {
   if (!host.includes(".")) return null; // bare label, not a FQDN
   return `${u.protocol}//${host}`;
 }
+
+/**
+ * A link a platform handed us that the page will render as `href`. Only an
+ * https URL comes back; `javascript:` or garbage becomes "" and the page
+ * simply shows no link. Rendering, not fetching — the SSRF rules above do not
+ * apply, a public TikTok or Instagram permalink is exactly what we want.
+ */
+export function safeHttpsHref(raw: unknown): string {
+  if (typeof raw !== "string" || !raw) return "";
+  try {
+    return new URL(raw).protocol === "https:" ? raw : "";
+  } catch {
+    return "";
+  }
+}

@@ -17,7 +17,7 @@ export default function TikTokTermsPage() {
         <LangSwitch active="fr" />
 
         <h1>Conditions d&apos;utilisation — intégration TikTok</h1>
-        <p className="updated">Dernière mise à jour : 10 septembre 2026</p>
+        <p className="updated">Dernière mise à jour : 13 septembre 2026</p>
 
         <p>
           Ces conditions encadrent l&apos;utilisation de l&apos;intégration
@@ -32,24 +32,25 @@ export default function TikTokTermsPage() {
         <h2>1. Ce que fait l&apos;intégration</h2>
         <p>
           Nightflow est un tableau de bord d&apos;analyse pour marchands
-          e-commerce. Une fois votre compte TikTok for Business connecté, nous
-          lisons les statistiques de vos campagnes publicitaires (dépense,
-          impressions, clics, conversions) et les affichons à côté de vos
-          ventes, pour calculer un ROAS réel et repérer les campagnes qui
-          perdent de l&apos;argent.
+          e-commerce. Une fois votre compte TikTok connecté (via Login Kit),
+          nous lisons vos 20 dernières vidéos publiques et leurs compteurs
+          (vues, likes, commentaires, partages) via la Display API, et les
+          affichons à côté de vos publications Instagram, pour voir ce qui est
+          le plus regardé et partagé.
         </p>
         <p>
-          <b>L&apos;accès est en lecture seule.</b> Nightflow ne publie rien, ne
-          crée ni ne modifie aucune campagne, et ne dépense aucun budget
-          publicitaire.
+          <b>L&apos;accès est en lecture seule.</b> Nightflow ne publie rien,
+          ne modifie ni ne supprime aucune vidéo, n&apos;écrit aucun
+          commentaire, et ne touche pas à vos campagnes publicitaires — celles-ci
+          ne passent pas par cette intégration.
         </p>
 
         <h2>2. Qui peut l&apos;utiliser</h2>
         <ul>
           <li>Usage professionnel, réservé aux personnes majeures.</li>
           <li>
-            Vous devez être titulaire du compte publicitaire TikTok connecté, ou
-            disposer d&apos;un mandat du titulaire.
+            Vous devez être titulaire du compte TikTok connecté, ou disposer
+            d&apos;un mandat du titulaire.
           </li>
           <li>
             Un compte Nightflow = un espace de données isolé. Vos données ne
@@ -68,8 +69,7 @@ export default function TikTokTermsPage() {
             profil d&apos;une personne.
           </li>
           <li>
-            Respecter les conditions TikTok applicables à votre compte
-            publicitaire.
+            Respecter les conditions TikTok applicables à votre compte.
           </li>
         </ul>
 
@@ -81,8 +81,8 @@ export default function TikTokTermsPage() {
           </li>
           <li>
             Vous laisser révoquer l&apos;accès à tout moment depuis{" "}
-            <b>Intégrations → Déconnecter</b> : le jeton est supprimé
-            immédiatement.
+            <b>Intégrations → Déconnecter</b> : les jetons sont supprimés
+            immédiatement et l&apos;autorisation est révoquée auprès de TikTok.
           </li>
           <li>
             Ne jamais vendre vos données, ne pas les utiliser à des fins
@@ -94,8 +94,8 @@ export default function TikTokTermsPage() {
         <p>
           Les recommandations du Copilot sont générées à partir de vos chiffres
           réels. Elles constituent une <b>aide à la décision</b>, pas un conseil
-          financier, comptable ou juridique : les arbitrages de budget
-          publicitaire restent les vôtres.
+          financier, comptable ou juridique : ce que vous publiez, et vos
+          arbitrages de budget, restent les vôtres.
         </p>
 
         <h2>6. Abonnement</h2>
@@ -116,8 +116,8 @@ export default function TikTokTermsPage() {
           sociétés affiliées ; TikTok est une marque de son propriétaire. Votre
           utilisation de TikTok reste soumise aux conditions de TikTok. Nous
           utilisons les API TikTok conformément aux{" "}
-          <i>TikTok Developer Terms of Service</i> et aux règles publicitaires
-          de TikTok.
+          <i>TikTok Developer Terms of Service</i> et aux{" "}
+          <i>Developer Guidelines</i>.
         </p>
 
         <h2>8. Disponibilité et responsabilité</h2>
@@ -133,8 +133,9 @@ export default function TikTokTermsPage() {
         <p>
           Vous pouvez déconnecter TikTok à tout moment. Nous pouvons suspendre
           l&apos;intégration en cas d&apos;usage abusif ou de demande de TikTok.
-          Dans les deux cas, les données TikTok associées à votre compte sont
-          supprimées sous 30 jours — voir la{" "}
+          Dans les deux cas, les jetons sont supprimés immédiatement et
+          l&apos;autorisation révoquée auprès de TikTok ; aucune statistique
+          TikTok n&apos;étant conservée, il ne reste rien à effacer — voir la{" "}
           <Link href="/tiktok/privacy">
             politique de confidentialité TikTok
           </Link>
@@ -165,7 +166,7 @@ export default function TikTokTermsPage() {
         <LangSwitch active="en" />
 
         <h1>Terms of Service — TikTok integration</h1>
-        <p className="updated">Last updated: September 10, 2026</p>
+        <p className="updated">Last updated: September 13, 2026</p>
 
         <p>
           These terms govern the use of the TikTok integration of{" "}
@@ -178,22 +179,24 @@ export default function TikTokTermsPage() {
         <h2>1. What the integration does</h2>
         <p>
           Nightflow is an analytics dashboard for e-commerce merchants. Once you
-          connect your TikTok for Business account, we read your advertising
-          metrics (spend, impressions, clicks, conversions) and display them
-          next to your sales, so you can see a real ROAS and spot campaigns that
-          lose money.
+          connect your TikTok account (through Login Kit), we read your 20 most
+          recent public videos and their counters (views, likes, comments,
+          shares) through the Display API, and display them next to your
+          Instagram posts, so you can see what gets watched and shared the
+          most.
         </p>
         <p>
           <b>Access is read-only.</b> Nightflow does not post content, does not
-          create or edit campaigns, and never spends your advertising budget.
+          edit or delete any video, writes no comments, and does not touch your
+          advertising campaigns — those do not go through this integration.
         </p>
 
         <h2>2. Who may use it</h2>
         <ul>
           <li>Business use only, by adults.</li>
           <li>
-            You must own the connected TikTok advertiser account, or be
-            authorised by its owner.
+            You must own the connected TikTok account, or be authorised by its
+            owner.
           </li>
           <li>
             One Nightflow account is one isolated data space. Your data is never
@@ -209,7 +212,7 @@ export default function TikTokTermsPage() {
             resale, or to build a profile of an individual.
           </li>
           <li>
-            Comply with the TikTok terms that apply to your advertiser account.
+            Comply with the TikTok terms that apply to your account.
           </li>
         </ul>
 
@@ -220,7 +223,8 @@ export default function TikTokTermsPage() {
           </li>
           <li>
             Let you revoke access at any time from{" "}
-            <b>Integrations → Disconnect</b>: the token is deleted immediately.
+            <b>Integrations → Disconnect</b>: the tokens are deleted immediately
+            and the authorisation is revoked with TikTok.
           </li>
           <li>
             Never sell your data, never use it for advertising, never use it to
@@ -232,7 +236,7 @@ export default function TikTokTermsPage() {
         <p>
           Copilot recommendations are generated from your own figures. They are
           a <b>decision aid</b>, not financial, accounting or legal advice:
-          budget decisions remain yours.
+          what you publish, and your budget decisions, remain yours.
         </p>
 
         <h2>6. Subscription</h2>
@@ -248,8 +252,8 @@ export default function TikTokTermsPage() {
           with, sponsored by, or endorsed by TikTok Pte. Ltd. or its affiliates;
           TikTok is a trademark of its owner. Your use of TikTok remains subject
           to TikTok terms. We use the TikTok APIs in accordance with the{" "}
-          <i>TikTok Developer Terms of Service</i> and TikTok advertising
-          policies.
+          <i>TikTok Developer Terms of Service</i> and the{" "}
+          <i>Developer Guidelines</i>.
         </p>
 
         <h2>8. Availability and liability</h2>
@@ -263,8 +267,10 @@ export default function TikTokTermsPage() {
         <h2>9. Ending access</h2>
         <p>
           You can disconnect TikTok at any time. We may suspend the integration
-          in case of abuse or at TikTok request. In both cases, the TikTok data
-          held for your account is deleted within 30 days — see the{" "}
+          in case of abuse or at TikTok request. In both cases the tokens are
+          deleted immediately and the authorisation revoked with TikTok; since
+          no TikTok metrics are stored, nothing else remains to erase — see
+          the{" "}
           <Link href="/tiktok/privacy">TikTok Privacy Policy</Link>.
         </p>
 

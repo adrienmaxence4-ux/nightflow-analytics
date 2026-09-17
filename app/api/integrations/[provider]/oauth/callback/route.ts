@@ -6,6 +6,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { ownedStoreId } from "@/lib/store";
 import { encryptToken } from "@/lib/integrations/crypto";
 import { getOAuthProvider } from "@/services/integrations/oauth-registry";
+import { invalidateSocialCache } from "@/services/social/overview";
 
 /**
  * GET /api/integrations/[provider]/oauth/callback
@@ -81,12 +82,19 @@ export async function GET(
   const admin = createAdminClient();
   const writer = (admin ?? (supabase as unknown as SupabaseClient)) as SupabaseClient;
 
+  // Expiry and refresh token go in their own columns: that is what the hourly
+  // runner reads to renew a token before it dies. Left in metadata alone they
+  // are invisible to it, and a 60-day Instagram grant would simply stop.
   const { error: upsertErr } = await writer.from("integrations").upsert(
     {
       store_id: storeId,
       provider: def.id,
       status: "connected",
       access_token: encryptToken(result.accessToken),
+      refresh_token: result.refreshToken ? encryptToken(result.refreshToken) : null,
+      token_expires_at: result.expiresAt
+        ? new Date(result.expiresAt).toISOString()
+        : null,
       connected_at: new Date().toISOString(),
       last_error: null,
       metadata: result.metadata ?? {},
@@ -104,6 +112,7 @@ export async function GET(
   } catch (e) {
     console.error(`[${def.id}] initial sync failed`, e);
   }
+  invalidateSocialCache(storeId);
 
   const res = NextResponse.redirect(
     `${env.siteUrl}/integrations?${def.id}=connected`

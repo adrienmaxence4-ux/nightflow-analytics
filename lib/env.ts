@@ -130,9 +130,19 @@ export const env = {
     "INSTAGRAM_APP_SECRET",
     /^(?=.*instagram)(?=.*(secret|secr[eè]te)).*$/i
   ),
-  // TikTok Ads stays a stub: its Marketing API needs a sandbox→production
-  // review plus a data-security audit, the most gated of the paid-social APIs.
-  tiktokAppSecret: process.env.TIKTOK_APP_SECRET ?? "",
+  // TikTok organic — Login Kit + Display API, from the TikTok for Developers
+  // portal (developers.tiktok.com), whose console labels the pair "Client key"
+  // / "Client secret" in English, so the names are exact — no loose match: a
+  // secret picked by regex from whichever variable came first is a secret
+  // nobody chose. TIKTOK_APP_SECRET is the older webhook-only name.
+  // This is NOT the Marketing API (ads): that one lives on a separate portal
+  // with its own review, and ad spend keeps flowing through Windsor.
+  tiktokClientKey: (process.env.TIKTOK_CLIENT_KEY ?? "").trim(),
+  tiktokClientSecret: (
+    process.env.TIKTOK_CLIENT_SECRET ??
+    process.env.TIKTOK_APP_SECRET ??
+    ""
+  ).trim(),
 
   // Admin allowlist — emails that may use the demo/test data tools. These tools
   // write or delete data, so they're hidden from real customers. Comma-separated.
@@ -183,6 +193,10 @@ export const isMetaOAuthConfigured =
 /** Instagram Login is live once both halves of its own credential exist. */
 export const isInstagramConfigured =
   !!env.instagramAppId && !!env.instagramAppSecret;
+
+/** TikTok Login Kit is live once both halves of its credential exist. */
+export const isTiktokConfigured =
+  !!env.tiktokClientKey && !!env.tiktokClientSecret;
 
 export const isGoogleOAuthConfigured =
   env.googleClientId.length > 0 && env.googleClientSecret.length > 0;

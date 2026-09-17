@@ -1,13 +1,16 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import type { StoredTokens } from "@/services/integrations/engine/types";
 import {
   isStripeOAuthConfigured,
   isKlaviyoOAuthConfigured,
   isGoogleOAuthConfigured,
   isMetaOAuthConfigured,
   isInstagramConfigured,
+  isTiktokConfigured,
 } from "@/lib/env";
 import {
   buildStripeAuthorizeUrl,
+  deauthorizeStripe,
   exchangeStripeCode,
   syncStripe,
 } from "@/services/integrations/stripe";
@@ -30,6 +33,12 @@ import {
   exchangeInstagramCode,
   syncInstagram,
 } from "@/services/integrations/instagram";
+import {
+  buildTiktokAuthorizeUrl,
+  exchangeTiktokCode,
+  revokeTiktokToken,
+  syncTiktok,
+} from "@/services/integrations/tiktok";
 
 /**
  * SERVER-ONLY. Registry of OAuth ("Se connecter avec …") providers.
@@ -42,6 +51,10 @@ import {
 
 export interface OAuthExchangeResult {
   accessToken: string;
+  /** Durable credential for providers whose access token is short-lived. */
+  refreshToken?: string | null;
+  /** epoch ms — lets the hourly runner refresh before the token dies. */
+  expiresAt?: number | null;
   metadata?: Record<string, unknown>;
 }
 
@@ -60,6 +73,11 @@ export interface OAuthProviderDef {
     storeId: string,
     db: SupabaseClient
   ) => Promise<{ orders: number; revenueCents: number; days: number }>;
+  /**
+   * Tells the platform the grant is over when the merchant disconnects.
+   * Optional and best-effort: most providers simply let the token rot.
+   */
+  revoke?: (tokens: StoredTokens) => Promise<void>;
 }
 
 export const OAUTH_PROVIDERS: Record<string, OAuthProviderDef> = {
@@ -74,7 +92,11 @@ export const OAUTH_PROVIDERS: Record<string, OAuthProviderDef> = {
     exchangeCode: async (code) => {
       const r = await exchangeMetaCode(code);
       return r
-        ? { accessToken: r.accessToken, metadata: { expiresAt: r.expiresAt } }
+        ? {
+            accessToken: r.accessToken,
+            expiresAt: r.expiresAt,
+            metadata: { expiresAt: r.expiresAt },
+          }
         : null;
     },
     sync: syncMeta,
@@ -92,11 +114,38 @@ export const OAUTH_PROVIDERS: Record<string, OAuthProviderDef> = {
       return r
         ? {
             accessToken: r.accessToken,
+            expiresAt: r.expiresAt,
             metadata: { userId: r.userId, expiresAt: r.expiresAt },
           }
         : null;
     },
     sync: (accessToken) => syncInstagram(accessToken),
+  },
+  // TikTok organic (Login Kit + Display API). 24-hour access token renewed
+  // from a 365-day refresh token — see services/integrations/tiktok.ts.
+  tiktok: {
+    id: "tiktok",
+    label: "TikTok",
+    isConfigured: isTiktokConfigured,
+    usesPkce: false,
+    buildAuthorizeUrl: (state) => buildTiktokAuthorizeUrl(state),
+    exchangeCode: async (code) => {
+      const r = await exchangeTiktokCode(code);
+      return r
+        ? {
+            accessToken: r.accessToken,
+            refreshToken: r.refreshToken,
+            expiresAt: r.expiresAt,
+            metadata: {
+              openId: r.openId,
+              scope: r.scope,
+              refreshExpiresAt: r.refreshExpiresAt,
+            },
+          }
+        : null;
+    },
+    sync: (accessToken) => syncTiktok(accessToken),
+    revoke: revokeTiktokToken,
   },
   stripe: {
     id: "stripe",
@@ -111,6 +160,10 @@ export const OAUTH_PROVIDERS: Record<string, OAuthProviderDef> = {
         : null;
     },
     sync: syncStripe,
+    revoke: async (tokens) => {
+      const id = tokens.metadata?.stripe_user_id;
+      if (typeof id === "string") await deauthorizeStripe(id);
+    },
   },
   klaviyo: {
     id: "klaviyo",
@@ -144,5 +197,5 @@ export const OAUTH_PROVIDERS: Record<string, OAuthProviderDef> = {
 };
 
 export function getOAuthProvider(provider: string): OAuthProviderDef | null {
-  return OAUTH_PROVIDERS[provider] ?? null;
+  return Object.hasOwn(OAUTH_PROVIDERS, provider) ? OAUTH_PROVIDERS[provider] : null;
 }

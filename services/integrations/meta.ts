@@ -1,6 +1,7 @@
 import { createHmac } from "crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { env } from "@/lib/env";
+import { safeHttpsHref } from "@/lib/safe-url";
 
 /**
  * SERVER-ONLY. Meta Ads (Facebook + Instagram Ads) — one-click OAuth.
@@ -69,7 +70,14 @@ interface TokenResponse {
   expires_in?: number;
 }
 
-async function graphGet<T>(path: string, params: Record<string, string>): Promise<T | null> {
+export const META_UNREACHABLE = "Meta est injoignable pour le moment.";
+
+/** Same contract as Instagram's igGet: null on refusal, throws on outage when asked. */
+async function graphGet<T>(
+  path: string,
+  params: Record<string, string>,
+  opts: { throwOnOutage?: boolean } = {}
+): Promise<T | null> {
   const qs = new URLSearchParams(params);
   // Meta rejects server-side calls make on behalf of a user token with 403
   // "require an appsecret_proof argument" once the app has that protection
@@ -83,22 +91,30 @@ async function graphGet<T>(path: string, params: Record<string, string>): Promis
         .digest("hex")
     );
   }
+  let res: Response;
   try {
-    const res = await fetch(`${GRAPH}/${V()}/${path}?${qs}`, {
+    res = await fetch(`${GRAPH}/${V()}/${path}?${qs}`, {
       headers: { Accept: "application/json" },
       signal: AbortSignal.timeout(TIMEOUT_MS),
     });
-    if (!res.ok) {
-      const detail = await res.text().catch(() => "");
-      console.error(`[meta] ${res.status} on ${path} ${detail.slice(0, 200)}`);
-      return null;
-    }
-    return (await res.json()) as T;
   } catch (e) {
     console.error(`[meta] request failed on ${path}`, e);
+    if (opts.throwOnOutage) throw new Error(META_UNREACHABLE);
     return null;
   }
+  if (!res.ok) {
+    const detail = await res.text().catch(() => "");
+    console.error(`[meta] ${res.status} on ${path} ${detail.slice(0, 200)}`);
+    if (opts.throwOnOutage && (res.status >= 500 || res.status === 429)) {
+      throw new Error(META_UNREACHABLE);
+    }
+    return null;
+  }
+  return (await res.json()) as T;
 }
+
+/** Meta extends only a still-valid token — see INSTAGRAM_REFRESH_MARGIN_MS. */
+export const META_REFRESH_MARGIN_MS = 7 * 86_400_000;
 
 /**
  * Exchanges the OAuth code for the token Nightflow stores.
@@ -158,7 +174,9 @@ export async function refreshMetaToken(
     fb_exchange_token: accessToken,
   };
   if (usesBusinessLogin()) params.set_token_expires_in_60_days = "true";
-  const r = await graphGet<TokenResponse>("oauth/access_token", params);
+  const r = await graphGet<TokenResponse>("oauth/access_token", params, {
+    throwOnOutage: true,
+  });
   if (!r?.access_token) return null;
   return {
     accessToken: r.access_token,
@@ -419,7 +437,7 @@ export async function fetchMetaInstagramPosts(
       id: String(m.id),
       date: (m.timestamp ?? "").slice(0, 10),
       caption,
-      permalink: String(m.permalink ?? ""),
+      permalink: safeHttpsHref(m.permalink),
       isReel: m.media_product_type === "REELS" || m.media_type === "REELS",
       // like_count on the media is the reliable one; the insight metric is
       // absent on older posts.

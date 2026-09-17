@@ -160,7 +160,7 @@ export const KEYED_PROVIDERS: Record<string, KeyedProviderDef> = {
 };
 
 export function getKeyedProvider(provider: string): KeyedProviderDef | null {
-  return KEYED_PROVIDERS[provider] ?? null;
+  return Object.hasOwn(KEYED_PROVIDERS, provider) ? KEYED_PROVIDERS[provider] : null;
 }
 
 /** The provider ids the app exposes as key-based connectors. */

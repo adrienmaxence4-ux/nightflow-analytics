@@ -30,16 +30,30 @@ export interface SyncSummary {
   tracksRevenue?: boolean;
 }
 
-const euros = (cents = 0) =>
-  Math.round(cents / 100).toLocaleString("fr-FR");
+/** Cents → "1 480 €", the one money format every card toast uses. */
+export const euros = (cents = 0) =>
+  `${Math.round(cents / 100).toLocaleString("fr-FR")} €`;
+
+/**
+ * Two cards can drive the same provider (Stripe OAuth + restricted key). When
+ * one changes the connection, the others reload instead of showing a stale
+ * "Non connecté" next to a fresh "Connecté".
+ */
+const CHANGED_EVENT = "nightflow:integration-changed";
+
+export function announceIntegrationChange(provider: string) {
+  window.dispatchEvent(new CustomEvent(CHANGED_EVENT, { detail: provider }));
+}
 
 /** Default sync toast: "Synchronisé : 12 commandes, 1 480 € ✓". */
 export const ordersAndRevenue = (d: SyncSummary) =>
-  `Synchronisé : ${d.orders ?? 0} commandes, ${euros(d.revenueCents)} € ✓`;
+  `Synchronisé : ${d.orders ?? 0} commandes, ${euros(d.revenueCents)} ✓`;
 
 export function useConnection(provider: string) {
   const toast = useToast();
-  const [status, setStatus] = useState<IntegrationStatus>(DEFAULT_STATUS);
+  // `null` until the first status answer: the card shows a skeleton instead of
+  // flashing "Non connecté" at a merchant whose store is in fact connected.
+  const [status, setStatus] = useState<IntegrationStatus | null>(null);
   const [busy, setBusy] = useState(false);
 
   const reload = useCallback(async () => {
@@ -47,16 +61,27 @@ export function useConnection(provider: string) {
       const res = await fetch("/api/integrations/status", { cache: "no-store" });
       if (res.ok) {
         const all = await res.json();
-        if (all[provider]) setStatus({ ...DEFAULT_STATUS, ...all[provider] });
+        if (all[provider]) {
+          setStatus({ ...DEFAULT_STATUS, ...all[provider] });
+          return;
+        }
       }
     } catch {
-      /* ignore — the card just stays on its last known status */
+      /* fall through — the card keeps its last known status */
     }
+    // No answer for this provider: leave a loaded card alone, but never leave
+    // a fresh one on the skeleton forever.
+    setStatus((s) => s ?? DEFAULT_STATUS);
   }, [provider]);
 
   useEffect(() => {
     reload();
-  }, [reload]);
+    const onChange = (e: Event) => {
+      if ((e as CustomEvent<string>).detail === provider) reload();
+    };
+    window.addEventListener(CHANGED_EVENT, onChange);
+    return () => window.removeEventListener(CHANGED_EVENT, onChange);
+  }, [provider, reload]);
 
   const post = async (action: string, body?: unknown): Promise<Response> =>
     fetch(`/api/integrations/${provider}/${action}`, {
@@ -79,7 +104,10 @@ export function useConnection(provider: string) {
     try {
       const res = await post("connect", { apiKey: credential });
       const data = (await res.json().catch(() => ({}))) as SyncSummary;
-      if (res.ok) return data;
+      if (res.ok) {
+        announceIntegrationChange(provider);
+        return data;
+      }
       toast(data.error ?? failure, "info");
       return null;
     } catch {
@@ -92,7 +120,7 @@ export function useConnection(provider: string) {
 
   const sync = async (describe: (d: SyncSummary) => string = ordersAndRevenue) => {
     setBusy(true);
-    setStatus((s) => ({ ...s, state: "syncing" }));
+    setStatus((s) => ({ ...(s ?? DEFAULT_STATUS), state: "syncing" }));
     try {
       const res = await post("sync");
       const data = (await res.json().catch(() => ({}))) as SyncSummary;
@@ -104,7 +132,7 @@ export function useConnection(provider: string) {
       toast("Synchronisation impossible", "info");
     } finally {
       setBusy(false);
-      reload();
+      announceIntegrationChange(provider);
     }
   };
 
@@ -114,6 +142,7 @@ export function useConnection(provider: string) {
       await post("disconnect");
       toast(done);
       setStatus(DEFAULT_STATUS);
+      announceIntegrationChange(provider);
     } catch {
       toast("Impossible de déconnecter", "info");
     } finally {

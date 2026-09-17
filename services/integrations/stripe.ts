@@ -67,6 +67,35 @@ export async function exchangeStripeCode(
   }
 }
 
+/**
+ * Tells Stripe the connection is over. Without this a merchant who
+ * disconnects in Nightflow keeps sending us Connect webhooks for their
+ * account; the webhook route now drops them, but the merchant's Stripe
+ * dashboard would still list Nightflow as authorised. Best-effort: the row
+ * is cleared regardless. Only OAuth connections carry a `stripe_user_id`;
+ * a pasted API key has nothing to deauthorize.
+ */
+export async function deauthorizeStripe(stripeUserId: string): Promise<void> {
+  if (!stripeUserId || !env.stripeClientId || !env.stripeSecretKey) return;
+  try {
+    const res = await fetch(`${STRIPE_CONNECT}/deauthorize`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+        Authorization: `Bearer ${env.stripeSecretKey}`,
+      },
+      body: new URLSearchParams({
+        client_id: env.stripeClientId,
+        stripe_user_id: stripeUserId,
+      }),
+      signal: AbortSignal.timeout(20_000),
+    });
+    if (!res.ok) console.error(`[stripe] deauthorize ${res.status} for ${stripeUserId}`);
+  } catch (e) {
+    console.error("[stripe] deauthorize failed", e);
+  }
+}
+
 /** Quick validation: the key can read the account balance. */
 export async function validateStripeKey(key: string): Promise<boolean> {
   try {

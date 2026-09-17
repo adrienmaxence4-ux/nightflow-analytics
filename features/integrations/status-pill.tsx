@@ -26,9 +26,11 @@ export function StatusPill({ state }: { state: ConnectionState }) {
         </Badge>
       );
     case "expired":
+      // "En validation" is reserved for the platform-review badge: an expired
+      // token is the merchant's to fix, a pending review is not.
       return (
         <Badge variant="warn">
-          <Clock className="h-[15px] w-[15px]" /> En validation
+          <Clock className="h-[15px] w-[15px]" /> Jeton expiré
         </Badge>
       );
     default:

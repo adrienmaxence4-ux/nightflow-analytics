@@ -1,4 +1,6 @@
 import { env } from "@/lib/env";
+import { PermanentError } from "@/lib/integrations/retry";
+import { safeHttpsHref } from "@/lib/safe-url";
 
 /**
  * SERVER-ONLY. Instagram organic — one-click OAuth via Instagram Login.
@@ -53,26 +55,57 @@ interface TokenResponse {
   expires_in?: number;
 }
 
+export const INSTAGRAM_UNREACHABLE = "Instagram est injoignable pour le moment.";
+export const INSTAGRAM_REVOKED =
+  "Instagram a retiré l'accès de Nightflow — reconnectez votre compte.";
+
+function isAuthFailure(status: number, body: string): boolean {
+  if (status === 401 || status === 403) return true;
+  try {
+    const err = (JSON.parse(body) as { error?: { code?: number; type?: string } }).error;
+    return err?.code === 190 || err?.type === "OAuthException";
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Null on any failure — except, when `throwOnOutage` is set, a network error
+ * or a 5xx/429, which THROWS instead. The refresh path needs the distinction:
+ * a timeout must not be read as "token revoked" and end in a reconnect
+ * prompt for a grant that is fine.
+ */
 async function igGet<T>(
   path: string,
-  params: Record<string, string>
+  params: Record<string, string>,
+  opts: { throwOnOutage?: boolean } = {}
 ): Promise<T | null> {
   const qs = new URLSearchParams(params);
+  let res: Response;
   try {
-    const res = await fetch(`${GRAPH}/${path}?${qs}`, {
+    res = await fetch(`${GRAPH}/${path}?${qs}`, {
       headers: { Accept: "application/json" },
       signal: AbortSignal.timeout(TIMEOUT_MS),
     });
-    if (!res.ok) {
-      const detail = await res.text().catch(() => "");
-      console.error(`[instagram] ${res.status} on ${path} ${detail.slice(0, 200)}`);
-      return null;
-    }
-    return (await res.json()) as T;
   } catch (e) {
     console.error(`[instagram] request failed on ${path}`, e);
+    if (opts.throwOnOutage) throw new Error(INSTAGRAM_UNREACHABLE);
     return null;
   }
+  if (!res.ok) {
+    const detail = await res.text().catch(() => "");
+    console.error(`[instagram] ${res.status} on ${path} ${detail.slice(0, 200)}`);
+    if (opts.throwOnOutage && (res.status >= 500 || res.status === 429)) {
+      throw new Error(INSTAGRAM_UNREACHABLE);
+    }
+    // A revoked or expired grant (OAuthException, code 190) is not an outage:
+    // retrying for 13 hours would only hide "reconnect" from the merchant.
+    if (opts.throwOnOutage && isAuthFailure(res.status, detail)) {
+      throw new PermanentError(INSTAGRAM_REVOKED);
+    }
+    return null;
+  }
+  return (await res.json()) as T;
 }
 
 /**
@@ -124,14 +157,32 @@ export async function exchangeInstagramCode(
   };
 }
 
-/** Extends a long-lived token for another 60 days, without the merchant. */
+/**
+ * How early to extend: Instagram only refreshes a token that is still valid
+ * (and at least a day old), and the cron looks once an hour — a week leaves
+ * ~170 chances instead of one that almost always comes too late.
+ */
+export const INSTAGRAM_REFRESH_MARGIN_MS = 7 * 86_400_000;
+
+/**
+ * Extends a long-lived token for another 60 days, without the merchant.
+ * Null means Instagram refused (token dead); an outage throws.
+ */
 export async function refreshInstagramToken(
   accessToken: string
 ): Promise<{ accessToken: string; expiresAt: number | null } | null> {
-  const r = await igGet<TokenResponse>("refresh_access_token", {
-    grant_type: "ig_refresh_token",
-    access_token: accessToken,
-  });
+  let r: TokenResponse | null;
+  try {
+    r = await igGet<TokenResponse>(
+      "refresh_access_token",
+      { grant_type: "ig_refresh_token", access_token: accessToken },
+      { throwOnOutage: true }
+    );
+  } catch (e) {
+    // Here a revoked grant IS the "null" case: the runner marks it expired.
+    if (e instanceof PermanentError) return null;
+    throw e;
+  }
   if (!r?.access_token) return null;
   return {
     accessToken: r.access_token,
@@ -201,14 +252,19 @@ export async function validateInstagramToken(accessToken: string): Promise<boole
  * API call itself already caps the cost at MAX_POSTS regardless.
  */
 export async function fetchInstagramPosts(
-  accessToken: string
+  accessToken: string,
+  opts: { throwOnOutage?: boolean } = {}
 ): Promise<InstagramPost[] | null> {
-  const media = await igGet<{ data?: MediaRow[] }>("me/media", {
-    fields:
-      "id,caption,media_type,media_product_type,permalink,timestamp,like_count,comments_count",
-    limit: String(MAX_POSTS),
-    access_token: accessToken,
-  });
+  const media = await igGet<{ data?: MediaRow[] }>(
+    "me/media",
+    {
+      fields:
+        "id,caption,media_type,media_product_type,permalink,timestamp,like_count,comments_count",
+      limit: String(MAX_POSTS),
+      access_token: accessToken,
+    },
+    opts
+  );
   if (!media?.data) return null;
 
   const posts: InstagramPost[] = [];
@@ -224,7 +280,7 @@ export async function fetchInstagramPosts(
       id: String(m.id),
       date: (m.timestamp ?? "").slice(0, 10),
       caption,
-      permalink: String(m.permalink ?? ""),
+      permalink: safeHttpsHref(m.permalink),
       isReel: m.media_product_type === "REELS" || m.media_type === "REELS",
       views: metric(rows, "views"),
       // The media object's own counts are the reliable ones; the matching
@@ -248,7 +304,7 @@ export async function fetchInstagramPosts(
 export async function syncInstagram(
   accessToken: string
 ): Promise<{ orders: number; revenueCents: number; days: number }> {
-  const posts = await fetchInstagramPosts(accessToken);
+  const posts = await fetchInstagramPosts(accessToken, { throwOnOutage: true });
   if (posts === null) throw new Error("Instagram n'a pas répondu.");
   // `days` here just labels the sync summary shown on the Integrations page
   // ("dernière synchro : X jours"); it no longer bounds which posts were read.

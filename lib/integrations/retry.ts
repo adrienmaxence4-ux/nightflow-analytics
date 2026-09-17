@@ -13,6 +13,22 @@ export interface RetryOptions {
   onRetry?: (err: unknown, attempt: number, delayMs: number) => void;
 }
 
+/**
+ * A failure the platform has already ruled on — revoked token, missing scope,
+ * bad credentials. Retrying replays the same 4xx and delays the only useful
+ * outcome, which is telling the merchant.
+ */
+export class PermanentError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "PermanentError";
+  }
+}
+
+/** Default `shouldRetry`: anything but a PermanentError. */
+export const retryUnlessPermanent = (err: unknown): boolean =>
+  !(err instanceof PermanentError);
+
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 export async function withRetry<T>(

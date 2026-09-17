@@ -17,12 +17,13 @@ export default function TikTokPrivacyPage() {
         <LangSwitch active="fr" />
 
         <h1>Politique de confidentialité — intégration TikTok</h1>
-        <p className="updated">Dernière mise à jour : 10 septembre 2026</p>
+        <p className="updated">Dernière mise à jour : 13 septembre 2026</p>
 
         <p>
           Cette politique décrit les données que <b>Nightflow Analytics</b> lit
-          via les API TikTok lorsque vous connectez votre compte TikTok for
-          Business, ce que nous en faisons, et comment les faire supprimer. Elle
+          via les API TikTok (Login Kit et Display API) lorsque vous connectez
+          votre compte TikTok, ce que nous en faisons, et comment les faire
+          supprimer. Elle
           complète notre{" "}
           <Link href="/confidentialite">
             politique de confidentialité générale
@@ -36,51 +37,71 @@ export default function TikTokPrivacyPage() {
         </p>
 
         <h2>1. Les données TikTok que nous lisons</h2>
+        <p>
+          Deux autorisations sont demandées à la connexion, et seulement ces
+          deux-là :
+        </p>
         <ul>
           <li>
-            <b>Identité du compte publicitaire</b> — identifiant advertiser, nom
-            du compte, devise, fuseau horaire.
+            <b>Profil de base</b> (<i>user.info.basic</i>) — l&apos;identifiant
+            technique du compte connecté (<i>open_id</i>). C&apos;est
+            l&apos;autorisation minimale exigée par TikTok pour toute
+            connexion ; nous n&apos;en lisons rien d&apos;autre.
           </li>
           <li>
-            <b>Structure des campagnes</b> — identifiants et noms des campagnes,
-            groupes d&apos;annonces et annonces, statut, budget.
-          </li>
-          <li>
-            <b>Statistiques agrégées</b> — impressions, clics, dépense,
-            conversions et valeur des conversions, par jour et par campagne.
-          </li>
-          <li>
-            <b>Le jeton d&apos;accès</b> délivré par TikTok au moment de la
-            connexion, nécessaire pour rafraîchir ces chiffres.
+            <b>Liste des vidéos publiques</b> (<i>video.list</i>) — pour vos
+            20 dernières vidéos publiques : identifiant, date de publication,
+            description, lien de partage et compteurs (vues, likes,
+            commentaires, partages).
           </li>
         </ul>
+        <p>
+          TikTok nous délivre aussi, au moment de la connexion, un jeton
+          d&apos;accès et un jeton de renouvellement, nécessaires pour relire
+          ces chiffres sans vous redemander l&apos;autorisation.
+        </p>
+        <p>
+          Les vidéos et leurs compteurs sont lus à l&apos;affichage de la page
+          et une fois par heure en tâche de fond, pour vérifier que la
+          connexion fonctionne toujours. Ils ne sont <b>pas stockés</b> : nous
+          ne conservons que la connexion elle-même (identifiant du compte et
+          jetons chiffrés).
+        </p>
 
-        <h2>2. Ce que nous ne lisons pas</h2>
+        <h2>2. Ce que nous ne lisons pas et ne faisons pas</h2>
         <ul>
           <li>
-            Aucune donnée personnelle d&apos;utilisateurs TikTok : ni profils,
-            ni abonnés, ni commentaires, ni messages privés.
+            Aucune donnée sur d&apos;autres personnes que vous : ni la liste de
+            vos abonnés, ni le contenu des commentaires, ni les messages
+            privés, ni l&apos;identité de qui a vu ou aimé une vidéo.
           </li>
           <li>
-            Aucune audience personnalisée ni liste de clients. Nous n&apos;en
-            créons pas et n&apos;en téléversons pas.
+            Aucune vidéo privée ni brouillon, et aucun fichier vidéo : nous
+            lisons des compteurs et un lien, jamais le contenu lui-même.
           </li>
-          <li>Aucun contenu vidéo, aucune donnée de suivi individuel.</li>
           <li>
-            Aucune donnée d&apos;un compte publicitaire que vous n&apos;avez pas
-            connecté vous-même.
+            <b>Aucune publication.</b> Nightflow ne poste, ne modifie et ne
+            supprime rien sur votre compte TikTok.
+          </li>
+          <li>
+            Aucune donnée publicitaire (dépense, campagnes) : les campagnes
+            TikTok Ads ne passent pas par cette intégration.
+          </li>
+          <li>
+            Aucune donnée d&apos;un compte que vous n&apos;avez pas connecté
+            vous-même.
           </li>
         </ul>
 
         <h2>3. Pourquoi nous les traitons</h2>
         <p>
           Ces données servent uniquement à vous les restituer dans votre propre
-          tableau de bord : rapprocher la dépense publicitaire de vos ventes
-          réelles, calculer le ROAS et le coût d&apos;acquisition, produire vos
-          rapports et déclencher des alertes (campagne qui décroche, budget qui
-          s&apos;emballe). La base légale est l&apos;exécution du contrat qui
-          nous lie ; la connexion résulte de votre action explicite et reste
-          révocable à tout moment.
+          tableau de bord : voir quelles vidéos ont le plus été vues et
+          partagées, les comparer à vos publications Instagram, et permettre au
+          Copilot de vous suggérer quoi publier ensuite. Aucune vidéo n&apos;est
+          reliée à un chiffre d&apos;affaires. La base légale est l&apos;exécution du
+          contrat qui nous lie ; la connexion résulte de votre action explicite
+          et reste révocable à tout moment.
         </p>
         <p>
           Nous ne vendons pas ces données, ne les partageons avec aucun tiers à
@@ -91,11 +112,11 @@ export default function TikTokPrivacyPage() {
 
         <h2>4. Analyses générées par IA</h2>
         <p>
-          Pour rédiger les recommandations du Copilot, un résumé agrégé de votre
-          activité (chiffres et noms de campagnes) est transmis à nos
-          fournisseurs d&apos;IA, <b>Anthropic</b> (Claude) et <b>Google</b>{" "}
-          (Gemini). Aucun jeton d&apos;accès ne leur est transmis, et ces
-          données ne servent pas à entraîner leurs modèles.
+          Pour rédiger les recommandations du Copilot, un résumé de votre
+          activité (compteurs par vidéo et première ligne de sa description)
+          est transmis à nos fournisseurs d&apos;IA, <b>Anthropic</b> (Claude)
+          et <b>Google</b> (Gemini). Aucun jeton d&apos;accès ne leur est
+          transmis, et ces données ne servent pas à entraîner leurs modèles.
         </p>
 
         <h2>5. Où et comment ces données sont stockées</h2>
@@ -136,15 +157,15 @@ export default function TikTokPrivacyPage() {
         <h2>7. Conservation et suppression</h2>
         <ul>
           <li>
-            <b>Déconnexion</b> — depuis <b>Intégrations → Déconnecter</b>, le
-            jeton d&apos;accès est supprimé immédiatement et aucune nouvelle
-            donnée n&apos;est lue.
+            <b>Déconnexion</b> — depuis <b>Intégrations → Déconnecter</b>, les
+            jetons sont supprimés immédiatement, l&apos;autorisation est
+            révoquée auprès de TikTok, et aucune nouvelle donnée n&apos;est
+            lue. Vous pouvez aussi retirer l&apos;accès depuis TikTok
+            (Paramètres → Sécurité → Applications connectées).
           </li>
           <li>
-            <b>Historique</b> — les statistiques déjà importées sont conservées
-            tant que votre compte est actif, pour que vos rapports passés
-            restent lisibles. Vous pouvez en demander la suppression à tout
-            moment.
+            <b>Historique</b> — aucune statistique TikTok n&apos;étant stockée,
+            la déconnexion efface tout ce que nous détenions.
           </li>
           <li>
             <b>Suppression du compte</b> — l&apos;ensemble de vos données, y
@@ -177,10 +198,11 @@ export default function TikTokPrivacyPage() {
         <h2>10. Conformité TikTok</h2>
         <p>
           Nous utilisons les API TikTok conformément aux{" "}
-          <i>TikTok Developer Terms of Service</i> et aux règles publicitaires
-          de TikTok. Les données obtenues via ces API sont utilisées uniquement
-          pour fournir le service décrit ici, à la personne qui a connecté le
-          compte.
+          <i>TikTok Developer Terms of Service</i> et aux{" "}
+          <i>Developer Guidelines</i>. Les données obtenues via ces API sont
+          utilisées uniquement pour fournir le service décrit ici, à la
+          personne qui a connecté le compte, et ne sont ni revendues ni
+          transférées à un tiers.
         </p>
 
         <h2>11. Modifications</h2>
@@ -196,12 +218,13 @@ export default function TikTokPrivacyPage() {
         <LangSwitch active="en" />
 
         <h1>Privacy Policy — TikTok integration</h1>
-        <p className="updated">Last updated: September 10, 2026</p>
+        <p className="updated">Last updated: September 13, 2026</p>
 
         <p>
           This policy describes the data <b>Nightflow Analytics</b> reads
-          through the TikTok APIs when you connect your TikTok for Business
-          account, what we do with it, and how to have it deleted. It
+          through the TikTok APIs (Login Kit and Display API) when you connect
+          your TikTok account, what we do with it, and how to have it deleted.
+          It
           supplements our{" "}
           <Link href="/confidentialite">general Privacy Policy</Link>. Our
           principle: <b>we analyse numbers, not people</b>.
@@ -212,49 +235,62 @@ export default function TikTokPrivacyPage() {
         </p>
 
         <h2>1. TikTok data we read</h2>
+        <p>Two permissions are requested at connection time, and only these two:</p>
         <ul>
           <li>
-            <b>Advertiser account identity</b> — advertiser ID, account name,
-            currency, time zone.
+            <b>Basic profile</b> (<i>user.info.basic</i>) — the technical
+            identifier of the connected account (<i>open_id</i>). This is the
+            minimum permission TikTok requires for any connection; we read
+            nothing else from it.
           </li>
           <li>
-            <b>Campaign structure</b> — IDs and names of campaigns, ad groups
-            and ads, status, budget.
-          </li>
-          <li>
-            <b>Aggregated metrics</b> — impressions, clicks, spend, conversions
-            and conversion value, by day and by campaign.
-          </li>
-          <li>
-            <b>The access token</b> issued by TikTok at connection time, needed
-            to refresh those figures.
+            <b>Public video list</b> (<i>video.list</i>) — for your 20 most
+            recent public videos: identifier, publication date, description,
+            share link and counters (views, likes, comments, shares).
           </li>
         </ul>
+        <p>
+          At connection time TikTok also issues an access token and a refresh
+          token, needed to read those figures again without asking you to
+          authorise again.
+        </p>
+        <p>
+          Videos and their counters are read when the page is displayed and
+          once an hour in the background, to check that the connection still
+          works. They are <b>not stored</b>: we only keep the connection itself
+          (account identifier and encrypted tokens).
+        </p>
 
-        <h2>2. What we do not read</h2>
+        <h2>2. What we do not read or do</h2>
         <ul>
           <li>
-            No personal data of TikTok users: no profiles, followers, comments
-            or direct messages.
+            No data about anyone but you: no follower list, no comment
+            contents, no direct messages, and no identity of who viewed or
+            liked a video.
           </li>
           <li>
-            No custom audiences and no customer lists. We neither create nor
-            upload any.
+            No private videos or drafts, and no video files: we read counters
+            and a link, never the content itself.
           </li>
-          <li>No video content and no individual tracking data.</li>
           <li>
-            No data from an advertiser account you have not connected yourself.
+            <b>No posting.</b> Nightflow never publishes, edits or deletes
+            anything on your TikTok account.
           </li>
+          <li>
+            No advertising data (spend, campaigns): TikTok Ads campaigns do not
+            go through this integration.
+          </li>
+          <li>No data from an account you have not connected yourself.</li>
         </ul>
 
         <h2>3. Why we process it</h2>
         <p>
           This data is used only to show it back to you in your own dashboard:
-          matching ad spend against real sales, computing ROAS and acquisition
-          cost, producing your reports and raising alerts (a campaign dropping,
-          a budget running away). The legal basis is the performance of our
-          contract with you; the connection results from your explicit action
-          and can be revoked at any time.
+          seeing which videos were viewed and shared the most, comparing them
+          with your Instagram posts, and letting the Copilot suggest what to
+          publish next. No video is ever tied to revenue. The legal basis is the performance of
+          our contract with you; the connection results from your explicit
+          action and can be revoked at any time.
         </p>
         <p>
           We do not sell this data, do not share it with third parties for
@@ -264,10 +300,11 @@ export default function TikTokPrivacyPage() {
 
         <h2>4. AI-generated analysis</h2>
         <p>
-          To write Copilot recommendations, an aggregated summary of your
-          activity (figures and campaign names) is sent to our AI providers,{" "}
-          <b>Anthropic</b> (Claude) and <b>Google</b> (Gemini). No access token
-          is ever sent to them, and this data is not used to train their models.
+          To write Copilot recommendations, a summary of your activity
+          (per-video counters and the first line of each description) is sent
+          to our AI providers, <b>Anthropic</b> (Claude) and <b>Google</b>{" "}
+          (Gemini). No access token is ever sent to them, and this data is not
+          used to train their models.
         </p>
 
         <h2>5. Where and how the data is stored</h2>
@@ -306,12 +343,13 @@ export default function TikTokPrivacyPage() {
         <ul>
           <li>
             <b>Disconnection</b> — from <b>Integrations → Disconnect</b>, the
-            access token is deleted immediately and no further data is read.
+            tokens are deleted immediately, the authorisation is revoked with
+            TikTok, and no further data is read. You can also remove access
+            from TikTok itself (Settings → Security → Connected apps).
           </li>
           <li>
-            <b>History</b> — metrics already imported are kept while your
-            account is active, so your past reports stay readable. You can ask
-            for their deletion at any time.
+            <b>History</b> — since no TikTok metrics are stored, disconnecting
+            erases everything we held.
           </li>
           <li>
             <b>Account deletion</b> — all your data, TikTok data included, is
@@ -344,9 +382,11 @@ export default function TikTokPrivacyPage() {
         <h2>10. TikTok compliance</h2>
         <p>
           We use the TikTok APIs in accordance with the{" "}
-          <i>TikTok Developer Terms of Service</i> and TikTok advertising
-          policies. Data obtained through those APIs is used solely to deliver
-          the service described here, to the person who connected the account.
+          <i>TikTok Developer Terms of Service</i> and the{" "}
+          <i>Developer Guidelines</i>. Data obtained through those APIs is used
+          solely to deliver the service described here, to the person who
+          connected the account, and is neither sold nor transferred to any
+          third party.
         </p>
 
         <h2>11. Changes</h2>

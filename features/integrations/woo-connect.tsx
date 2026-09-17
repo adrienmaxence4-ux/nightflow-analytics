@@ -1,15 +1,18 @@
 "use client";
 
 import { useState } from "react";
-import { Globe, KeyRound } from "lucide-react";
 import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Field } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { StatusPill } from "@/features/integrations/status-pill";
 import {
   ConnectionNotes,
   ConnectorLogo,
+  ConnectorSkeleton,
   DisconnectButton,
-  PrimaryButton,
+  SecretInput,
   SyncButton,
 } from "@/features/integrations/connector-ui";
 import { useConnection } from "@/features/integrations/use-connection";
@@ -28,6 +31,7 @@ export function WooConnect() {
   const [url, setUrl] = useState("");
   const [ck, setCk] = useState("");
   const [cs, setCs] = useState("");
+  const [errors, setErrors] = useState<{ url?: string; ck?: string; cs?: string }>({});
 
   /** Accepts "maboutique.fr" as well as a full URL, always ends up HTTPS. */
   const normalizeStoreUrl = (raw: string): string => {
@@ -36,16 +40,18 @@ export function WooConnect() {
     return /^https?:\/\//.test(trimmed) ? trimmed : `https://${trimmed}`;
   };
 
+  if (!status) return <ConnectorSkeleton variant="form" />;
+
   const connect = async () => {
     const base = normalizeStoreUrl(url);
+    const next: typeof errors = {};
     if (!/^https:\/\/.+\..+/.test(base)) {
-      toast("Entre l'adresse HTTPS de ta boutique, ex. https://maboutique.fr", "info");
-      return;
+      next.url = "Entrez l'adresse HTTPS de votre boutique, ex. https://maboutique.fr";
     }
-    if (!ck.trim().startsWith("ck_") || !cs.trim().startsWith("cs_")) {
-      toast("La clé commence par ck_ et le secret par cs_", "info");
-      return;
-    }
+    if (!ck.trim().startsWith("ck_")) next.ck = "La clé commence par ck_";
+    if (!cs.trim().startsWith("cs_")) next.cs = "Le secret commence par cs_";
+    setErrors(next);
+    if (next.url || next.ck || next.cs) return;
     const credential = `${base}::${ck.trim()}::${cs.trim()}`;
     const data = await connection.connect(
       credential,
@@ -59,71 +65,105 @@ export function WooConnect() {
     connection.reload();
   };
 
+  const needsReconnect = status.state === "error" || status.state === "expired";
+  const showForm = status.state === "not_connected" || needsReconnect;
+
   return (
     <Card className="p-5">
       <div className="flex flex-wrap items-center gap-4">
-        <ConnectorLogo accent="from-purple-400 to-purple-700">🛒</ConnectorLogo>
+        <ConnectorLogo>Wc</ConnectorLogo>
         <div className="min-w-[180px] flex-1">
-          <div className="flex items-center gap-2">
-            <h3 className="text-[16px] font-extrabold">WooCommerce</h3>
+          <div className="flex flex-wrap items-center gap-2">
+            <h3 className="text-head">WooCommerce</h3>
             <StatusPill state={status.state} />
           </div>
-          <p className="text-[12px] text-ink3">
+          <p className="text-label font-normal text-ink2">
             {status.connected
               ? "Produits & commandes importés depuis votre boutique WordPress."
               : "Boutique WordPress ? Connectez WooCommerce : produits, commandes & revenus."}
           </p>
-          <ConnectionNotes status={status} />
+          <ConnectionNotes
+            status={status}
+            expiredHint="Jeton expiré — collez de nouvelles clés ci-dessous."
+          />
         </div>
 
-        {status.state === "not_connected" ? (
-          <div className="flex w-full flex-col gap-2 sm:max-w-[420px]">
-            <div className="relative">
-              <Globe className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink3" />
-              <input
-                value={url}
-                onChange={(e) => setUrl(e.target.value)}
-                placeholder="https://maboutique.fr"
-                className="field w-full rounded-xl py-2.5 pl-9 pr-3 text-[13px]"
-              />
-            </div>
-            <input
-              value={ck}
-              onChange={(e) => setCk(e.target.value)}
-              placeholder="Consumer key (ck_…)"
-              className="field w-full rounded-xl px-3 py-2.5 text-[13px]"
-            />
-            <div className="relative">
-              <KeyRound className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink3" />
-              <input
-                value={cs}
-                onChange={(e) => setCs(e.target.value)}
-                type="password"
-                placeholder="Consumer secret (cs_…)"
-                className="field w-full rounded-xl py-2.5 pl-9 pr-3 text-[13px]"
-              />
-            </div>
-            <div className="flex items-center gap-2">
-              <PrimaryButton onClick={connect} disabled={busy}>
-                {busy ? "Vérification…" : "Connecter"}
-              </PrimaryButton>
-              <span className="text-[11px] text-ink3">
-                WooCommerce → Réglages → Avancé → API REST. Choisis
-                « Lecture/Écriture » pour que le Copilot puisse appliquer ses
-                recommandations ; « Lecture » suffit pour l&apos;analyse seule.
-              </span>
-            </div>
-          </div>
-        ) : (
+        {!showForm && (
           <div className="flex flex-wrap items-center gap-2">
             <SyncButton onClick={() => connection.sync()} busy={busy} />
             <DisconnectButton
+              name="WooCommerce"
               onClick={() => connection.disconnect("WooCommerce déconnecté")}
               disabled={busy}
             />
           </div>
         )}
       </div>
+
+      {showForm && (
+        <div className="mt-4 flex w-full flex-col gap-3 sm:max-w-[520px]">
+          <Field
+            id="woo-url"
+            label="Adresse de votre boutique"
+            hint="Ex. https://maboutique.fr"
+            error={errors.url}
+          >
+            <Input
+              value={url}
+              onChange={(e) => setUrl(e.target.value)}
+              inputMode="url"
+              autoComplete="off"
+              spellCheck={false}
+              disabled={busy}
+            />
+          </Field>
+          <Field
+            id="woo-consumer-key"
+            label="Consumer key"
+            hint="Commence par ck_"
+            error={errors.ck}
+          >
+            <Input
+              value={ck}
+              onChange={(e) => setCk(e.target.value)}
+              autoComplete="off"
+              spellCheck={false}
+              className="font-mono"
+              disabled={busy}
+            />
+          </Field>
+          <Field
+            id="woo-consumer-secret"
+            label="Consumer secret"
+            hint="Commence par cs_"
+            error={errors.cs}
+          >
+            <SecretInput
+              value={cs}
+              onChange={(e) => setCs(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && connect()}
+              disabled={busy}
+            />
+          </Field>
+          <p className="text-label font-normal text-ink3">
+            Clés à créer dans WooCommerce → Réglages → Avancé → API REST.
+            Choisissez « Lecture/Écriture » pour que le Copilot puisse appliquer
+            ses recommandations ; « Lecture » suffit pour l&apos;analyse seule.
+          </p>
+          <div className="flex flex-wrap items-center gap-3">
+            <Button size="sm" onClick={connect} loading={busy}>
+              {needsReconnect ? "Reconnecter" : "Connecter WooCommerce"}
+            </Button>
+            {needsReconnect && (
+              <DisconnectButton
+                name="WooCommerce"
+                onClick={() => connection.disconnect("WooCommerce déconnecté")}
+                disabled={busy}
+              />
+            )}
+          </div>
+        </div>
+      )}
     </Card>
   );
 }

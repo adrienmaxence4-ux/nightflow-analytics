@@ -4,6 +4,7 @@ import {
   isStripeOAuthConfigured,
   isMetaOAuthConfigured,
   isInstagramConfigured,
+  isTiktokConfigured,
   isKlaviyoOAuthConfigured,
   isGoogleOAuthConfigured,
 } from "@/lib/env";
@@ -26,17 +27,25 @@ import { syncWix } from "@/services/integrations/wix";
 import { syncWoo } from "@/services/integrations/woocommerce";
 import { syncWindsor } from "@/services/integrations/windsor";
 import {
+  META_REFRESH_MARGIN_MS,
   buildMetaAuthorizeUrl,
   exchangeMetaCode,
   refreshMetaToken,
   syncMeta,
 } from "@/services/integrations/meta";
 import {
+  INSTAGRAM_REFRESH_MARGIN_MS,
   buildInstagramAuthorizeUrl,
   exchangeInstagramCode,
   refreshInstagramToken,
   syncInstagram,
 } from "@/services/integrations/instagram";
+import {
+  buildTiktokAuthorizeUrl,
+  exchangeTiktokCode,
+  refreshTiktokToken,
+  syncTiktok,
+} from "@/services/integrations/tiktok";
 import { refreshGoogleToken } from "@/services/integrations/google";
 import {
   normalizeShopifyOrder,
@@ -353,6 +362,7 @@ const meta: IntegrationConnector = {
   },
   // Long-lived tokens last ~60 days and can be re-extended, so a connection
   // left alone keeps working instead of silently dying after two months.
+  refreshMarginMs: META_REFRESH_MARGIN_MS,
   refresh: async (tokens) => {
     const r = await refreshMetaToken(tokens.accessToken);
     return r
@@ -391,6 +401,7 @@ const instagram: IntegrationConnector = {
       : null;
   },
   // 60-day tokens, extended server-side so a connection made once survives.
+  refreshMarginMs: INSTAGRAM_REFRESH_MARGIN_MS,
   refresh: async (tokens) => {
     const r = await refreshInstagramToken(tokens.accessToken);
     return r
@@ -405,30 +416,46 @@ const instagram: IntegrationConnector = {
     }),
 };
 
-// ── TikTok Ads (still pending platform approval) ─────────────────────────────
-function adStub(
-  source: "meta" | "tiktok",
-  name: string,
-  secret: string
-): IntegrationConnector {
-  return {
-    source,
-    name,
-    category: "advertising",
-    usesPkce: false,
-    isConfigured: false, // pending each platform's app review
-    supportsWebhooks: true,
-    buildAuthorizeUrl: () => "",
-    exchangeCode: async () => null,
-    refresh: async () => null,
-    fetchData: async () => [],
-    sync: async () => ({ source, events: 0, ok: true }),
-    registerWebhooks: async () => {},
-    verifyWebhook: (i: WebhookInput) =>
-      verifyHexHmac(i.rawBody, i.headers["x-hub-signature-256"], secret),
-    normalizeWebhook: () => [],
-  };
-}
+// ── TikTok organic (Login Kit + Display API) ─────────────────────────────────
+// The merchant's own public videos, not TikTok Ads: spend still comes in
+// through Windsor. The hourly run matters more here than elsewhere — the
+// access token lives 24 hours, so the runner's refresh is what keeps a
+// connection alive between two visits to the app.
+const tiktok: IntegrationConnector = {
+  ...keyedConnectorBase("tiktok", "TikTok", "analytics"),
+  isConfigured: isTiktokConfigured,
+  usesPkce: false,
+  buildAuthorizeUrl: (state) => buildTiktokAuthorizeUrl(state),
+  exchangeCode: async (code) => {
+    const r = await exchangeTiktokCode(code);
+    return r
+      ? {
+          accessToken: r.accessToken,
+          refreshToken: r.refreshToken,
+          expiresAt: r.expiresAt,
+          metadata: { openId: r.openId, scope: r.scope, refreshExpiresAt: r.refreshExpiresAt },
+        }
+      : null;
+  },
+  refresh: async (tokens) => {
+    if (!tokens.refreshToken) return null;
+    const r = await refreshTiktokToken(tokens.refreshToken);
+    return r
+      ? {
+          accessToken: r.accessToken,
+          refreshToken: r.refreshToken,
+          expiresAt: r.expiresAt,
+          metadata: { ...tokens.metadata, refreshExpiresAt: r.refreshExpiresAt },
+        }
+      : null;
+  },
+  fetchData: async () => [],
+  sync: (ctx) =>
+    syncWithCredential("tiktok", ctx, async (token) => {
+      const synced = await syncTiktok(token);
+      return synced.orders;
+    }),
+};
 
 const CONNECTORS: Record<IntegrationSource, IntegrationConnector> = {
   shopify,
@@ -438,7 +465,7 @@ const CONNECTORS: Record<IntegrationSource, IntegrationConnector> = {
   klaviyo,
   ga4,
   meta,
-  tiktok: adStub("tiktok", "TikTok Ads", env.tiktokAppSecret),
+  tiktok,
   googleads: GOOGLE_ADS,
   hotjar: HOTJAR,
   paypal: PAYPAL,

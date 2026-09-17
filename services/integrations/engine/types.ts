@@ -162,6 +162,11 @@ export interface IntegrationConnector {
 
   // ── refreshToken() ──
   refresh(tokens: StoredTokens): Promise<AuthResult | null>;
+  /**
+   * How early the runner refreshes before expiry. Platforms that can only
+   * extend a still-valid token (Instagram, Meta) need days, not seconds.
+   */
+  readonly refreshMarginMs?: number;
 
   // ── fetchData() → normalized ──
   fetchData(ctx: ConnectorContext): Promise<NormalizedEvent[]>;

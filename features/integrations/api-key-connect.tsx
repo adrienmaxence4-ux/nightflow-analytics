@@ -1,67 +1,88 @@
 "use client";
 
 import { useState } from "react";
-import { Check, Eye, EyeOff, KeyRound } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { useToast } from "@/hooks/use-toast";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { Field } from "@/components/ui/field";
+import { StatusPill } from "@/features/integrations/status-pill";
 import {
+  ConnectionNotes,
   ConnectorLogo,
+  ConnectorSkeleton,
   DisconnectButton,
-  PrimaryButton,
+  SecretInput,
   SyncButton,
 } from "@/features/integrations/connector-ui";
-import { useConnection } from "@/features/integrations/use-connection";
+import { euros, useConnection } from "@/features/integrations/use-connection";
+import { useToast } from "@/hooks/use-toast";
 
 /**
- * Generic connector for API-KEY based providers (Stripe, Klaviyo, …).
+ * Generic connector for API-KEY based providers (Windsor, PayPal, …).
  * Each logged-in user pastes THEIR OWN key — the data synced is theirs,
  * isolated by RLS. Drives the shared /api/integrations/[provider] routes.
  */
 export interface ApiKeyConnectProps {
-  /** Provider id — must match a key in the server registry (e.g. "stripe"). */
+  /** Provider id — must match a key in the server registry (e.g. "windsor"). */
   provider: string;
   name: string;
   logo: string;
-  /** Tailwind gradient classes for the logo tile, e.g. "from-indigo-400 to-violet-500". */
-  accent: string;
   description: string;
-  /** Connected-state description, e.g. "Revenus & commandes importés depuis Stripe." */
+  /** Connected-state description, e.g. "Dépense & ROAS par régie affichés dans Marketing." */
   connectedHint: string;
-  placeholder: string;
+  /** Visible label of the key field; defaults to "Clé API {name}". */
+  keyLabel?: string;
+  /** What to paste, shown under the field, e.g. "Format : idClient::secretClient". */
+  keyHint: string;
   /** Optional doc link where the user finds/creates the key. */
   helpHref?: string;
   helpLabel?: string;
+  /**
+   * The key is accepted and events are stored, but no page reads them yet.
+   * Said on the card so the merchant is not promised a chart that isn't there.
+   */
+  collectOnly?: boolean;
+  /**
+   * Form only, no card and no header — for a key path folded inside another
+   * card of the same provider (Stripe OAuth + restricted key). Renders nothing
+   * once connected: the host card shows the status.
+   */
+  compact?: boolean;
 }
 
 export function ApiKeyConnect({
   provider,
   name,
   logo,
-  accent,
   description,
   connectedHint,
-  placeholder,
+  keyLabel,
+  keyHint,
   helpHref,
   helpLabel,
+  collectOnly = false,
+  compact = false,
 }: ApiKeyConnectProps) {
   const toast = useToast();
   const connection = useConnection(provider);
   const { status, busy } = connection;
   const [apiKey, setApiKey] = useState("");
-  const [reveal, setReveal] = useState(false);
+  const [keyError, setKeyError] = useState<string | null>(null);
+
+  if (!status) return compact ? null : <ConnectorSkeleton variant="form" />;
 
   const connect = async () => {
     const key = apiKey.trim();
     if (!key) {
-      toast(`Collez votre clé ${name}`, "info");
+      setKeyError(`Collez votre clé ${name}.`);
       return;
     }
+    setKeyError(null);
     const data = await connection.connect(key, `Connexion ${name} impossible`);
     if (!data) return;
     setApiKey("");
     // Flip the card immediately, then let the real status catch up.
-    connection.setStatus((s) => ({ ...s, connected: true, state: "connected" }));
+    connection.setStatus((s) => ({ ...(s ?? status), connected: true, state: "connected" }));
     if (data.syncWarning) {
       // The key itself was accepted — the card stays "Connecté" — but the
       // first import failed, so say that instead of a false "0 € importés ✓".
@@ -69,82 +90,91 @@ export function ApiKeyConnect({
     } else {
       const noun = data.resultNoun ?? "commande(s)";
       const revenueClause =
-        data.tracksRevenue === false
-          ? ""
-          : `, ${Math.round((data.revenueCents ?? 0) / 100).toLocaleString("fr-FR")} € importés`;
+        data.tracksRevenue === false ? "" : `, ${euros(data.revenueCents)} importés`;
       toast(`${name} connecté ✓ — ${data.orders ?? 0} ${noun}${revenueClause}`);
     }
     connection.reload();
   };
 
+  const needsReconnect = status.state === "error" || status.state === "expired";
+  // A broken key is fixed by pasting a new one, so the field comes back.
+  const showKeyForm = status.state === "not_connected" || needsReconnect;
+  const fieldId = `${provider}-api-key${compact ? "-compact" : ""}`;
+
+  const keyForm = (
+    <div className="flex w-full flex-col gap-3 sm:max-w-[520px]">
+      <Field id={fieldId} label={keyLabel ?? `Clé API ${name}`} hint={keyHint} error={keyError}>
+        <SecretInput
+          value={apiKey}
+          onChange={(e) => setApiKey(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && connect()}
+          disabled={busy}
+        />
+      </Field>
+      <div className="flex flex-wrap items-center gap-3">
+        <Button size="sm" onClick={connect} loading={busy}>
+          {needsReconnect ? "Reconnecter" : "Connecter"}
+        </Button>
+        {needsReconnect && !compact && (
+          <DisconnectButton
+            name={name}
+            onClick={() => connection.disconnect(`${name} déconnecté`)}
+            disabled={busy}
+          />
+        )}
+        {helpHref && (
+          <a
+            href={helpHref}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={buttonVariants({ variant: "ghost", size: "sm" })}
+          >
+            {helpLabel ?? "Où trouver ma clé ?"} ↗
+          </a>
+        )}
+      </div>
+    </div>
+  );
+
+  if (compact) return showKeyForm ? keyForm : null;
+
   return (
     <Card className="p-5">
       <div className="flex flex-wrap items-center gap-4">
-        <ConnectorLogo accent={accent}>{logo}</ConnectorLogo>
+        <ConnectorLogo>{logo}</ConnectorLogo>
         <div className="min-w-[180px] flex-1">
-          <div className="flex items-center gap-2">
-            <h3 className="text-[16px] font-extrabold">{name}</h3>
-            {status.connected ? (
-              <Badge variant="good">
-                <Check className="h-3 w-3" strokeWidth={3} /> Connecté
-              </Badge>
-            ) : (
-              <Badge variant="cool">Disponible</Badge>
-            )}
+          <div className="flex flex-wrap items-center gap-2">
+            <h3 className="text-head">{name}</h3>
+            <StatusPill state={status.state} />
+            {collectOnly && <Badge variant="cool">Bêta — collecte seule</Badge>}
           </div>
-          <p className="text-[12px] text-ink3">
+          <p className="text-label font-normal text-ink2">
             {status.connected ? connectedHint : description}
           </p>
+          {collectOnly && (
+            <p className="mt-0.5 text-label font-normal text-ink3">
+              Données collectées, affichage à venir.
+            </p>
+          )}
+          <ConnectionNotes
+            status={status}
+            expiredHint="Jeton expiré — collez une nouvelle clé ci-dessous."
+          />
         </div>
 
-        {status.connected ? (
+        {!showKeyForm && (
           <div className="flex flex-wrap items-center gap-2">
             <SyncButton onClick={() => connection.sync()} busy={busy} variant="primary" />
             <DisconnectButton
+              name={name}
               onClick={() => connection.disconnect(`${name} déconnecté`)}
               disabled={busy}
             />
           </div>
-        ) : (
-          <div className="flex flex-1 flex-wrap items-center gap-2">
-            <div className="relative min-w-[240px] flex-1">
-              <KeyRound className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink3" />
-              <input
-                value={apiKey}
-                onChange={(e) => setApiKey(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && connect()}
-                type={reveal ? "text" : "password"}
-                autoComplete="off"
-                spellCheck={false}
-                placeholder={placeholder}
-                className="field w-full rounded-xl py-2.5 pl-9 pr-9 font-mono text-[13px]"
-              />
-              <button
-                type="button"
-                onClick={() => setReveal((v) => !v)}
-                aria-label={reveal ? "Masquer la clé" : "Afficher la clé"}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-ink3 transition hover:text-ink"
-              >
-                {reveal ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-              </button>
-            </div>
-            <PrimaryButton onClick={connect} disabled={busy}>
-              {busy ? "Connexion…" : "Connecter"}
-            </PrimaryButton>
-          </div>
         )}
       </div>
 
-      {!status.connected && helpHref && (
-        <a
-          href={helpHref}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="mt-3 inline-flex items-center gap-1 text-[11px] font-semibold text-accent-text transition hover:text-ink"
-        >
-          {helpLabel ?? "Où trouver ma clé ?"} ↗
-        </a>
-      )}
+      {showKeyForm && <div className="mt-4">{keyForm}</div>}
     </Card>
   );
 }

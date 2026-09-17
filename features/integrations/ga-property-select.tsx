@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
+import { Field } from "@/components/ui/field";
+import { Select } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 
 interface Ga4Property {
@@ -61,24 +63,27 @@ export function GaPropertySelect({ onChange }: { onChange?: () => void }) {
   };
 
   return (
-    <Card className="flex flex-wrap items-center gap-3 p-4">
-      <span className="text-[13px] font-semibold">📊 Propriété Google Analytics</span>
-      <select
-        value={current}
-        onChange={(e) => select(e.target.value)}
-        disabled={busy}
-        className="field min-w-[220px] rounded-xl px-3 py-2 text-[13px] text-ink [&>option]:bg-panel"
+    <Card className="p-5">
+      <Field
+        id="ga4-property"
+        label="Propriété Google Analytics"
+        hint="Choisissez la propriété qui reçoit votre trafic réel."
+        className="sm:max-w-[520px]"
       >
-        {props.map((p) => (
-          <option key={p.id} value={p.id}>
-            {p.name}
-            {p.account ? ` · ${p.account}` : ""} (#{p.id})
-          </option>
-        ))}
-      </select>
-      <span className="text-[11px] text-ink3">
-        Choisis la propriété qui reçoit ton trafic réel.
-      </span>
+        <Select
+          value={current}
+          onChange={(e) => select(e.target.value)}
+          disabled={busy}
+          className="[&>option]:bg-panel"
+        >
+          {props.map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.name}
+              {p.account ? ` · ${p.account}` : ""} (#{p.id})
+            </option>
+          ))}
+        </Select>
+      </Field>
     </Card>
   );
 }

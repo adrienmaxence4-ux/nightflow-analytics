@@ -158,25 +158,55 @@ export function formatSocialContext(social: SocialOverview): string[] {
       "\nRÉSEAUX SOCIAUX : aucun compte social connecté. N'avance aucun chiffre de vues, de portée ou d'audience.",
     ];
   }
+  // A platform that failed to answer is not a platform with no posts. The
+  // page shows the error; the AI must hear it too, or it concludes the
+  // merchant never publishes there and advises on a phantom funnel.
+  const unavailable = social.error
+    ? `SOURCE INDISPONIBLE : ${social.error} Ne conclus pas à une absence de publications sur cette plateforme.`
+    : null;
   if (social.posts.length === 0) {
     return [
-      "\nRÉSEAUX SOCIAUX : compte connecté, mais aucune publication trouvée.",
+      unavailable
+        ? `\nRÉSEAUX SOCIAUX : compte connecté, mais la lecture a échoué. ${unavailable}`
+        : "\nRÉSEAUX SOCIAUX : compte connecté, mais aucune publication trouvée.",
     ];
   }
 
   const t = social.totals;
+  const hasTiktok = social.posts.some((p) => p.platform === "tiktok");
+  const hasInstagram = social.posts.some((p) => p.platform !== "tiktok");
+  const platforms = [hasInstagram && "Instagram", hasTiktok && "TikTok"]
+    .filter(Boolean)
+    .join(" + ");
+  const window = [
+    hasInstagram && `${social.postLimit} dernières publications Instagram`,
+    hasTiktok && `${social.tiktokPostLimit} dernières vidéos TikTok`,
+  ]
+    .filter(Boolean)
+    .join(", ");
   const lines = [
-    `\nRÉSEAUX SOCIAUX — Instagram, ${social.postLimit} dernières publications (valeurs réelles) :`,
-    `${t.posts} publication(s) dont ${t.reels} Reel(s) — ${t.views} vue(s), ${t.reach} compte(s) touché(s), ${t.likes} like(s).`,
+    `\nRÉSEAUX SOCIAUX — ${platforms || "Instagram"}, ${window || `${social.postLimit} dernières publications`} (valeurs réelles) :`,
+    `${t.posts} publication(s) dont ${t.reels} vidéo(s) courte(s) — ${t.views} vue(s), ${t.reach} compte(s) touché(s), ${t.likes} like(s).`,
   ];
+  if (unavailable) lines.push(unavailable);
+  if (hasTiktok) {
+    lines.push(
+      "TikTok ne fournit ni portée ni enregistrements : pour un TikTok, l'engagement est calculé sur les vues, et « touchés » n'existe pas. Compare les TikToks entre eux et les Reels entre eux ; ne compare pas un taux TikTok à un taux Instagram."
+    );
+  }
 
   for (const p of social.posts.slice(0, MAX_SOCIAL_POSTS)) {
     const visits =
       p.visits == null
         ? "aucun lien de suivi"
         : `${p.visits} visite(s) via le lien ${p.trackingCode}`;
+    const kind = p.platform === "tiktok" ? "TikTok" : p.isReel ? "Reel" : "Post";
+    const figures =
+      p.platform === "tiktok"
+        ? `${p.views} vues, ${p.likes} likes, ${p.comments} commentaires, ${p.shares} partages, engagement ${p.engagementRate}% (sur vues)`
+        : `${p.views} vues, ${p.reach} touchés, ${p.likes} likes, engagement ${p.engagementRate}%`;
     lines.push(
-      `- ${p.date} · ${p.isReel ? "Reel" : "Post"} · ${p.views} vues, ${p.reach} touchés, ${p.likes} likes, engagement ${p.engagementRate}% · « ${excerpt(p.caption)} » · ${visits}`
+      `- ${p.date} · ${kind} · ${figures} · « ${excerpt(p.caption)} » · ${visits}`
     );
   }
 

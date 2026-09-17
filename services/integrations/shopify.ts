@@ -1,6 +1,7 @@
 import crypto from "crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { env } from "@/lib/env";
+import { PermanentError, retryUnlessPermanent, withRetry } from "@/lib/integrations/retry";
 
 /**
  * SERVER-ONLY. Shopify OAuth + data sync.
@@ -96,14 +97,19 @@ interface ShopifyOrder {
   line_items?: ShopifyLineItem[];
 }
 
-async function shopifyGet<T>(
+/**
+ * One REST page. 401/403 are final (revoked token, missing scope) and must
+ * not be retried; anything else (429, 5xx, timeout) is transient and left to
+ * `withRetry`. Shopify paginates with a `Link` header carrying `page_info`.
+ */
+async function shopifyGetPage<T>(
   shop: string,
   token: string,
   path: string
-): Promise<T> {
+): Promise<{ body: T; nextPageInfo: string | null }> {
   // Never send the access token anywhere but a *.myshopify.com host, even if a
   // stored `metadata.shop` was tampered with.
-  if (!isValidShopDomain(shop)) throw new Error("Invalid Shopify shop domain");
+  if (!isValidShopDomain(shop)) throw new PermanentError("Invalid Shopify shop domain");
   const res = await fetch(`https://${shop}/admin/api/${API_VERSION}/${path}`, {
     headers: {
       "X-Shopify-Access-Token": token,
@@ -111,8 +117,101 @@ async function shopifyGet<T>(
     },
     signal: AbortSignal.timeout(30_000),
   });
+  if (res.status === 401 || res.status === 403) {
+    throw new PermanentError(`Shopify ${res.status} on ${path}`);
+  }
   if (!res.ok) throw new Error(`Shopify ${res.status} on ${path}`);
-  return (await res.json()) as T;
+  const link = res.headers.get("link") ?? "";
+  const next = /<[^>]*[?&]page_info=([^&>]+)[^>]*>;\s*rel="next"/.exec(link);
+  return { body: (await res.json()) as T, nextPageInfo: next ? next[1] : null };
+}
+
+/** 20 pages × 250 = 5 000 rows — far above a solo merchant's 60 days. */
+const MAX_PAGES = 20;
+
+/**
+ * Follows the cursor until Shopify stops handing one out. Without this the
+ * sync read the first 250 orders of the window and silently under-counted
+ * every busier store; a catalogue over 250 products even got its tail
+ * deleted by the prune below.
+ */
+async function shopifyGetAll<T>(
+  shop: string,
+  token: string,
+  resource: "products" | "orders",
+  firstQuery: string,
+  pick: (body: Record<string, unknown>) => T[] | undefined
+): Promise<T[]> {
+  const out: T[] = [];
+  let path = `${resource}.json?${firstQuery}`;
+  for (let page = 0; page < MAX_PAGES; page++) {
+    const { body, nextPageInfo } = await withRetry(
+      () => shopifyGetPage<Record<string, unknown>>(shop, token, path),
+      { retries: 2, baseMs: 800, shouldRetry: retryUnlessPermanent }
+    );
+    out.push(...(pick(body) ?? []));
+    if (!nextPageInfo) break;
+    // Cursor pages accept only `limit` + `page_info`: the original filters
+    // travel inside the cursor, repeating them is a 400.
+    path = `${resource}.json?limit=250&page_info=${encodeURIComponent(nextPageInfo)}`;
+  }
+  return out;
+}
+
+/**
+ * Checks that an Admin API access token (from a custom app the merchant
+ * created in their own admin: Settings → Apps → Develop apps) can read the
+ * shop, and that it carries the two scopes the sync needs. Returns the
+ * missing scopes when it does not, so the card can say exactly what to tick.
+ */
+export async function validateShopifyToken(
+  shop: string,
+  token: string
+): Promise<{ ok: true; shopName: string } | { ok: false; reason: string }> {
+  if (!isValidShopDomain(shop)) return { ok: false, reason: "Adresse de boutique invalide." };
+  if (!/^shpat_[a-f0-9]{32}$/i.test(token)) {
+    return {
+      ok: false,
+      reason: "Ce n'est pas un jeton Admin API (il commence par shpat_).",
+    };
+  }
+  let shopRes: Response;
+  try {
+    shopRes = await fetch(`https://${shop}/admin/api/${API_VERSION}/shop.json`, {
+      headers: { "X-Shopify-Access-Token": token },
+      signal: AbortSignal.timeout(15_000),
+    });
+  } catch {
+    return { ok: false, reason: "Shopify est injoignable pour le moment." };
+  }
+  if (shopRes.status === 401 || shopRes.status === 403) {
+    return { ok: false, reason: "Shopify refuse ce jeton pour cette boutique." };
+  }
+  if (shopRes.status === 404) {
+    return { ok: false, reason: "Boutique introuvable — vérifiez l'adresse .myshopify.com." };
+  }
+  if (!shopRes.ok) return { ok: false, reason: `Shopify a répondu ${shopRes.status}.` };
+  const shopJson = (await shopRes.json().catch(() => null)) as {
+    shop?: { name?: string };
+  } | null;
+
+  const scopesRes = await fetch(`https://${shop}/admin/oauth/access_scopes.json`, {
+    headers: { "X-Shopify-Access-Token": token },
+    signal: AbortSignal.timeout(15_000),
+  }).catch(() => null);
+  const scopes = ((await scopesRes?.json().catch(() => null)) as {
+    access_scopes?: { handle: string }[];
+  } | null)?.access_scopes?.map((s) => s.handle);
+  if (scopes) {
+    const missing = ["read_orders", "read_products"].filter((s) => !scopes.includes(s));
+    if (missing.length) {
+      return {
+        ok: false,
+        reason: `Il manque les accès ${missing.join(" et ")} sur l'app — cochez-les dans Configuration → Admin API, puis réinstallez.`,
+      };
+    }
+  }
+  return { ok: true, shopName: shopJson?.shop?.name ?? shop };
 }
 
 /**
@@ -124,30 +223,36 @@ export async function syncShopify(
   token: string,
   storeId: string,
   db: SupabaseClient
-): Promise<{ products: number; orders: number; days: number }> {
+): Promise<{ products: number; orders: number; days: number; ordersError?: string }> {
   const since = new Date();
   since.setDate(since.getDate() - 60);
 
-  const { products = [] } = await shopifyGet<{ products: ShopifyProduct[] }>(
+  const products = await shopifyGetAll<ShopifyProduct>(
     shop,
     token,
-    "products.json?limit=250"
+    "products",
+    "limit=250",
+    (b) => b.products as ShopifyProduct[] | undefined
   );
   // Orders need read_orders, which a store may not have granted (e.g. the app
   // was installed under an older scope set). Import the catalogue anyway rather
   // than failing the whole sync — the merchant re-grants and the next sync
-  // fills in sales.
+  // fills in sales. Only a definitive refusal is skipped: an outage propagates
+  // so the runner retries instead of writing "0 commandes" as a fact.
   let orders: ShopifyOrder[] = [];
+  let ordersError: string | undefined;
   try {
-    ({ orders = [] } = await shopifyGet<{ orders: ShopifyOrder[] }>(
+    orders = await shopifyGetAll<ShopifyOrder>(
       shop,
       token,
-      `orders.json?status=any&limit=250&created_at_min=${encodeURIComponent(
-        since.toISOString()
-      )}`
-    ));
+      "orders",
+      `status=any&limit=250&created_at_min=${encodeURIComponent(since.toISOString())}`,
+      (b) => b.orders as ShopifyOrder[] | undefined
+    );
   } catch (e) {
-    console.error("[shopify] orders fetch skipped (scope not granted?)", e);
+    if (!(e instanceof PermanentError)) throw e;
+    console.error(`[shopify] store ${storeId}: orders fetch refused (read_orders missing?)`, e);
+    ordersError = "Shopify refuse la lecture des commandes : l'accès read_orders manque sur l'app.";
   }
 
   const salesByProduct = new Map<number, { qty: number; rev: number }>();
@@ -236,5 +341,6 @@ export async function syncShopify(
     products: productRows.length,
     orders: orders.length,
     days: metricRows.length,
+    ...(ordersError ? { ordersError } : {}),
   };
 }
