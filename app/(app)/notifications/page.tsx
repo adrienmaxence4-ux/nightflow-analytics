@@ -12,11 +12,16 @@ import {
   markSeen,
   setDesktopEnabled,
 } from "@/lib/notif-prefs";
+import Link from "next/link";
 import { PageTransition } from "@/components/layout/page-transition";
 import { TestPanel } from "@/features/admin/test-panel";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { buttonVariants } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/empty-state";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useIsAdmin } from "@/hooks/use-admin";
+import { track } from "@/lib/track";
 import { useToast } from "@/hooks/use-toast";
 import {
   fetchNotifications,
@@ -52,6 +57,7 @@ const FILTERS = ["Toutes", "Non lues", "Urgentes"];
 
 export default function NotificationsPage() {
   const toast = useToast();
+  const isAdmin = useIsAdmin();
   const [items, setItems] = useState<Notification[]>([]);
   const [source, setSource] = useState<NotificationSource | null>(null);
   const [loading, setLoading] = useState(true);
@@ -138,6 +144,7 @@ export default function NotificationsPage() {
   };
 
   const handleMarkOne = async (id: string) => {
+    if (source === "live") track("first_alert_view", {}, { once: true });
     markSeen([id]); // persist so it stays read on the next visit
     setItems((arr) => arr.map((n) => (n.id === id ? { ...n, read: true } : n)));
     if (source === "db") await markNotificationRead(id);
@@ -247,28 +254,33 @@ export default function NotificationsPage() {
         </div>
       )}
 
-      {/* État vide (base connectée mais sans données) → proposer le seed */}
-      {!loading && source === "db" && items.length === 0 && (
-        <Card className="flex flex-col items-center gap-4 p-10 text-center">
-          <span className="grid h-14 w-14 place-items-center rounded-[16px] border border-line bg-panel2">
-            <Bell className="h-6 w-6 text-ink3" aria-hidden />
-          </span>
-          <div>
-            <h3 className="text-head font-bold">Votre base est vide pour l&apos;instant</h3>
-            <p className="mt-1 max-w-sm text-[16px] text-ink2">
-              Chargez un jeu de notifications de démonstration MoonStore
-              directement dans votre vraie base Supabase pour voir la page en
-              action.
-            </p>
-          </div>
-          <button
-            onClick={handleSeed}
-            disabled={seeding}
-            className="inline-flex min-h-tap items-center gap-2 rounded-[12px] bg-accent px-5 text-[17px] font-bold text-accent-ink transition hover:brightness-95 disabled:opacity-60"
-          >
-            <Sparkles className="h-4 w-4" />
-            {seeding ? "Ajout en cours…" : "Charger des notifications de démo"}
-          </button>
+      {/* Nothing detected and nothing stored: say what would trigger an alert
+          and how to get there. The MoonStore seed stays an owner-only test tool —
+          it writes fictional alerts into a real account's table. */}
+      {!loading && source === "db" && items.length === 0 && hiddenCount === 0 && (
+        <Card>
+          <EmptyState
+            icon={Bell}
+            title="Rien à signaler pour l'instant"
+            description="Nightflow t'alerte ici dès qu'une métrique décroche, qu'un stock baisse ou qu'une campagne perd de l'argent. Si ta boutique n'est pas encore connectée, c'est la première chose à faire."
+            action={
+              <Link href="/integrations" className={buttonVariants({ size: "md" })}>
+                Ouvrir Connexions
+              </Link>
+            }
+          />
+          {isAdmin && (
+            <div className="flex justify-center pb-6">
+              <button
+                onClick={handleSeed}
+                disabled={seeding}
+                className="inline-flex min-h-tap items-center gap-2 rounded-[12px] border border-line bg-panel px-4 text-label font-semibold text-ink transition hover:bg-panel2 disabled:opacity-60"
+              >
+                <Sparkles className="h-4 w-4" />
+                {seeding ? "Ajout en cours…" : "Admin — charger des notifications de démo"}
+              </button>
+            </div>
+          )}
         </Card>
       )}
 
@@ -328,7 +340,7 @@ export default function NotificationsPage() {
           ))}
           {items.length > 0 && visible.length === 0 && (
             <Card className="p-10 text-center text-[17px] text-ink3">
-              Aucune notification dans cette catégorie.
+              {filter === "Non lues" ? "Tout est lu." : "Rien d'urgent pour l'instant."}
             </Card>
           )}
         </div>

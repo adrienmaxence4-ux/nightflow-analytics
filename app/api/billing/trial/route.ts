@@ -25,20 +25,20 @@ import type { StoreRow, SubscriptionRow } from "@/types/database";
  * live store domain. Ownership of the domain is not proven: what this buys
  * is one live domain per attempt, not a hard wall.
  */
-const SETTINGS_HINT = "dans Paramètres avant de démarrer l'essai.";
+const SETTINGS_HINT = "dans Réglages avant de démarrer l'essai.";
 
 const RPC_ERRORS: Record<string, { status: number; error: string }> = {
   email_unconfirmed: {
     status: 403,
-    error: "Confirmez votre adresse email (lien reçu par email) avant de démarrer l'essai.",
+    error: "Confirme ton adresse email (lien reçu par email) avant de démarrer l'essai.",
   },
   store_missing: {
     status: 409,
-    error: `Renseignez l'adresse de votre boutique ${SETTINGS_HINT}`,
+    error: `Renseigne l'adresse de ta boutique ${SETTINGS_HINT}`,
   },
   already_subscribed: {
     status: 409,
-    error: "Vous avez déjà un abonnement ou un essai actif.",
+    error: "Tu as déjà un abonnement ou un essai actif.",
   },
   already_used: {
     status: 409,
@@ -120,7 +120,7 @@ export async function POST() {
   if (!(await storeAnswers(domain))) {
     return NextResponse.json(
       {
-        error: `Aucune boutique ne répond sur ${domain}. Vérifiez l'adresse ${SETTINGS_HINT}`,
+        error: `Aucune boutique ne répond sur ${domain}. Vérifie l'adresse ${SETTINGS_HINT}`,
       },
       { status: 409 }
     );

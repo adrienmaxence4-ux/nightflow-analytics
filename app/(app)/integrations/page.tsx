@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { Suspense, useEffect, useState, type ReactNode } from "react";
 import { ChevronRight, Mail } from "lucide-react";
 import { PageTransition } from "@/components/layout/page-transition";
 import { PageHeader } from "@/components/layout/page-header";
@@ -14,7 +14,8 @@ import { ShopifyConnect } from "@/features/integrations/shopify-connect";
 import { WixConnect } from "@/features/integrations/wix-connect";
 import { WooConnect } from "@/features/integrations/woo-connect";
 import { OAuthConnect } from "@/features/integrations/oauth-connect";
-import { UpgradeGate } from "@/features/billing/upgrade-gate";
+import { TrialGate } from "@/features/billing/trial-gate";
+import { FirstBriefBanner } from "@/features/integrations/first-brief-banner";
 import { STORE_PLATFORMS, type StorePlatform } from "@/lib/signup";
 
 /**
@@ -33,7 +34,7 @@ const SUPPORT_MAILTO =
   encodeURIComponent("Nightflow — un outil à connecter");
 
 export default function IntegrationsPage() {
-  const { plan } = usePlan();
+  const { plan, loading: planLoading, trialAvailable, reload: reloadPlan } = usePlan();
   // undefined = still loading, null = no usable answer.
   const [platform, setPlatform] = useState<StorePlatform | null | undefined>(undefined);
 
@@ -57,20 +58,24 @@ export default function IntegrationsPage() {
   const otherStores = STORE_CARDS.filter((c) => c.id !== declared.id);
   const storeHint =
     platform === declared.id
-      ? `Vous avez indiqué ${declared.label} : c'est la première chose à connecter, elle remplit le dashboard.`
+      ? `Tu as indiqué ${declared.label} : c'est la première chose à connecter, elle remplit ton brief.`
       : platform === "prestashop"
-        ? "PrestaShop n'est pas encore pris en charge. Connectez Stripe ci-dessous pour vos ventes, ou l'une de ces plateformes."
-        : "Connectez d'abord la boutique : c'est elle qui remplit le dashboard.";
+        ? "PrestaShop n'est pas encore pris en charge. Connecte Stripe ci-dessous pour tes ventes, ou l'une de ces plateformes."
+        : "Connecte d'abord la boutique : c'est elle qui remplit ton brief.";
 
   return (
     <PageTransition>
       <PageHeader
-        title="Intégrations"
-        subtitle="Connectez votre boutique d'abord, le reste ensuite."
+        title="Connexions"
+        subtitle="Connecte ta boutique d'abord, le reste ensuite."
       />
 
       {plan.integrations ? (
         <div className="flex flex-col gap-8">
+          {/* useSearchParams needs a Suspense boundary on a statically rendered route. */}
+          <Suspense fallback={null}>
+            <FirstBriefBanner />
+          </Suspense>
           <CategorySection label="Votre boutique" hint={storeHint}>
             {platform === undefined ? (
               <Skeleton className="h-[100px] w-full" />
@@ -254,9 +259,10 @@ export default function IntegrationsPage() {
           </CollapsedSection>
         </div>
       ) : (
-        <UpgradeGate
-          title="Connectez vos boutiques avec le plan Pro"
-          message="Le plan Gratuit donne accès à la démo. Passez en Pro pour connecter Shopify, Stripe, Klaviyo et Google Analytics et analyser vos vraies données."
+        <TrialGate
+          trialAvailable={trialAvailable}
+          loading={planLoading}
+          onActivated={reloadPlan}
         />
       )}
 
@@ -264,7 +270,7 @@ export default function IntegrationsPage() {
         <EmptyState
           icon={Mail}
           title="Un outil manquant ?"
-          description="Dites-nous lequel : les prochains connecteurs suivent les demandes."
+          description="Dis-nous lequel : les prochains connecteurs suivent les demandes."
           action={
             <a href={SUPPORT_MAILTO} className={buttonVariants({ size: "sm", variant: "ghost" })}>
               Écrire à Nightflow

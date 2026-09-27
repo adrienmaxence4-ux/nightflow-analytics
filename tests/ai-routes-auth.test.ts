@@ -42,9 +42,13 @@ vi.mock("@/services/ai/copilot", () => ({
   answerCopilotQuestion: vi.fn(),
   summarizeStorePerformance: vi.fn(),
 }));
-vi.mock("@/services/insights/generate", () => ({ generateInsights: vi.fn() }));
+vi.mock("@/services/insights/generate", () => ({
+  generateInsights: vi.fn(),
+  generateRuleInsights: vi.fn(async () => []),
+}));
 vi.mock("@/services/recommendations/generate", () => ({
   generateRecommendations: vi.fn(),
+  generateRuleRecommendations: vi.fn(async () => []),
 }));
 vi.mock("@/services/actions/suggest", () => ({ resolveAiAction: vi.fn() }));
 vi.mock("@/services/billing/subscription", () => ({
@@ -80,10 +84,10 @@ describe("AI routes reject anonymous callers before spending on a provider call"
   it("POST /api/copilot: proceeds to the AI once a session is present", async () => {
     auth.user = { id: "u1" };
     vi.mocked(buildStoreContext).mockResolvedValue({
-      storeName: "MoonStore",
-      source: "demo",
-      storeId: null,
-      summary: "",
+      storeName: "Ma boutique",
+      source: "db",
+      storeId: "s1",
+      summary: "CA 7 jours : 1 200 €",
     });
     vi.mocked(answerCopilotQuestion).mockResolvedValue({
       source: "ai",
@@ -105,5 +109,62 @@ describe("AI routes reject anonymous callers before spending on a provider call"
     const res = await insightsGET(req);
     expect(res.status).toBe(401);
     expect(buildStoreContext).not.toHaveBeenCalled();
+  });
+});
+
+describe("An empty store never reaches a model", () => {
+  const empty = { storeName: "Ma boutique", source: "empty" as const, storeId: "s1", summary: "" };
+
+  it("POST /api/copilot: answers 'connecte ta boutique' without the AI or the quota", async () => {
+    auth.user = { id: "u1" };
+    vi.mocked(buildStoreContext).mockResolvedValue(empty);
+    const req = new Request("https://x.test/api/copilot", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ question: "Pourquoi mes ventes baissent ?" }),
+    });
+    const res = await copilotPOST(req);
+    const body = (await res.json()) as { source: string; answer: string };
+    expect(res.status).toBe(200);
+    expect(body.source).toBe("empty");
+    expect(body.answer).toMatch(/Connexions/);
+    expect(answerCopilotQuestion).not.toHaveBeenCalled();
+  });
+
+  it("POST /api/copilot: a demo context for a signed-in caller never reaches the AI", async () => {
+    auth.user = { id: "u1" };
+    vi.mocked(buildStoreContext).mockResolvedValue({ storeName: "MoonStore", source: "demo", storeId: null, summary: "x" });
+    const req = new Request("https://x.test/api/copilot", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ question: "Pourquoi mes ventes baissent ?" }),
+    });
+    const body = (await (await copilotPOST(req)).json()) as { source: string };
+    expect(body.source).toBe("empty");
+    expect(answerCopilotQuestion).not.toHaveBeenCalled();
+  });
+
+  it("POST /api/copilot: 400s a non-string question instead of crashing", async () => {
+    auth.user = { id: "u1" };
+    const req = new Request("https://x.test/api/copilot", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ question: 123 }),
+    });
+    expect((await copilotPOST(req)).status).toBe(400);
+  });
+
+  it("GET /api/insights: source 'empty' on both the fast and the full path", async () => {
+    auth.user = { id: "u1" };
+    vi.mocked(buildStoreContext).mockResolvedValue(empty);
+    const { generateInsights } = await import("@/services/insights/generate");
+    for (const url of ["https://x.test/api/insights?fast=1", "https://x.test/api/insights"]) {
+      const res = await insightsGET(new Request(url));
+      const body = (await res.json()) as { source: string; insights: unknown[] };
+      expect(res.status).toBe(200);
+      expect(body.source).toBe("empty");
+      expect(body.insights).toEqual([]);
+    }
+    expect(generateInsights).not.toHaveBeenCalled();
   });
 });

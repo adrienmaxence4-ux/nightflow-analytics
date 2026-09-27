@@ -1,11 +1,17 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
-import { Search } from "lucide-react";
+import { Package, RefreshCw, Search } from "lucide-react";
 import { PageTransition } from "@/components/layout/page-transition";
 import { DemoBanner } from "@/components/demo-banner";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { EmptyState, ErrorState } from "@/components/ui/empty-state";
+import { Skeleton } from "@/components/ui/skeleton";
 import { ProductTable } from "@/features/products/product-table";
 import { ProductDrawer } from "@/features/products/product-drawer";
+import { useAuth } from "@/hooks/use-auth";
 import { getProducts } from "@/services/products.service";
 import { cn } from "@/lib/utils";
 import type { Product } from "@/types";
@@ -14,13 +20,18 @@ const FILTERS = ["Tous", "Meilleures ventes", "En baisse"];
 const LOW_STOCK = 20;
 
 export default function ProductsPage() {
-  const [allProducts, setAllProducts] = useState<Product[]>(getProducts());
+  const { demoMode } = useAuth();
+  // The sample only stands in where there is no store at all (local demo
+  // mode): a signed-in account never sees MoonStore's catalogue as its own.
+  const [allProducts, setAllProducts] = useState<Product[]>(() => (demoMode ? getProducts() : []));
   const [source, setSource] = useState<"db" | "mock" | null>(null);
+  const [failed, setFailed] = useState(false);
   const [active, setActive] = useState<Product | null>(null);
   const [filter, setFilter] = useState("Tous");
   const [query, setQuery] = useState("");
 
   const load = useCallback(async () => {
+    setFailed(false);
     try {
       const res = await fetch("/api/products");
       if (res.ok) {
@@ -30,15 +41,69 @@ export default function ProductsPage() {
         return;
       }
     } catch {
-      /* repli sur les mocks */
+      /* handled below */
     }
-    setAllProducts(getProducts());
-    setSource("mock");
-  }, []);
+    if (demoMode) {
+      setAllProducts(getProducts());
+      setSource("mock");
+    } else {
+      setFailed(true);
+    }
+  }, [demoMode]);
 
   useEffect(() => {
     load();
   }, [load]);
+
+  if (failed) {
+    return (
+      <PageTransition>
+        <Card>
+          <ErrorState
+            icon={RefreshCw}
+            description="Tes produits n'ont pas pu être chargés. Réessaie dans un instant."
+            action={
+              <Button variant="ghost" onClick={load}>
+                Réessayer
+              </Button>
+            }
+          />
+        </Card>
+      </PageTransition>
+    );
+  }
+
+  if (source === null && !demoMode) {
+    return (
+      <PageTransition>
+        <div className="grid gap-5 [grid-template-columns:repeat(auto-fit,minmax(240px,1fr))]">
+          {[0, 1, 2, 3].map((i) => (
+            <Skeleton key={i} className="h-[120px]" />
+          ))}
+        </div>
+        <Skeleton className="h-[320px]" />
+      </PageTransition>
+    );
+  }
+
+  if (source === "db" && allProducts.length === 0) {
+    return (
+      <PageTransition>
+        <Card>
+          <EmptyState
+            icon={Package}
+            title="Aucun produit importé pour l'instant"
+            description="Connecte ta boutique, ou lance une synchronisation depuis Connexions : tes produits, leur stock et leurs ventes apparaîtront ici."
+            action={
+              <Link href="/integrations" className={buttonVariants({ size: "lg" })}>
+                Ouvrir Connexions
+              </Link>
+            }
+          />
+        </Card>
+      </PageTransition>
+    );
+  }
 
   const filtered = allProducts.filter((p) => {
     if (query && !p.name.toLowerCase().includes(query.toLowerCase())) return false;
@@ -130,7 +195,7 @@ export default function ProductsPage() {
           </p>
           <p className="mt-2 text-[17px] leading-relaxed text-ink2">
             Au rythme actuel, rupture imminente et plusieurs jours pour être
-            réapprovisionné. Commandez maintenant ou activez une liste d&apos;attente.
+            réapprovisionné. Commande maintenant ou active une liste d&apos;attente.
           </p>
         </div>
       )}

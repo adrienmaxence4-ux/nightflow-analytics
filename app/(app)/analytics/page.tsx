@@ -9,9 +9,14 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { Button } from "@/components/ui/button";
 import { RangeToggle } from "@/components/ui/range-toggle";
 import { GaPropertySelect } from "@/features/integrations/ga-property-select";
+import { useAuth } from "@/hooks/use-auth";
 import { useRange } from "@/hooks/use-range";
+import { useToast } from "@/hooks/use-toast";
 import { getRangeDataSync } from "@/services/analytics.service";
-import type { Range } from "@/types";
+import type { Range, RangeData } from "@/types";
+
+/** What a real account sees before its first answer: zeros, never the sample. */
+const EMPTY_RANGE: RangeData = { sub: "", kpis: [], series: [], funnel: [], bars: [] };
 
 interface GaChannel {
   channel: string;
@@ -56,8 +61,12 @@ const GA_EMPTY: Record<GaReason, { title: string; description: string; cta?: str
 };
 
 export default function AnalyticsPage() {
+  const { demoMode } = useAuth();
+  const toast = useToast();
   const { range, setRange } = useRange("week");
-  const [data, setData] = useState(getRangeDataSync("week"));
+  const [data, setData] = useState<RangeData>(() =>
+    demoMode ? getRangeDataSync("week") : EMPTY_RANGE
+  );
   const [source, setSource] = useState<"db" | "mock" | null>(null);
   const [ga, setGa] = useState<{
     connected: boolean;
@@ -76,21 +85,29 @@ export default function AnalyticsPage() {
     loadGa();
   }, [loadGa]);
 
-  const load = useCallback(async (r: Range) => {
-    try {
-      const res = await fetch(`/api/dashboard?range=${r}`);
-      if (res.ok) {
-        const j = await res.json();
-        setData(j.data);
-        setSource(j.source);
-        return;
+  const load = useCallback(
+    async (r: Range) => {
+      try {
+        const res = await fetch(`/api/dashboard?range=${r}`);
+        if (res.ok) {
+          const j = await res.json();
+          setData(j.data);
+          setSource(j.source);
+          return;
+        }
+      } catch {
+        /* handled below */
       }
-    } catch {
-      /* repli sur les mocks */
-    }
-    setData(getRangeDataSync(r));
-    setSource("mock");
-  }, []);
+      // The sample only stands in where there is no store at all.
+      if (demoMode) {
+        setData(getRangeDataSync(r));
+        setSource("mock");
+      } else {
+        toast("Analyses indisponibles pour l'instant — réessaie dans un instant", "info");
+      }
+    },
+    [demoMode, toast]
+  );
 
   useEffect(() => {
     load(range);
@@ -130,7 +147,7 @@ export default function AnalyticsPage() {
 
       <div className="flex flex-wrap items-center gap-3">
         <p className="basis-full text-body text-ink2 min-[900px]:mr-auto min-[900px]:max-w-[70ch] min-[900px]:basis-auto">
-          Ce que vos visiteurs font sur la boutique : d&apos;où ils viennent, sur quel
+          Ce que tes visiteurs font sur la boutique : d&apos;où ils viennent, sur quel
           appareil, et à quelle étape ils abandonnent.
         </p>
         <RangeToggle value={range} onChange={setRange} />

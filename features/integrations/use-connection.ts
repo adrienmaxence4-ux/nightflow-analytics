@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useToast } from "@/hooks/use-toast";
+import { track } from "@/lib/track";
 import {
   DEFAULT_STATUS,
   type IntegrationStatus,
@@ -39,7 +40,8 @@ export const euros = (cents = 0) =>
  * one changes the connection, the others reload instead of showing a stale
  * "Non connecté" next to a fresh "Connecté".
  */
-const CHANGED_EVENT = "nightflow:integration-changed";
+export const INTEGRATION_CHANGED_EVENT = "nightflow:integration-changed";
+const CHANGED_EVENT = INTEGRATION_CHANGED_EVENT;
 
 export function announceIntegrationChange(provider: string) {
   window.dispatchEvent(new CustomEvent(CHANGED_EVENT, { detail: provider }));
@@ -105,6 +107,7 @@ export function useConnection(provider: string) {
       const res = await post("connect", { apiKey: credential });
       const data = (await res.json().catch(() => ({}))) as SyncSummary;
       if (res.ok) {
+        track("integration_connected", { provider });
         announceIntegrationChange(provider);
         return data;
       }

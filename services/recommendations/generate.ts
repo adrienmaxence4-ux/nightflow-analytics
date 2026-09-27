@@ -2,7 +2,7 @@ import type { Recommendation } from "@/types";
 import { callClaudeJSON } from "@/services/ai/anthropic";
 import { clampScore, isPriority, textOr } from "@/services/ai/normalize";
 import { recommendationsSystem } from "@/services/ai/prompts";
-import { buildStoreContext } from "@/services/ai/store-context";
+import { buildStoreContext, type StoreContext } from "@/services/ai/store-context";
 import { resolveAiAction } from "@/services/actions/suggest";
 import {
   alertToRecommendation,
@@ -90,21 +90,38 @@ function mergeRuleActions(
     .slice(0, MAX_ITEMS);
 }
 
-export async function generateRecommendations(): Promise<{
-  source: "ai" | "mock";
+/** The detection engine's recommendations for a real store, nothing else. */
+async function ruleRecommendations(): Promise<{
+  signals: Awaited<ReturnType<typeof loadStoreSignals>>;
+  products: ProductRow[];
   items: Recommendation[];
 }> {
-  const ctx = await buildStoreContext();
-  // The catalogue is needed either way: to resolve the model's action targets,
-  // or to build the deterministic ones from the detection engine.
   const signals = await loadStoreSignals();
   const products = signals?.products ?? [];
-
-  const ruleBased = signals
+  // "Tout est au vert" is reassuring in the feed but is not something to do,
+  // hence the severity filter.
+  const items = signals
     ? detectAlertsOrOnboarding(signals)
         .filter((a) => a.severity !== "positive")
         .map((a) => alertToRecommendation(a, products))
     : [];
+  return { signals, products, items };
+}
+
+/** Deterministic only — what the page shows while the model thinks. */
+export async function generateRuleRecommendations(): Promise<Recommendation[]> {
+  return (await ruleRecommendations()).items.sort(byImpact);
+}
+
+export async function generateRecommendations(ctxIn?: StoreContext): Promise<{
+  source: "ai" | "mock";
+  items: Recommendation[];
+}> {
+  const ctx = ctxIn ?? (await buildStoreContext());
+  if (ctx.source === "empty") return { source: "mock", items: [] };
+  // The catalogue is needed either way: to resolve the model's action targets,
+  // or to build the deterministic ones from the detection engine.
+  const { signals, products, items: ruleBased } = await ruleRecommendations();
 
   const ai = await callClaudeJSON<RawReco[]>(
     recommendationsSystem(ctx.storeName),
@@ -119,8 +136,7 @@ export async function generateRecommendations(): Promise<{
     };
   }
 
-  // No AI → the detection engine alone. "Tout est au vert" is reassuring in the
-  // feed but is not something to do, hence the severity filter above.
+  // No AI → the detection engine alone.
   if (signals) return { source: "mock", items: ruleBased.sort(byImpact) };
   return { source: "mock", items: RECOMMENDATIONS };
 }

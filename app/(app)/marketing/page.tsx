@@ -1,12 +1,18 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
-import { Sparkles } from "lucide-react";
+import { Megaphone, RefreshCw, Sparkles } from "lucide-react";
 import { PageTransition } from "@/components/layout/page-transition";
 import { DemoBanner } from "@/components/demo-banner";
 import { Badge } from "@/components/ui/badge";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { EmptyState, ErrorState } from "@/components/ui/empty-state";
 import { RichText } from "@/components/ui/rich-text";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useCopilotAsk } from "@/features/copilot/copilot-answer";
+import { useAuth } from "@/hooks/use-auth";
 import { CAMPAIGNS } from "@/services/mock/data";
 import { parseMetric } from "@/utils/format";
 import type { Campaign } from "@/types";
@@ -19,11 +25,15 @@ function perEuro(roas: number): string {
 }
 
 export default function MarketingPage() {
-  const [campaigns, setCampaigns] = useState<Campaign[]>(CAMPAIGNS);
+  const { demoMode } = useAuth();
+  // Sample only in local demo mode — never MoonStore's campaigns under a real account.
+  const [campaigns, setCampaigns] = useState<Campaign[]>(() => (demoMode ? CAMPAIGNS : []));
   const [source, setSource] = useState<"db" | "mock" | null>(null);
+  const [failed, setFailed] = useState(false);
   const copilot = useCopilotAsk();
 
   const load = useCallback(async () => {
+    setFailed(false);
     try {
       const res = await fetch("/api/marketing");
       if (res.ok) {
@@ -33,15 +43,65 @@ export default function MarketingPage() {
         return;
       }
     } catch {
-      /* repli sur les mocks */
+      /* handled below */
     }
-    setCampaigns(CAMPAIGNS);
-    setSource("mock");
-  }, []);
+    if (demoMode) {
+      setCampaigns(CAMPAIGNS);
+      setSource("mock");
+    } else {
+      setFailed(true);
+    }
+  }, [demoMode]);
 
   useEffect(() => {
     load();
   }, [load]);
+
+  if (failed) {
+    return (
+      <PageTransition>
+        <Card>
+          <ErrorState
+            icon={RefreshCw}
+            description="Tes campagnes n'ont pas pu être chargées. Réessaie dans un instant."
+            action={
+              <Button variant="ghost" onClick={load}>
+                Réessayer
+              </Button>
+            }
+          />
+        </Card>
+      </PageTransition>
+    );
+  }
+
+  if (source === null && !demoMode) {
+    return (
+      <PageTransition>
+        <Skeleton className="h-[120px]" />
+        <Skeleton className="h-[280px]" />
+      </PageTransition>
+    );
+  }
+
+  if (source === "db" && campaigns.length === 0) {
+    return (
+      <PageTransition>
+        <Card>
+          <EmptyState
+            icon={Megaphone}
+            title="Aucune campagne importée pour l'instant"
+            description="Connecte Klaviyo, ou tes comptes Meta, TikTok et Google Ads via Windsor.ai : Nightflow te dira quelle campagne rapporte et laquelle perd de l'argent."
+            action={
+              <Link href="/integrations" className={buttonVariants({ size: "lg" })}>
+                Ouvrir Connexions
+              </Link>
+            }
+          />
+        </Card>
+      </PageTransition>
+    );
+  }
 
   const spendCents = campaigns.reduce((t, c) => t + parseMetric(c.spend), 0);
   const revCents = campaigns.reduce((t, c) => t + parseMetric(c.revenue), 0);
@@ -53,7 +113,7 @@ export default function MarketingPage() {
       <DemoBanner source={source} onSeeded={load} />
 
       <p className="max-w-[70ch] text-body text-ink2">
-        Ce que vous dépensez en publicité et en emailing, et ce que ça rapporte
+        Ce que tu dépenses en publicité et en emailing, et ce que ça rapporte
         réellement.
       </p>
 

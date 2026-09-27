@@ -2,7 +2,7 @@ import type { Insight } from "@/types";
 import { callClaudeJSON } from "@/services/ai/anthropic";
 import { clampScore, isPriority, textOr } from "@/services/ai/normalize";
 import { anomaliesSystem, insightsSystem } from "@/services/ai/prompts";
-import { buildStoreContext } from "@/services/ai/store-context";
+import { buildStoreContext, type StoreContext } from "@/services/ai/store-context";
 import {
   alertToInsight,
   detectAlerts,
@@ -59,11 +59,17 @@ function normalize(raw: RawInsight[], prefix: string): Insight[] {
   return items.sort((a, b) => (b.impactScore ?? 0) - (a.impactScore ?? 0));
 }
 
-export async function generateInsights(): Promise<{
+/** The deterministic engine alone — what the page shows while the model thinks. */
+export async function generateRuleInsights(): Promise<Insight[]> {
+  return (await ruleBasedInsights()) ?? [];
+}
+
+export async function generateInsights(ctxIn?: StoreContext): Promise<{
   source: "ai" | "mock";
   items: Insight[];
 }> {
-  const ctx = await buildStoreContext();
+  const ctx = ctxIn ?? (await buildStoreContext());
+  if (ctx.source === "empty") return { source: "mock", items: [] };
   const ai = await callClaudeJSON<RawInsight[]>(
     insightsSystem(ctx.storeName),
     ctx.summary,

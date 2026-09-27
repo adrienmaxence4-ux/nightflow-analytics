@@ -52,12 +52,12 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true, forgotten: true });
   }
 
-  // Deux garde-fous : par visiteur (un onglet ne spamme pas) ET global (sinon
-  // il suffit de générer des vid au hasard pour gonfler les statistiques).
-  if (!rateLimit(`track:${vid}`, 5, 60_000)) {
+  // Deux garde-fous : global d'abord (sinon des vid au hasard gonflent les
+  // statistiques et créent un compteur par vid), puis par visiteur.
+  if (!rateLimit("track:global", 240, 60_000)) {
     return NextResponse.json({ ok: true });
   }
-  if (!rateLimit("track:global", 240, 60_000)) {
+  if (!rateLimit(`track:${vid}`, 5, 60_000)) {
     return NextResponse.json({ ok: true });
   }
 

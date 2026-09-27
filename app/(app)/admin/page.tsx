@@ -34,6 +34,8 @@ interface Stats {
   subsByPlan: { pro: number; scale: number };
   series: { label: string; visiteurs: number; inscrits: number; revenus: number }[];
   adPerformance?: { code: string; visits: number }[];
+  funnel?: { name: string; label: string; count: number }[];
+  retention?: { signups: number; d1: number | null; d7: number | null };
   pays?: {
     code: string;
     nom: string;
@@ -476,6 +478,54 @@ export default function AdminStatsPage() {
           </Card>
 
           <FeedbackPanel />
+
+          {/* Où les gens abandonnent : l'entonnoir, du clic au premier brief */}
+          <Card className="p-5">
+            <h3 className="text-[15px] font-bold">🪜 Où ça casse</h3>
+            <p className="mt-1 text-xs text-ink3">
+              Personnes distinctes par étape sur 30 jours (visiteur anonyme puis
+              compte). La métrique qui compte : la part qui arrive au premier brief.
+            </p>
+            {stats.funnel && stats.funnel.some((s) => s.count > 0) ? (
+              <div className="mt-4 flex flex-col gap-2">
+                {stats.funnel.map((s) => {
+                  const max = stats.funnel![0].count || 1;
+                  return (
+                    <div key={s.name} className="flex items-center gap-3">
+                      <span className="w-44 flex-none truncate text-[13px] font-semibold text-ink">
+                        {s.label}
+                      </span>
+                      <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-white/5">
+                        <div
+                          className="h-full rounded-full bg-accent"
+                          style={{ width: `${Math.round((s.count / max) * 100)}%` }}
+                        />
+                      </div>
+                      <span className="w-12 text-right text-[13px] font-bold text-accent-text">
+                        {s.count}
+                      </span>
+                    </div>
+                  );
+                })}
+                {stats.retention && (
+                  <p className="mt-3 text-[13px] text-ink2">
+                    Retour J1 :{" "}
+                    <b className="text-ink">{stats.retention.d1 === null ? "—" : `${stats.retention.d1} %`}</b>
+                    {" · "}Retour J7 :{" "}
+                    <b className="text-ink">{stats.retention.d7 === null ? "—" : `${stats.retention.d7} %`}</b>
+                    {" · "}sur {stats.retention.signups} inscription
+                    {stats.retention.signups > 1 ? "s" : ""} mesurée
+                    {stats.retention.signups > 1 ? "s" : ""}
+                  </p>
+                )}
+              </div>
+            ) : (
+              <p className="mt-3 text-[12px] text-ink3">
+                Aucun événement pour l&apos;instant. La table product_events se
+                remplit dès que la migration est appliquée et que le site est visité.
+              </p>
+            )}
+          </Card>
 
           {/* Quelle pub marche (attribution ?a=CODE) */}
           <Card className="p-5">

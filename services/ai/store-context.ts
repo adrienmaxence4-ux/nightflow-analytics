@@ -22,7 +22,14 @@ import type {
 
 export interface StoreContext {
   storeName: string;
-  source: "db" | "demo";
+  /**
+   * db    — the user's real store, with data;
+   * empty — the user's real store, nothing imported yet (or a signed-in user
+   *         whose store can't be read): no model call may happen on it, and
+   *         no demo figure may stand in for it;
+   * demo  — no signed-in store at all (local demo mode, anonymous callers).
+   */
+  source: "db" | "demo" | "empty";
   summary: string;
   storeId: string | null;
 }
@@ -75,12 +82,17 @@ async function buildContextForResolvedStore(
 
 export async function buildStoreContext(): Promise<StoreContext> {
   const supabase = createClient();
+  // A signed-in customer never gets MoonStore: with no store row (a signup
+  // whose store insert failed) or a failed query, the demo would be analysed
+  // and billed as if it were their shop. The demo is for sessionless callers.
+  let signedIn = false;
   if (supabase) {
     try {
       const {
         data: { user },
       } = await supabase.auth.getUser();
       if (user) {
+        signedIn = true;
         const { data: stores } = await supabase
           .from("stores")
           .select("*")
@@ -94,13 +106,17 @@ export async function buildStoreContext(): Promise<StoreContext> {
             store,
             isAdminEmail(user.email)
           );
-          if (ctx) return ctx;
+          // A real store with nothing imported used to fall through to the
+          // MoonStore demo: the Copilot then "analysed" a fictional shop under
+          // the customer's own store name. An empty store is an empty store.
+          return ctx ?? { storeName: store.name, source: "empty", storeId: store.id, summary: "" };
         }
       }
     } catch {
-      /* fall through to demo context */
+      /* signed in → empty below; anonymous → demo */
     }
   }
+  if (signedIn) return { storeName: "Ma boutique", source: "empty", storeId: null, summary: "" };
   return {
     storeName: STORE.name,
     source: "demo",

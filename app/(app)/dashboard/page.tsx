@@ -5,17 +5,19 @@ import { RefreshCw, FlaskConical, Eraser } from "lucide-react";
 import { PageTransition } from "@/components/layout/page-transition";
 import { DemoBanner } from "@/components/demo-banner";
 import { RangeToggle } from "@/components/ui/range-toggle";
-import { Triage } from "@/features/dashboard/triage";
+import { DailyBrief } from "@/features/dashboard/daily-brief";
 import { KpiCard } from "@/features/dashboard/kpi-card";
 import { KpiDrawer } from "@/features/dashboard/kpi-drawer";
 import { ReportMenu } from "@/features/reports/report-menu";
 import { TestPanel } from "@/features/admin/test-panel";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { useRange } from "@/hooks/use-range";
 import { useIsAdmin } from "@/hooks/use-admin";
 import { getRangeDataSync } from "@/services/analytics.service";
 import { parseMetric } from "@/utils/format";
-import type { Kpi, Range } from "@/types";
+import type { Kpi, Range, RangeData } from "@/types";
 
 /** Les seuls indicateurs de l'accueil : l'argent, la conversion, le trafic. */
 const KPIS_ACCUEIL = ["revenue", "conversion", "visitors"];
@@ -24,25 +26,39 @@ export default function DashboardPage() {
   const toast = useToast();
   const { range, setRange } = useRange("day");
   const isAdmin = useIsAdmin();
-  const [data, setData] = useState(getRangeDataSync("day"));
+  const { demoMode } = useAuth();
+  // No MoonStore before the first answer: a signed-in account used to see the
+  // sample's figures flash under its own store name while the API loaded.
+  const [data, setData] = useState<RangeData | null>(() =>
+    demoMode ? getRangeDataSync("day") : null
+  );
   const [source, setSource] = useState<"db" | "mock" | null>(null);
   const [activeKpi, setActiveKpi] = useState<Kpi | null>(null);
 
-  const loadRange = useCallback(async (r: Range) => {
-    try {
-      const res = await fetch(`/api/dashboard?range=${r}`);
-      if (res.ok) {
-        const j = await res.json();
-        setData(j.data);
-        setSource(j.source);
-        return;
+  const loadRange = useCallback(
+    async (r: Range) => {
+      try {
+        const res = await fetch(`/api/dashboard?range=${r}`);
+        if (res.ok) {
+          const j = await res.json();
+          setData(j.data);
+          setSource(j.source);
+          return;
+        }
+      } catch {
+        /* fall back */
       }
-    } catch {
-      /* fall back */
-    }
-    setData(getRangeDataSync(r));
-    setSource("mock");
-  }, []);
+      // The sample only stands in where there is no store at all (local demo
+      // mode). A real account keeps what it had and is told, not shown a fake.
+      if (demoMode) {
+        setData(getRangeDataSync(r));
+        setSource("mock");
+      } else {
+        toast("Chiffres indisponibles pour l'instant — réessaie dans un instant", "info");
+      }
+    },
+    [demoMode, toast]
+  );
 
   useEffect(() => {
     loadRange(range);
@@ -52,7 +68,7 @@ export default function DashboardPage() {
   useEffect(() => {
     if (range !== "day" || source !== "mock") return;
     const id = setInterval(() => {
-      setData((prev) => ({
+      setData((prev) => prev && ({
         ...prev,
         kpis: prev.kpis.map((k) =>
           k.key === "visitors"
@@ -144,10 +160,14 @@ export default function DashboardPage() {
           loadRange(range);
         }}
       />
+      {/* Niveau 1 : le brief. Ce qui mérite l'attention, avant tout chiffre. */}
+      <DailyBrief />
+
+      {/* Niveau 2 : les chiffres, pour qui veut vérifier. */}
       <div className="flex flex-wrap items-center gap-3">
         <div className="basis-full min-[900px]:mr-auto min-[900px]:basis-auto">
-          <h2 className="font-display text-title">Vue d&apos;ensemble</h2>
-          <div className="mt-1 text-[15px] text-ink3 min-[900px]:text-[17px]">{data.sub}</div>
+          <h2 className="font-display text-title">Le détail</h2>
+          <div className="mt-1 text-[15px] text-ink3 min-[900px]:text-[17px]">{data?.sub ?? " "}</div>
         </div>
         <RangeToggle value={range} onChange={setRange} />
         <button
@@ -182,20 +202,17 @@ export default function DashboardPage() {
         <ReportMenu />
       </div>
 
-      {/* Le tri d'abord : on doit voir ce qui ne va pas avant les chiffres. */}
-      <Triage />
-
       {/* Trois chiffres, pas douze. Le détail vit dans Analyses, Produits et
           Copilote — inutile de le dupliquer ici. */}
       <div className="grid gap-5 [grid-template-columns:repeat(auto-fit,minmax(300px,1fr))]">
-        {data.kpis
-          .filter((k) => KPIS_ACCUEIL.includes(k.key))
-          .map((k) => (
-            <KpiCard key={k.key} kpi={k} onClick={() => setActiveKpi(k)} />
-          ))}
+        {data
+          ? data.kpis
+              .filter((k) => KPIS_ACCUEIL.includes(k.key))
+              .map((k) => <KpiCard key={k.key} kpi={k} onClick={() => setActiveKpi(k)} />)
+          : KPIS_ACCUEIL.map((k) => <Skeleton key={k} className="h-[150px]" />)}
       </div>
 
-      <KpiDrawer kpi={activeKpi} range={data} onClose={() => setActiveKpi(null)} />
+      {data && <KpiDrawer kpi={activeKpi} range={data} onClose={() => setActiveKpi(null)} />}
     </PageTransition>
   );
 }

@@ -10,6 +10,7 @@ import { VipRedeemer } from "@/features/vip/vip-redeemer";
 import { useAuth } from "@/hooks/use-auth";
 import { useUnread } from "@/hooks/use-unread";
 import { NAV_MAIN, NAV_SECONDARY } from "@/lib/nav";
+import { track } from "@/lib/track";
 
 const TITLES: Record<string, string> = {
   ...Object.fromEntries([...NAV_MAIN, ...NAV_SECONDARY].map((n) => [n.href, n.label])),
@@ -27,6 +28,20 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!loading && !user) router.replace("/login");
   }, [loading, user, router]);
+
+  // One "came back" per browser per day: the D1/D7 retention numbers on /admin
+  // are counted from these, relative to the account's signup.
+  useEffect(() => {
+    if (!user) return;
+    try {
+      const key = `nf_return_${new Date().toISOString().slice(0, 10)}`;
+      if (sessionStorage.getItem(key)) return;
+      sessionStorage.setItem(key, "1");
+      track("app_return");
+    } catch {
+      /* storage blocked */
+    }
+  }, [user]);
 
   const title = TITLES[pathname] ?? "Accueil";
 

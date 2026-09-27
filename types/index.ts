@@ -180,24 +180,39 @@ export interface Notification {
 }
 
 /**
- * One line of the daily triage panel — an alert plus what to do about it.
- * Shared by GET /api/triage and the dashboard panel that renders it.
+ * One line of the Daily Brief — an alert ranked by severity, with the context
+ * a merchant asks for before acting: since when, where, compared to what.
+ * Shared by GET /api/brief, the dashboard and the landing sample.
  */
-export interface TriageItem {
+export interface BriefItem {
   id: string;
-  icon: string;
+  severity: Severity;
+  /** Headline with the number in it: "Conversion mobile : 2,8 % → 1,1 %". */
   title: string;
+  /** One line of what changed, with the real figures. */
   detail: string;
+  /** Concrete next step. */
   action: string;
-  impact: string;
+  /** Estimated business impact, e.g. "≈ €420 de CA en jeu". */
+  impact?: string;
+  /** "depuis hier 14h", "depuis 9 jours". */
+  since?: string;
+  /** "surtout sur mobile", "Meta · Retargeting". */
+  scope?: string;
 }
 
-/** The triage split in three zones: what earns / what costs / what to watch. */
-export interface TriageZones {
-  winning: TriageItem[];
-  fix: TriageItem[];
-  watch: TriageItem[];
+export interface DailyBrief {
+  /** ISO date the brief was computed for. */
+  date: string;
+  items: BriefItem[];
+  /** At least one integration is connected. */
   connected: boolean;
+  /** The store has metrics to reason about. */
+  hasData: boolean;
+  /** Display names of the connected sources, e.g. ["Shopify", "Klaviyo"]. */
+  sources: string[];
+  /** Most recent successful sync, ISO, or null. */
+  lastSyncAt: string | null;
 }
 
 export interface Campaign {

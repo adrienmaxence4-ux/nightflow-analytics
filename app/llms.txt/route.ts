@@ -20,43 +20,50 @@ export const dynamic = "force-static";
 
 const CONTENU = `# Nightflow Analytics
 
-> Copilote IA pour marchands e-commerce francophones. Nightflow connecte une
-> boutique (Shopify, Wix, WooCommerce, Stripe, Klaviyo, Google Analytics 4) et
-> traduit ses données en trois réponses : ce qui se passe, pourquoi, et quoi
-> faire. Chaque recommandation est chiffrée et cite les données qui l'ont
-> déclenchée.
+> Nightflow surveille une boutique e-commerce francophone (Shopify, WooCommerce,
+> Wix, Stripe, Klaviyo, Google Analytics 4), détecte les changements
+> importants, explique la cause probable avec les données disponibles et dit
+> quoi faire — dans un brief quotidien qui se lit en 30 secondes. Pour les
+> petites et moyennes boutiques qui ne veulent pas passer leur journée dans
+> Analytics.
 
 ## Ce que fait le produit
 
-- Répond en français clair à des questions de gestion : pourquoi le chiffre
-  d'affaires a baissé, quelle campagne publicitaire coûte plus qu'elle ne
-  rapporte, quel produit va tomber en rupture, si les clients reviennent.
-- Surveille les métriques en continu et alerte sur les décrochages anormaux
-  (rupture de stock imminente, chute de conversion, publicité déficitaire).
-- Génère des rapports PDF, Excel et Word à partir des données réelles importées.
-- S'installe comme application de bureau et mobile, avec notifications.
+- Un Daily Brief chaque matin : ce qui mérite l'attention du marchand, classé
+  par gravité (action nécessaire, à surveiller, positif, information), avec
+  depuis quand, où, et par rapport à quoi.
+- Un moteur de détection déterministe qui compare chaque métrique à sa période
+  précédente et cite les chiffres exacts qui ont déclenché l'alerte : chute de
+  chiffre d'affaires, conversion en baisse, rupture de stock imminente,
+  campagne publicitaire déficitaire.
+- Des réponses en français à des questions de gestion (« pourquoi mes ventes
+  baissent ? », « où est-ce que je perds de l'argent ? », « qu'est-ce qui
+  fonctionne ? »), fondées sur les données importées.
+- Des rapports PDF, Excel et Word générés à partir des données réelles.
+- Des notifications sur ordinateur (agent Windows) et téléphone quand une
+  alerte tombe.
 
 ## Ce qu'il ne fait pas
 
-- Il n'importe aucune donnée personnelle des clients de la boutique : uniquement
-  des métriques agrégées et des identifiants techniques.
-- Il ne gère pas la boutique à votre place : il recommande, vous décidez.
-- Il n'invente pas de chiffres. Le moteur d'alertes est déterministe et le
-  copilote raisonne uniquement sur les données réellement importées.
+- Il n'importe aucune donnée personnelle des clients de la boutique : des
+  métriques agrégées et des identifiants techniques, jamais des noms.
+- Il ne modifie rien dans la boutique sans un clic explicite du marchand, et
+  chaque action appliquée se défait en un clic.
+- Il n'invente pas de chiffres : le moteur d'alertes est déterministe et les
+  réponses IA reposent sur les données importées ; quand une donnée manque, il
+  le dit.
 
 ## Tarifs
 
-- Starter — 0 €/mois. Boutique de démonstration, données d'exemple uniquement.
-- Pro — 9 €/mois (90 €/an). Données réelles, toutes les intégrations, API et
-  webhooks, quota quotidien d'analyses IA. Essai de 30 jours sans carte.
-- Scale — 19 €/mois (190 €/an). Analyses IA illimitées, détection d'anomalies,
-  alertes temps réel, multi-comptes et marque blanche.
+- Starter — 0 €/mois. Boutique de démonstration MoonStore, aucune donnée réelle.
+- Pro — 9 €/mois (90 €/an). Boutique connectée, Daily Brief et alertes,
+  rapports, 20 questions au Copilote par jour. 30 jours gratuits sans carte.
 
 ## Intégrations
 
-Shopify, Wix, WooCommerce, Stripe, Klaviyo, Google Analytics 4, Meta Ads,
-Instagram, PayPal, ShipStation, Mondial Relay, Gorgias. Connexion en un clic
-par OAuth pour la plupart, aucune ligne de code à écrire.
+Shopify, WooCommerce et Wix (clé ou jeton en lecture seule créé depuis la
+boutique), Stripe (clé restreinte en lecture seule), Klaviyo (OAuth),
+Google Analytics 4. Meta Ads et TikTok Ads arrivent via Windsor.ai.
 
 ## Confidentialité
 

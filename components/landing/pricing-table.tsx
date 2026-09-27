@@ -3,8 +3,9 @@
 import { useState } from "react";
 import Link from "next/link";
 import { Check } from "lucide-react";
+import { buttonVariants } from "@/components/ui/button";
 import {
-  PLAN_LIST,
+  LANDING_PLANS,
   formatEuro,
   priceCents,
   type BillingInterval,
@@ -12,21 +13,17 @@ import {
 } from "@/lib/plans";
 
 /**
- * Tarifs de la landing, avec la bascule mensuel / annuel.
+ * Tarifs de la landing, avec la bascule mensuel / annuel. Deux plans : le
+ * gratuit sert à regarder, le Pro sert à brancher sa boutique. Scale reste sur
+ * /billing (voir LANDING_PLANS).
  *
- * `yearlyCents` existait déjà dans lib/plans (10× le mensuel, soit 2 mois
- * offerts) mais n'était affiché nulle part — la remise était codée et
- * invisible. Elle est maintenant montrée.
- *
- * Le libellé du bouton Pro porte l'essai. Avant, l'essai était listé comme une
- * « fonctionnalité » pendant que le bouton disait « Choisir Pro » : le visiteur
- * lisait qu'il allait payer alors qu'il ne payait pas.
+ * Le libellé du bouton Pro porte l'essai : un bouton « Choisir Pro » faisait
+ * lire au visiteur qu'il allait payer alors qu'il ne payait pas.
  */
 
 function ctaLabel(plan: Plan): string {
-  if (plan.id === "free") return "Créer un compte gratuit";
-  if (plan.id === "pro") return "Démarrer l'essai de 30 jours";
-  return `Choisir ${plan.name}`;
+  if (plan.id === "free") return "Regarder la démo";
+  return "Essayer Nightflow";
 }
 
 export function PricingTable() {
@@ -65,7 +62,7 @@ export function PricingTable() {
               >
                 {label}
                 {value === "year" && (
-                  <span className={on ? "text-accent-ink/75" : "text-accent-text"}>
+                  <span className={on ? "font-semibold text-accent-ink" : "text-accent-text"}>
                     {" "}
                     −2 mois
                   </span>
@@ -76,8 +73,8 @@ export function PricingTable() {
         </div>
       </div>
 
-      <div className="mt-10 grid gap-5 [grid-template-columns:repeat(auto-fit,minmax(300px,1fr))]">
-        {PLAN_LIST.map((plan) => {
+      <div className="mx-auto mt-10 grid max-w-[760px] gap-5 [grid-template-columns:repeat(auto-fit,minmax(300px,1fr))]">
+        {LANDING_PLANS.map((plan) => {
           const cents = priceCents(plan, interval);
           const free = plan.monthlyCents === 0;
           // Prix annuel ramené au mois : le visiteur compare des mois, pas des ans.
@@ -98,7 +95,7 @@ export function PricingTable() {
                     "rounded-pill px-3 py-1 text-[14px] font-bold",
                     plan.highlight
                       ? "bg-accent text-accent-ink"
-                      : "border border-cool text-accent-text",
+                      : "border border-line text-accent-text",
                   ].join(" ")}
                 >
                   {plan.tag}
@@ -119,10 +116,10 @@ export function PricingTable() {
                   selon le plan, mais occupe toujours la même place. */}
               <p className="mt-1.5 min-h-[24px] text-[15px] text-ink3">
                 {free
-                  ? "Pour toujours, sans carte bancaire"
+                  ? "Pour toujours, sans carte"
                   : yearly
-                    ? `Facturé ${formatEuro(plan.yearlyCents)} par an`
-                    : "Sans engagement, résiliable en 2 clics"}
+                    ? `Facturé ${formatEuro(plan.yearlyCents)} par an, après l'essai`
+                    : "Après l'essai. Sans engagement, résiliable en 2 clics"}
               </p>
 
               <ul className="mt-5 flex flex-1 flex-col gap-3">
@@ -142,20 +139,15 @@ export function PricingTable() {
               </ul>
 
               <Link
-                href="/signup"
-                className={[
-                  "mt-7 inline-flex min-h-[52px] items-center justify-center rounded-[12px] px-5 text-center text-[17px] font-bold transition",
-                  plan.highlight
-                    ? "bg-accent text-accent-ink hover:brightness-95"
-                    : "border border-cool text-ink hover:border-accent",
-                ].join(" ")}
+                href={free ? "#demo" : "/signup"}
+                className={`mt-7 w-full ${buttonVariants({ variant: plan.highlight ? "primary" : "outline", size: "lg" })}`}
               >
                 {ctaLabel(plan)}
               </Link>
 
               {plan.id === "pro" && (
                 <p className="mt-3 text-center text-[14px] text-ink3">
-                  Aucune carte demandée. Annulation en 2 clics.
+                  Aucune carte demandée pour l&apos;essai.
                 </p>
               )}
             </div>

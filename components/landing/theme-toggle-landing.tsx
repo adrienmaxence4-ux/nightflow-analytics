@@ -43,7 +43,7 @@ export function LandingThemeToggle({
       type="button"
       onClick={flip}
       aria-label={next === "sombre" ? "Passer en mode sombre" : "Passer en mode clair"}
-      className="inline-flex min-h-tap items-center gap-2 rounded-[12px] border border-cool px-4 text-[16px] font-semibold text-ink transition hover:border-accent"
+      className="inline-flex min-h-tap items-center gap-2 rounded-[12px] border border-line px-4 text-[16px] font-semibold text-ink transition hover:border-accent"
     >
       <Icon className="h-5 w-5 flex-none" strokeWidth={2} aria-hidden />
       {next === "sombre" ? "Sombre" : "Clair"}

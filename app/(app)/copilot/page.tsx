@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { motion } from "framer-motion";
-import { AlertTriangle, Sparkles, Target, ShieldAlert, TrendingUp } from "lucide-react";
+import Link from "next/link";
+import { useCallback, useEffect, useState } from "react";
+import { AlertTriangle, Plug, RefreshCw, Target, ShieldAlert, TrendingUp } from "lucide-react";
 import { PageTransition } from "@/components/layout/page-transition";
 import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { EmptyState, ErrorState } from "@/components/ui/empty-state";
 import { Sheet } from "@/components/ui/sheet";
 import { InsightCard } from "@/features/copilot/insight-card";
 import { AnalysisCard } from "@/features/copilot/analysis-card";
@@ -75,9 +76,15 @@ function insightsToCards(insights: Insight[]): AnalysisCardType[] {
   }));
 }
 
+type InsightsPayload = {
+  source?: "ai" | "mock" | "rules" | "empty";
+  insights?: Insight[];
+  recommendations?: Recommendation[];
+};
+
 export default function CopilotPage() {
   const toast = useToast();
-  const { user } = useAuth();
+  const { user, demoMode } = useAuth();
   // Hydrate instantly from the cache when available; otherwise show "analyse en
   // cours" while the first analysis loads (page shell stays instant either way).
   const [analyses, setAnalyses] = useState<AnalysisCardType[]>(() =>
@@ -86,6 +93,9 @@ export default function CopilotPage() {
   const [groups, setGroups] = useState(() => group(insightsCache ?? []));
   const [recos, setRecos] = useState<Recommendation[]>(() => recosCache ?? []);
   const [loadingInsights, setLoadingInsights] = useState(!insightsCache);
+  /** The store exists but nothing is imported yet: no analysis, no chat. */
+  const [empty, setEmpty] = useState(false);
+  const [failed, setFailed] = useState(false);
   const [openAnalysis, setOpenAnalysis] = useState<AnalysisCardType | null>(null);
   const [reporting, setReporting] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -93,59 +103,72 @@ export default function CopilotPage() {
   const { reset: resetDrawer } = drawerCopilot;
   useEffect(() => resetDrawer(), [openAnalysis?.id, resetDrawer]);
 
-  // Real AI insights; fall back to the rule-based engine if the AI is
-  // unavailable — or just slow. /api/insights fans out to three metered model
-  // calls, so on an uncached hit it can take 20–40s; without a bound here the
-  // Analyses and Actions panels sit on skeletons that whole time. After a short
-  // grace period we fill them from the rule-based engine; a later AI response
-  // still upgrades the panels in place.
-  useEffect(() => {
-    let alive = true;
+  const apply = useCallback((data: InsightsPayload, remember: boolean) => {
+    const items = data.insights ?? [];
+    const recoItems = data.recommendations ?? [];
+    if (recoItems.length > 0 || remember) {
+      if (remember) recosCache = recoItems;
+      setRecos(recoItems);
+    }
+    if (items.length > 0 || remember) {
+      if (remember) insightsCache = items;
+      setGroups(group(items));
+      setAnalyses(insightsToCards(items));
+    }
+  }, []);
 
-    const fillFromRules = () => {
-      if (!alive || insightsCache) return;
+  /**
+   * Two round trips, deterministic first. `?fast=1` answers from the detection
+   * engine in well under a second; the full call fans out to three metered
+   * model calls and can take 20–40 s uncached, so it upgrades the panels in
+   * place when it lands. Neither path ever shows the MoonStore sample to a
+   * signed-in account: that only happens in local demo mode (no Supabase).
+   */
+  const load = useCallback(async () => {
+    if (demoMode) {
       setGroups(getGroupedInsights());
       setAnalyses(getAnalysisCards());
-      setRecos((r) => (r.length ? r : getRecommendations()));
+      setRecos(getRecommendations());
       setLoadingInsights(false);
-    };
-    const grace = setTimeout(fillFromRules, 12_000);
-
-    fetch("/api/insights")
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data: { insights?: Insight[]; recommendations?: Recommendation[] } | null) => {
-        if (!alive) return;
-        const items = data?.insights ?? [];
-        const recoItems = data?.recommendations ?? [];
-        if (recoItems.length > 0) {
-          recosCache = recoItems;
-          setRecos(recoItems);
-        }
-        if (items.length > 0) {
-          insightsCache = items;
-          setGroups(group(items));
-          setAnalyses(insightsToCards(items));
-        } else if (!insightsCache) {
-          setGroups(getGroupedInsights());
-          setAnalyses(getAnalysisCards());
-          setRecos((r) => (r.length ? r : getRecommendations()));
-        }
+      return;
+    }
+    setFailed(false);
+    let gotSomething = !!insightsCache;
+    try {
+      const fast = await fetch("/api/insights?fast=1");
+      const data = fast.ok ? ((await fast.json()) as InsightsPayload) : null;
+      if (data?.source === "empty") {
+        setEmpty(true);
         setLoadingInsights(false);
-      })
-      .catch(() => {
-        if (!alive) return;
-        setGroups(getGroupedInsights());
-        setAnalyses(getAnalysisCards());
-        setRecos((r) => (r.length ? r : getRecommendations()));
+        return;
+      }
+      if (data) {
+        apply(data, false);
+        gotSomething = true;
         setLoadingInsights(false);
-      })
-      .finally(() => clearTimeout(grace));
+      }
+    } catch {
+      /* the full call below may still succeed */
+    }
+    try {
+      const res = await fetch("/api/insights");
+      const data = res.ok ? ((await res.json()) as InsightsPayload) : null;
+      if (data?.source === "empty") {
+        setEmpty(true);
+      } else if (data) {
+        apply(data, true);
+        gotSomething = true;
+      }
+    } catch {
+      /* handled below */
+    }
+    if (!gotSomething) setFailed(true);
+    setLoadingInsights(false);
+  }, [apply, demoMode]);
 
-    return () => {
-      alive = false;
-      clearTimeout(grace);
-    };
-  }, []);
+  useEffect(() => {
+    load();
+  }, [load]);
 
   const summary = {
     risks: groups.risks.length,
@@ -168,26 +191,56 @@ export default function CopilotPage() {
     toast("Analyse en cours…", "info");
     try {
       const res = await fetch("/api/insights?refresh=1");
-      const data = (await res.json()) as {
-        insights?: Insight[];
-        recommendations?: Recommendation[];
-      };
-      const items = data.insights ?? [];
-      if (items.length) {
-        insightsCache = items;
-        setGroups(group(items));
-        setAnalyses(insightsToCards(items));
+      const data = (await res.json()) as InsightsPayload;
+      if (data.source === "empty") {
+        setEmpty(true);
+        return;
       }
-      const recoItems = data.recommendations ?? [];
-      recosCache = recoItems;
-      setRecos(recoItems);
-      toast(`Analyse actualisée — ${items.length} insights détectés`);
+      apply(data, true);
+      toast(`Analyse actualisée — ${data.insights?.length ?? 0} points détectés`);
     } catch {
       toast("Actualisation impossible", "info");
     } finally {
       setRefreshing(false);
     }
   };
+
+  if (empty) {
+    return (
+      <PageTransition>
+        <Card>
+          <EmptyState
+            icon={Plug}
+            title="Nightflow attend ses premières données"
+            description={`Connecte ${user?.store ?? "ta boutique"} pour recevoir ton premier brief, tes alertes et des réponses fondées sur tes vrais chiffres. Rien n'est analysé tant que rien n'est importé.`}
+            action={
+              <Link href="/integrations" className={buttonVariants({ size: "lg" })}>
+                Connecter ma boutique
+              </Link>
+            }
+          />
+        </Card>
+      </PageTransition>
+    );
+  }
+
+  if (failed && !loadingInsights && analyses.length === 0) {
+    return (
+      <PageTransition>
+        <Card>
+          <ErrorState
+            icon={RefreshCw}
+            description="L'analyse n'a pas pu être chargée. Tes données sont intactes ; réessaie dans un instant."
+            action={
+              <Button variant="ghost" onClick={load}>
+                Réessayer
+              </Button>
+            }
+          />
+        </Card>
+      </PageTransition>
+    );
+  }
 
   return (
     <PageTransition>
@@ -199,9 +252,9 @@ export default function CopilotPage() {
               Bonjour{user?.name ? ` ${user.name}` : ""}
             </h1>
             <p className="mt-2.5 max-w-[60ch] text-[19px] leading-relaxed text-ink2">
-              J&apos;ai analysé l&apos;activité de{" "}
-              <b className="text-ink">{user?.store ?? "votre boutique"}</b>. Voici ce qui
-              compte aujourd&apos;hui.
+              {loadingInsights ? "J'analyse l'activité de " : "J'ai analysé l'activité de "}
+              <b className="text-ink">{user?.store ?? "ta boutique"}</b>
+              {loadingInsights ? "…" : ". Voici ce qui compte aujourd'hui."}
             </p>
             <div className="mt-5 flex flex-wrap gap-3">
               <Chip icon={<ShieldAlert className="h-[18px] w-[18px]" />} tone="bad">
@@ -364,8 +417,8 @@ function AnalyzingPanel() {
     <div className="rounded-[12px] border border-line bg-panel2 p-6">
       <div className="text-[18px] font-bold">Les données sont en cours d&apos;analyse…</div>
       <p className="mt-1 text-[16px] text-ink2">
-        Le Copilote examine votre boutique — les conseils s&apos;afficheront ici dans un
-        instant. La page reste entièrement utilisable.
+        Le Copilote examine ta boutique — les conseils s&apos;afficheront ici dans un
+        instant. La page reste utilisable.
       </p>
     </div>
   );

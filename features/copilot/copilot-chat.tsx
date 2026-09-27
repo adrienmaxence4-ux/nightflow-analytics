@@ -5,30 +5,30 @@ import { Send, Sparkles, Zap } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { RichText } from "@/components/ui/rich-text";
 import { ApplySheet } from "@/features/actions/apply-sheet";
+import { useAuth } from "@/hooks/use-auth";
 import { askCopilot } from "@/services/copilot.service";
 import type { SuggestedAction } from "@/types";
 
+/**
+ * The questions a merchant actually asks, in that order. "Ask me anything"
+ * is what every chatbot says; these are the five the brief is built to answer.
+ */
 const SUGGESTIONS = [
-  "Pourquoi mes ventes ont baissé ?",
-  "Comment améliorer ma conversion mobile ?",
-  "Où investir mon budget pub ?",
-  "Quels produits sont à risque de rupture ?",
+  "Qu'est-ce qui mérite mon attention ?",
+  "Pourquoi mes ventes baissent ?",
+  "Qu'est-ce qui a changé depuis hier ?",
+  "Où est-ce que je perds de l'argent cette semaine ?",
+  "Résume ma journée.",
 ];
 
-/** Builds questions tied to the user's real store (products + situation). */
+/** Swaps in a question tied to the user's real catalogue when it has one. */
 function contextualSuggestions(
   products: { name: string; sales: number; stock: number }[]
 ): string[] {
   if (!products.length) return SUGGESTIONS;
-  const out: string[] = [];
-  const noSales = products.every((p) => p.sales === 0);
   const lowStock = products.find((p) => p.stock > 0 && p.stock <= 20);
-  if (noSales) out.push("Pourquoi mes produits ne convertissent pas ?");
-  out.push(`Comment vendre plus de ${products[0].name} ?`);
-  out.push("Quelles sont mes priorités cette semaine ?");
-  if (lowStock) out.push(`Faut-il réapprovisionner le ${lowStock.name} ?`);
-  out.push("Où investir mon budget marketing ?");
-  return out.slice(0, 4);
+  if (!lowStock) return SUGGESTIONS;
+  return [SUGGESTIONS[0], SUGGESTIONS[1], `Faut-il réapprovisionner ${lowStock.name} ?`, SUGGESTIONS[3], SUGGESTIONS[4]];
 }
 
 interface Msg {
@@ -49,10 +49,13 @@ interface Msg {
 }
 
 export function CopilotChat({ className }: { className?: string }) {
-  const [messages, setMessages] = useState<Msg[]>([
+  const { user } = useAuth();
+  const [messages, setMessages] = useState<Msg[]>(() => [
     {
       role: "ai",
-      text: "Bonjour Adrien. Je suis votre directeur e-commerce IA. Posez-moi une question sur MoonStore, ou cliquez une suggestion ci-dessous.",
+      text: `Bonjour${user?.name ? ` ${user.name}` : ""}. Pose-moi une question sur ${
+        user?.store ?? "ta boutique"
+      }, ou clique une suggestion. Je réponds avec tes données importées, jamais avec une estimation.`,
     },
   ]);
   const [q, setQ] = useState("");
@@ -140,7 +143,7 @@ export function CopilotChat({ className }: { className?: string }) {
         </span>
         <div>
           <h3 className="font-display text-[18px] font-extrabold">Copilote Nightflow</h3>
-          <p className="text-[15px] font-semibold text-ink3">En ligne · répond en français</p>
+          <p className="text-[15px] font-semibold text-ink3">Répond avec tes données, pas avec des estimations</p>
         </div>
       </div>
 
@@ -185,7 +188,7 @@ export function CopilotChat({ className }: { className?: string }) {
 
       <div className="border-t border-line px-4 py-3">
         <div className="mb-2 flex flex-wrap gap-1.5">
-          {suggestions.slice(0, 3).map((s) => (
+          {suggestions.slice(0, 4).map((s) => (
             <button
               key={s}
               onClick={() => send(s)}
@@ -200,7 +203,7 @@ export function CopilotChat({ className }: { className?: string }) {
             value={q}
             onChange={(e) => setQ(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && send(q)}
-            placeholder="Posez votre question…"
+            placeholder="Pose ta question…"
             className="flex-1 min-h-[44px] bg-transparent text-[17px] text-ink outline-none placeholder:text-ink3"
           />
           <button

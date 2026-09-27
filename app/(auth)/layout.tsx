@@ -35,7 +35,7 @@ export default function AuthLayout({
 
       {/* Rappel de confiance — au moment exact où l'utilisateur décide. */}
       <p className="max-w-[480px] text-center text-[15px] leading-relaxed text-ink3">
-        En continuant, vous acceptez nos{" "}
+        En continuant, tu acceptes nos{" "}
         <Link href="/conditions" className="underline underline-offset-2 hover:text-ink">
           conditions d&apos;utilisation
         </Link>{" "}
@@ -43,7 +43,7 @@ export default function AuthLayout({
         <Link href="/confidentialite" className="underline underline-offset-2 hover:text-ink">
           politique de confidentialité
         </Link>
-        . Vos données sont chiffrées et ne sont jamais revendues.
+        . Tes données sont chiffrées et ne sont jamais revendues.
       </p>
     </div>
   );

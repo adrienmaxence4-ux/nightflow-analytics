@@ -24,7 +24,7 @@ import { ImageResponse } from "next/og";
  */
 export const runtime = "edge";
 
-export const alt = "Nightflow Analytics — Votre copilote IA e-commerce";
+export const alt = "Nightflow Analytics — Sache ce qui mérite ton attention";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -85,7 +85,7 @@ export default function Image() {
               letterSpacing: -2,
             }}
           >
-            Arrêtez de fixer des chiffres.
+            Sache ce qui mérite
           </div>
           <div
             style={{
@@ -98,7 +98,7 @@ export default function Image() {
               marginTop: 6,
             }}
           >
-            Sachez quoi faire.
+            ton attention.
           </div>
           <div
             style={{
@@ -109,7 +109,7 @@ export default function Image() {
               lineHeight: 1.4,
             }}
           >
-            Votre copilote IA e-commerce : ce qui se passe, pourquoi, et quoi faire.
+            Nightflow surveille ton e-commerce, détecte ce qui change et te dit quoi faire.
           </div>
         </div>
 
@@ -117,7 +117,7 @@ export default function Image() {
         <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
           <div style={{ display: "flex", width: 44, height: 5, background: ACCENT }} />
           <div style={{ display: "flex", fontSize: 24, color: INK2, letterSpacing: 0.5 }}>
-            Shopify · Wix · WooCommerce · Stripe · Klaviyo · GA4
+            Shopify · WooCommerce · Wix · Stripe · Klaviyo · GA4
           </div>
         </div>
       </div>

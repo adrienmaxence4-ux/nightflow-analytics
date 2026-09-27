@@ -175,7 +175,7 @@ export function parseStoreFields(body: Record<string, unknown>): StoreFieldsPars
       ok: false,
       field: "storeUrl",
       error:
-        "Une page Instagram, Etsy ou Amazon n'est pas une boutique que Nightflow peut suivre. Indiquez le site où vos clients commandent (ex. maboutique.fr ou maboutique.myshopify.com).",
+        "Une page Instagram, Etsy ou Amazon n'est pas une boutique que Nightflow peut suivre. Indique le site où tes clients commandent (ex. maboutique.fr ou maboutique.myshopify.com).",
     };
   }
   if (!host) {
@@ -183,14 +183,14 @@ export function parseStoreFields(body: Record<string, unknown>): StoreFieldsPars
       ok: false,
       field: "storeUrl",
       error:
-        "Indiquez l'adresse de votre boutique en ligne (ex. maboutique.fr ou maboutique.myshopify.com).",
+        "Indique l'adresse de ta boutique en ligne (ex. maboutique.fr ou maboutique.myshopify.com).",
     };
   }
   const domain = host;
 
   const platform = STORE_PLATFORMS.find((p) => p.id === body.platform)?.id;
   if (!platform) {
-    return { ok: false, field: "platform", error: "Choisissez votre plateforme e-commerce." };
+    return { ok: false, field: "platform", error: "Choisis ta plateforme e-commerce." };
   }
 
   return { ok: true, value: { storeName: name.value, storeDomain: domain, platform } };
@@ -235,7 +235,7 @@ export function parseSignup(body: unknown): SignupParse {
       ok: false,
       field: "email",
       error:
-        "Les adresses jetables ne sont pas acceptées. Utilisez une adresse que vous gardez : Gmail, Outlook ou celle de votre boutique.",
+        "Les adresses jetables ne sont pas acceptées. Utilise une adresse que tu gardes : Gmail, Outlook ou celle de ta boutique.",
     };
   }
 

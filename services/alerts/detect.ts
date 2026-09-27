@@ -6,6 +6,7 @@ import type {
   StoreRow,
 } from "@/types/database";
 import type {
+  BriefItem,
   Insight,
   Notification,
   Priority,
@@ -26,7 +27,7 @@ import {
  * It is deterministic and AI-free, so it's fast enough for the sidebar badge
  * and reliable even when no AI key is configured. The same alerts feed:
  *   • /api/notifications  → bell badge, Notifications page, desktop notifier
- *   • /api/triage         → the daily triage panel on the dashboard
+ *   • /api/brief          → the Daily Brief on the dashboard
  *   • the Copilot insights fallback (rule-based, never the MoonStore demo)
  *
  * Structure: `snapshot()` crunches the numbers once, each RULE reads that
@@ -41,6 +42,8 @@ export interface StoreSignals {
   products: ProductRow[];
   campaigns: CampaignRow[];
   connectedProviders: string[];
+  /** Most recent successful sync across connected providers, ISO — for the brief's footer. */
+  lastSyncAt?: string | null;
 }
 
 export interface DetectedAlert {
@@ -62,7 +65,14 @@ export interface DetectedAlert {
   score: number;
   /** Set when the alert is about one product — the target of the auto-action. */
   productId?: string;
+  /** The comparison window, for the brief: "7j vs les 7j précédents", "hier". */
+  since?: string;
+  /** Where it shows, when the title doesn't already say: a channel, a product. */
+  scope?: string;
 }
+
+const vsPrevious = (windowDays: number) =>
+  `${windowDays}j vs les ${windowDays}j précédents`;
 
 const euros = (cents: number) =>
   `€${Math.round(cents / 100).toLocaleString("fr-FR")}`;
@@ -108,20 +118,26 @@ export async function loadStoreSignals(): Promise<StoreSignals | null> {
       supabase.from("campaigns").select("*").eq("store_id", store.id),
       supabase
         .from("integrations")
-        .select("provider")
+        .select("provider, last_synced_at")
         .eq("store_id", store.id)
         .eq("status", "connected"),
     ]);
+
+  const integrations =
+    (integrationsRes.data as { provider: string; last_synced_at: string | null }[] | null) ?? [];
+  const lastSyncAt = integrations
+    .map((r) => r.last_synced_at)
+    .filter((d): d is string => !!d)
+    .sort()
+    .at(-1) ?? null;
 
   return {
     storeName: store.name,
     metrics: (metricsRes.data as MetricDailyRow[] | null) ?? [],
     products: (productsRes.data as ProductRow[] | null) ?? [],
     campaigns: (campaignsRes.data as CampaignRow[] | null) ?? [],
-    connectedProviders:
-      ((integrationsRes.data as { provider: string }[] | null) ?? []).map(
-        (r) => r.provider
-      ),
+    connectedProviders: integrations.map((r) => r.provider),
+    lastSyncAt,
   };
 }
 
@@ -221,6 +237,7 @@ const revenueTrend: Rule = (s) => {
           : "Audite le tunnel d'achat (prix, frais de port, étapes du checkout) et relance tes meilleurs clients.",
         impact: `≈ ${euros(revenue.previous - revenue.current)} de CA perdus vs période précédente`,
         score: critical ? 98 : 82,
+        since: vsPrevious(windowDays),
       },
     ];
   }
@@ -238,6 +255,7 @@ const revenueTrend: Rule = (s) => {
           "Identifie ce qui a marché (canal, produit, promo) et remets une couche pendant que ça monte.",
         impact: `+${euros(revenue.current - revenue.previous)} vs période précédente`,
         score: 46,
+        since: vsPrevious(windowDays),
       },
     ];
   }
@@ -263,6 +281,7 @@ const revenueCliff: Rule = ({ metrics }) => {
         "Passe une commande test de bout en bout maintenant et vérifie le statut de tes intégrations de paiement.",
       impact: `≈ ${euros(Math.round(baseline) - yesterday.revenue_cents)} en dessous du jour normal`,
       score: 88,
+      since: "hier, vs la moyenne des 7 jours précédents",
     },
   ];
 };
@@ -272,10 +291,18 @@ const conversionTrend: Rule = ({
   hasPreviousWindow,
   conversion,
   orders,
+  revenue,
+  visitors,
   windowDays,
 }) => {
   const drops = conversion.previous > 0 && conversion.change <= -15;
   if (!hasPreviousWindow || !drops || orders.current <= 0) return [];
+  // What the lost points are worth at today's traffic and basket: visitors
+  // that would have ordered at the previous rate, times the current basket.
+  const lostCents =
+    ((conversion.previous - conversion.current) / 100) *
+    visitors.current *
+    (revenue.current / orders.current);
   return [
     {
       id: "conv-drop",
@@ -287,8 +314,12 @@ const conversionTrend: Rule = ({
       why: "Tu attires des visiteurs mais ils achètent moins : friction dans le tunnel, prix, ou trafic moins qualifié.",
       action:
         "Vérifie le parcours mobile, les frais de livraison affichés tard, et la vitesse de chargement des fiches produit.",
-      impact: "Chaque +0,5 pt de conversion = plus de CA à trafic constant",
+      impact:
+        lostCents >= 100
+          ? `≈ ${euros(lostCents)} de CA sur ${windowDays}j en jeu à trafic constant`
+          : "Chaque +0,5 pt de conversion = plus de CA à trafic constant",
       score: 74,
+      since: vsPrevious(windowDays),
     },
   ];
 };
@@ -316,6 +347,7 @@ const trafficTrend: Rule = ({
           "Contrôle que tes campagnes tournent (budget non épuisé), et réactive email / SEO / réseaux.",
         impact: `−${count(visitors.previous - visitors.current)} visiteurs vs avant`,
         score: 70,
+        since: vsPrevious(windowDays),
       },
     ];
   }
@@ -334,6 +366,7 @@ const trafficTrend: Rule = ({
           "Vérifie la cohérence pub→page (message, prix, promo annoncée) et propose une offre de bienvenue.",
         impact: "Trafic gaspillé = budget d'acquisition perdu",
         score: 72,
+        since: vsPrevious(windowDays),
       },
     ];
   }
@@ -341,7 +374,7 @@ const trafficTrend: Rule = ({
 };
 
 // ── Average order value ──────────────────────────────────────────────────────
-const basketTrend: Rule = ({ hasPreviousWindow, averageOrderValue, orders }) => {
+const basketTrend: Rule = ({ hasPreviousWindow, averageOrderValue, orders, windowDays }) => {
   const aov = averageOrderValue;
   if (!hasPreviousWindow || aov.previous <= 0 || aov.change > -15) return [];
   return [
@@ -357,6 +390,7 @@ const basketTrend: Rule = ({ hasPreviousWindow, averageOrderValue, orders }) => 
         "Ajoute des ventes croisées (« souvent acheté avec »), des paliers de livraison gratuite et des packs.",
       impact: `+1 € de panier moyen × ${orders.current} commandes = ${euros(orders.current * 100)} / période`,
       score: 64,
+      since: vsPrevious(windowDays),
     },
   ];
 };
@@ -482,6 +516,7 @@ const campaignReturns: Rule = ({ campaigns }) => {
           "Mets la campagne en pause ou refais le ciblage/créa avant de continuer à brûler du budget.",
         impact: `≈ ${euros(c.spend_cents - c.revenue_cents)} perdus sur ce canal`,
         score: 90,
+        since: "campagne active, sur la période importée",
       });
     } else if (roas >= 4) {
       out.push({
@@ -593,6 +628,20 @@ export function alertToNotification(a: DetectedAlert): Notification {
     body: a.body,
     time: "Maintenant",
     read: false,
+  };
+}
+
+/** Maps a detected alert to one line of the Daily Brief. */
+export function alertToBrief(a: DetectedAlert): BriefItem {
+  return {
+    id: a.id,
+    severity: a.severity,
+    title: a.title,
+    detail: a.body,
+    action: a.action,
+    impact: a.impact,
+    since: a.since,
+    scope: a.scope,
   };
 }
 

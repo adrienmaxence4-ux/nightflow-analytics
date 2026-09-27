@@ -1,10 +1,14 @@
 import { NextResponse } from "next/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { generateInsights } from "@/services/insights/generate";
-import { generateRecommendations } from "@/services/recommendations/generate";
+import { generateInsights, generateRuleInsights } from "@/services/insights/generate";
+import {
+  generateRecommendations,
+  generateRuleRecommendations,
+} from "@/services/recommendations/generate";
 import { summarizeStorePerformance } from "@/services/ai/copilot";
 import { buildStoreContext } from "@/services/ai/store-context";
 import { createClient } from "@/lib/supabase/server";
+import { rateLimit, RATE_LIMITED } from "@/lib/rate-limit";
 import { AI_MODEL } from "@/services/ai/client";
 
 /**
@@ -14,6 +18,11 @@ import { AI_MODEL } from "@/services/ai/client";
  * the user's store. Results are cached for 6h in ai_analysis_history to avoid
  * re-billing on every page load. Falls back to the rule-based engine when AI
  * isn't configured.
+ *
+ * `?fast=1` skips the model entirely and answers from the detection engine in
+ * one round trip: the page shows those first, then upgrades in place when the
+ * full call lands. A store with nothing imported yet answers `source: "empty"`
+ * on both paths — never a demo figure, never a metered call.
  */
 const CACHE_MS = 6 * 60 * 60 * 1000;
 
@@ -39,8 +48,37 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
   }
 
-  const refresh = new URL(req.url).searchParams.get("refresh") === "1";
+  const params = new URL(req.url).searchParams;
+  const refresh = params.get("refresh") === "1";
   const ctx = await buildStoreContext();
+
+  // The caller is signed in: anything but their own data ("empty", or "demo"
+  // if Auth hiccups between two getUser calls) must not reach a model.
+  if (ctx.source !== "db") {
+    return NextResponse.json({
+      v: CACHE_VERSION,
+      source: "empty",
+      insights: [],
+      recommendations: [],
+      summary: "",
+      cached: false,
+    } satisfies InsightsBody & { cached: boolean });
+  }
+
+  if (params.get("fast") === "1") {
+    const [insights, recommendations] = await Promise.all([
+      generateRuleInsights(),
+      generateRuleRecommendations(),
+    ]);
+    return NextResponse.json({
+      v: CACHE_VERSION,
+      source: "rules",
+      insights,
+      recommendations,
+      summary: "",
+      cached: false,
+    } satisfies InsightsBody & { cached: boolean });
+  }
 
   // Try the cache first (only when a real store exists and no refresh asked).
   if (ctx.storeId && !refresh) {
@@ -48,9 +86,17 @@ export async function GET(req: Request) {
     if (cached) return NextResponse.json({ ...cached, cached: true });
   }
 
+  // Everything below is three metered model calls. The cache absorbs normal
+  // use; this absorbs a loop on `?refresh=1` (or a cold cache hammered), which
+  // had no ceiling at all.
+  if (!rateLimit(`insights:${user.id}`, 4, 3_600_000)) {
+    return NextResponse.json(RATE_LIMITED, { status: 429 });
+  }
+
   const [insights, recommendations, summary] = await Promise.all([
-    generateInsights(),
-    generateRecommendations(),
+    // Same ctx for all three: one session read, already checked to be "db".
+    generateInsights(ctx),
+    generateRecommendations(ctx),
     summarizeStorePerformance(ctx),
   ]);
 
@@ -77,7 +123,7 @@ export async function GET(req: Request) {
 
 interface InsightsBody {
   v?: number;
-  source: "ai" | "mock";
+  source: "ai" | "mock" | "rules" | "empty";
   insights: unknown[];
   recommendations: unknown[];
   summary: string;

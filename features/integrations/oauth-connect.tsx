@@ -17,6 +17,7 @@ import {
 import { useConnection } from "@/features/integrations/use-connection";
 import { useIsAdmin } from "@/hooks/use-admin";
 import { Badge } from "@/components/ui/badge";
+import { track } from "@/lib/track";
 
 /**
  * One-click OAuth connector ("Se connecter avec Stripe"). No API key: the user
@@ -103,7 +104,10 @@ export function OAuthConnect({
     const params = new URLSearchParams(window.location.search);
     const outcome = params.get(provider);
     if (!outcome) return;
-    if (outcome === "connected") toast(`${name} connecté ✓`);
+    if (outcome === "connected") {
+      track("integration_connected", { provider });
+      toast(`${name} connecté ✓`);
+    }
     else if (outcome === "notconfigured")
       toast(`${name} OAuth pas encore configuré`, "info");
     else if (outcome === "error") {

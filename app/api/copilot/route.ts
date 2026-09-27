@@ -17,15 +17,24 @@ import { getUserSubscription } from "@/services/billing/subscription";
  * back to a deterministic answer when AI isn't configured), and persists the
  * exchange to ai_conversations / ai_messages (best-effort).
  */
-export async function POST(req: Request) {
-  const { question, conversationId } = (await req
-    .json()
-    .catch(() => ({}))) as {
-    question?: string;
-    conversationId?: string;
-  };
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-  if (!question || !question.trim()) {
+export async function POST(req: Request) {
+  const body = (await req.json().catch(() => ({}))) as {
+    question?: unknown;
+    conversationId?: unknown;
+  };
+  const question = typeof body.question === "string" ? body.question : "";
+  // Anything that isn't a uuid starts a fresh thread. Ownership is checked in
+  // persist(): a foreign id used to make the insert fail silently, so the
+  // exchange was never stored and the daily quota — counted from stored
+  // messages — never moved.
+  const conversationId =
+    typeof body.conversationId === "string" && UUID_RE.test(body.conversationId)
+      ? body.conversationId
+      : null;
+
+  if (!question.trim()) {
     return NextResponse.json({ error: "Missing question" }, { status: 400 });
   }
   // Cap the prompt size — giant questions are an AI-cost attack, not a use case.
@@ -53,6 +62,19 @@ export async function POST(req: Request) {
   if (!rateLimit(`copilot:${user.id}`, 8, 60_000)) {
     return NextResponse.json(RATE_LIMITED, { status: 429 });
   }
+
+  // Nothing imported yet: say so. No model call, no quota spent, no MoonStore
+  // answer passed off as this store's — "demo" included, the caller is signed in.
+  const ctx = await buildStoreContext();
+  if (ctx.source !== "db") {
+    return NextResponse.json({
+      answer:
+        "Je n'ai pas encore de données sur ta boutique. Connecte-la depuis **Connexions** : dès la première synchronisation, je réponds avec tes vrais chiffres.",
+      source: "empty",
+      action: null,
+      conversationId: null,
+    });
+  }
   const { plan } = await getUserSubscription();
   if (!plan.aiUnlimited) {
     const quota = Math.max(plan.aiPerDay, 3); // free keeps a small taste (3/day)
@@ -71,7 +93,6 @@ export async function POST(req: Request) {
     }
   }
 
-  const ctx = await buildStoreContext();
   const { answer, source, hint } = await answerCopilotQuestion(question, ctx);
 
   // The model may name an action; it never gets to say what it touches. Every
@@ -141,7 +162,18 @@ async function persist(
 
   const db = supabase as unknown as SupabaseClient;
 
+  // A thread id the caller doesn't own is dropped, not trusted: the messages
+  // then land in a new conversation of theirs and count toward their quota.
   let convId = conversationId;
+  if (convId) {
+    const { data: owned } = await db
+      .from("ai_conversations")
+      .select("id")
+      .eq("id", convId)
+      .eq("user_id", user.id)
+      .limit(1);
+    if (!owned?.length) convId = null;
+  }
   if (!convId) {
     const { data } = await db
       .from("ai_conversations")

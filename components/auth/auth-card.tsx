@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Moon } from "lucide-react";
 import type HCaptcha from "@hcaptcha/react-hcaptcha";
 import { useAuth } from "@/hooks/use-auth";
@@ -12,6 +12,7 @@ import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { isHcaptchaConfigured } from "@/lib/env";
+import { track } from "@/lib/track";
 import {
   parseSignup,
   SIGNUP_LIMITS,
@@ -43,6 +44,10 @@ export function AuthCard({ mode }: { mode: "login" | "signup" }) {
 
   const isLogin = mode === "login";
 
+  useEffect(() => {
+    if (!isLogin) track("signup_start", {}, { once: true });
+  }, [isLogin]);
+
   const fail = (message: string, field?: FieldKey) => {
     if (field) setFieldError({ field, message });
     else setError(message);
@@ -63,11 +68,11 @@ export function AuthCard({ mode }: { mode: "login" | "signup" }) {
 
     if (isLogin) {
       if (!demoMode && (!mail || !pass)) {
-        fail("Renseignez votre adresse email et votre mot de passe.");
+        fail("Renseigne ton adresse email et ton mot de passe.");
         return;
       }
       if (!demoMode && isHcaptchaConfigured && !captchaToken) {
-        fail("Complétez la vérification anti-robot.", "captcha");
+        fail("Complète la vérification anti-robot.", "captcha");
         return;
       }
       setBusy(true);
@@ -109,7 +114,7 @@ export function AuthCard({ mode }: { mode: "login" | "signup" }) {
         return;
       }
       if (isHcaptchaConfigured && !captchaToken) {
-        fail("Complétez la vérification anti-robot.", "captcha");
+        fail("Complète la vérification anti-robot.", "captcha");
         return;
       }
       input = parsed.value;
@@ -124,9 +129,10 @@ export function AuthCard({ mode }: { mode: "login" | "signup" }) {
       fail(res.error, res.field as FieldKey | undefined);
       return;
     }
+    track("signup_done", { confirm: !!res.needsConfirmation });
     if (res.needsConfirmation) {
       setNotice(
-        "Compte créé. Ouvrez le lien de confirmation envoyé par email pour activer l'accès."
+        "Compte créé. Ouvre le lien envoyé par email pour activer l'accès — puis tes 30 jours s'activent en un clic."
       );
       return;
     }
@@ -166,37 +172,43 @@ export function AuthCard({ mode }: { mode: "login" | "signup" }) {
       </Link>
 
       <h1 className="mt-7 text-center font-display text-[30px] font-extrabold">
-        {isLogin ? "Bon retour parmi nous" : "Créez votre compte"}
+        {isLogin ? "Bon retour" : "Crée ton compte"}
       </h1>
       <p className="mb-7 mt-2 text-center text-[17px] text-ink3">
         {isLogin
-          ? "Connectez-vous pour piloter votre boutique."
-          : "Gratuit, sans carte bancaire. Confirmez votre email, puis lancez vos 30 jours de Pro d'un clic dans Facturation."}
+          ? "Ton brief t'attend."
+          : "30 jours gratuits, sans carte. Confirme ton email, puis active l'essai d'un clic : c'est lui qui débloque la connexion de ta boutique."}
       </p>
 
-      {/* Google OAuth */}
-      <button
-        type="button"
-        onClick={google}
-        disabled={googleBusy || busy}
-        className="flex min-h-[56px] w-full items-center justify-center gap-3 rounded-[12px] border border-line bg-[#f4efe4] text-[18px] font-bold text-[#14171b] transition hover:brightness-[0.97] disabled:opacity-60"
-      >
-        <GoogleIcon />
-        {googleBusy
-          ? "Connexion…"
-          : `${isLogin ? "Se connecter" : "S'inscrire"} avec Google`}
-      </button>
+      {/* Google OAuth — connexion seulement. L'écran de consentement Google est
+          encore en mode « Testing » : l'inscription échoue pour quiconque n'est
+          pas déclaré testeur, et un bouton qui échoue au premier clic coûte
+          plus qu'il ne rapporte. Il revient à l'inscription quand l'app est
+          publiée dans Google Cloud. */}
+      {isLogin && (
+        <>
+          <button
+            type="button"
+            onClick={google}
+            disabled={googleBusy || busy}
+            className="flex min-h-[56px] w-full items-center justify-center gap-3 rounded-[12px] border border-line bg-[#f4efe4] text-[18px] font-bold text-[#14171b] transition hover:brightness-[0.97] disabled:opacity-60"
+          >
+            <GoogleIcon />
+            {googleBusy ? "Connexion…" : "Se connecter avec Google"}
+          </button>
 
-      <div className="my-6 flex items-center gap-4 text-[15px] text-ink3">
-        <span className="h-px flex-1 bg-line" />
-        ou
-        <span className="h-px flex-1 bg-line" />
-      </div>
+          <div className="my-6 flex items-center gap-4 text-[15px] text-ink3">
+            <span className="h-px flex-1 bg-line" />
+            ou
+            <span className="h-px flex-1 bg-line" />
+          </div>
+        </>
+      )}
 
       <form onSubmit={submit} noValidate className="flex flex-col gap-4">
         {!isLogin && (
           <>
-            <Field id="signup-name" label="Votre nom" error={errorFor("fullName")}>
+            <Field id="signup-name" label="Ton nom" error={errorFor("fullName")}>
               <Input
                 type="text"
                 value={fullName}
@@ -237,7 +249,7 @@ export function AuthCard({ mode }: { mode: "login" | "signup" }) {
             <Field
               id="signup-url"
               label="Adresse de la boutique"
-              hint="L'adresse où vos clients commandent (ex. maboutique.fr). C'est cette boutique que vos 30 jours de Pro couvrent."
+              hint="L'adresse où tes clients commandent (ex. maboutique.fr). C'est cette boutique que tes 30 jours couvrent."
               error={errorFor("storeUrl")}
             >
               <Input
@@ -258,7 +270,7 @@ export function AuthCard({ mode }: { mode: "login" | "signup" }) {
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            placeholder="vous@boutique.com"
+            placeholder="toi@maboutique.fr"
             autoComplete="email"
             disabled={busy}
           />
@@ -280,7 +292,7 @@ export function AuthCard({ mode }: { mode: "login" | "signup" }) {
           hint={
             isLogin
               ? undefined
-              : `${SIGNUP_LIMITS.passwordMin} caractères minimum. Évitez un mot de passe déjà utilisé ailleurs.`
+              : `${SIGNUP_LIMITS.passwordMin} caractères minimum. Évite un mot de passe déjà utilisé ailleurs.`
           }
           error={errorFor("password")}
         >
@@ -331,13 +343,13 @@ export function AuthCard({ mode }: { mode: "login" | "signup" }) {
           disabled={busy}
           className="mt-1 inline-flex min-h-[56px] w-full items-center justify-center rounded-[12px] bg-accent text-[19px] font-bold text-accent-ink transition hover:brightness-95 disabled:opacity-60"
         >
-          {busy ? "Un instant…" : isLogin ? "Se connecter" : "Créer mon compte gratuit"}
+          {busy ? "Un instant…" : isLogin ? "Se connecter" : "Créer mon compte"}
         </button>
       </form>
 
       {demoMode && (
         <p className="mt-5 rounded-[12px] border border-line px-4 py-3 text-center text-[15px] text-ink3">
-          Mode démo actif — cliquez simplement sur le bouton pour entrer.
+          Mode démo actif — clique simplement sur le bouton pour entrer.
         </p>
       )}
 
@@ -347,7 +359,7 @@ export function AuthCard({ mode }: { mode: "login" | "signup" }) {
           href={isLogin ? "/signup" : "/login"}
           className="font-bold text-accent-text hover:underline"
         >
-          {isLogin ? "Inscrivez-vous" : "Connectez-vous"}
+          {isLogin ? "Crée-le" : "Connecte-toi"}
         </Link>
       </p>
     </div>

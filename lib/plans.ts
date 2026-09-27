@@ -5,8 +5,13 @@
  *
  * Tiering:
  *  - free  → demo only (no store connection, no real data)
- *  - pro   → real data + all integrations + API/webhooks, but limited AI
- *  - scale → everything + unlimited AI + anomaly detection + real-time alerts
+ *  - pro   → real data + all integrations, limited AI quota
+ *  - scale → pro + unlimited AI
+ *
+ * `apiAccess`, `anomalies` and `realtimeAlerts` are read nowhere: the
+ * detection engine runs for every real store and there is no customer API.
+ * They stay as data so a future gate has a flag to read, but no plan copy may
+ * promise them until something checks them.
  */
 
 export type PlanId = "free" | "pro" | "scale";
@@ -39,9 +44,9 @@ export const PLANS: Record<PlanId, Plan> = {
     yearlyCents: 0,
     highlight: false,
     features: [
-      "Page de démonstration (MoonStore)",
-      "Aperçu de toutes les pages",
-      "Données d'exemple uniquement",
+      "Boutique de démonstration MoonStore",
+      "Toutes les pages, en aperçu",
+      "Aucune donnée réelle",
     ],
     integrations: false,
     realData: false,
@@ -59,11 +64,11 @@ export const PLANS: Record<PlanId, Plan> = {
     yearlyCents: 9000,
     highlight: true,
     features: [
-      "Essai 30 jours gratuit — sans carte",
-      "Vos vraies données de boutique",
-      "Toutes les intégrations (Shopify, Stripe, Klaviyo, GA4)",
-      "API & webhooks",
-      "Insights IA — quota quotidien",
+      "30 jours gratuits, sans carte",
+      "Ta boutique connectée : Shopify, WooCommerce, Wix, Stripe, Klaviyo, GA4",
+      "Daily Brief et alertes chaque jour",
+      "Rapports PDF, Excel et Word",
+      "20 questions au Copilote par jour",
     ],
     integrations: true,
     realData: true,
@@ -81,11 +86,8 @@ export const PLANS: Record<PlanId, Plan> = {
     yearlyCents: 19000,
     highlight: false,
     features: [
-      "Tout le plan Pro, plus :",
-      "Insights IA illimités",
-      "Détection d'anomalies",
-      "Alertes temps réel",
-      "Multi-comptes & marque blanche",
+      "Tout le plan Pro",
+      "Questions au Copilote illimitées",
     ],
     integrations: true,
     realData: true,
@@ -98,6 +100,13 @@ export const PLANS: Record<PlanId, Plan> = {
 };
 
 export const PLAN_LIST: Plan[] = [PLANS.free, PLANS.pro, PLANS.scale];
+
+/**
+ * What the landing sells. Scale stays on /billing for the accounts that have
+ * it, but its only real difference with Pro today is the AI quota — not a
+ * reason to exist on a page whose job is to make one choice obvious.
+ */
+export const LANDING_PLANS: Plan[] = [PLANS.free, PLANS.pro];
 
 export function getPlan(id: string | null | undefined): Plan {
   return PLANS[(id as PlanId) ?? "free"] ?? PLANS.free;

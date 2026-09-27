@@ -3,7 +3,8 @@ import { env } from "@/lib/env";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isAdminEmail } from "@/lib/admin";
-import type { SubscriptionRow } from "@/types/database";
+import { PRODUCT_EVENTS, PRODUCT_EVENT_LABELS } from "@/lib/product-events";
+import type { ProductEventRow, SubscriptionRow } from "@/types/database";
 
 /**
  * GET /api/admin/stats — founder dashboard data, ADMIN ONLY.
@@ -178,6 +179,51 @@ export async function GET() {
     .sort((a, b) => b.visits - a.visits)
     .slice(0, 10);
 
+  // ── Funnel (product_events, 30d): distinct actors per step, in funnel
+  //    order, plus D1/D7 return rates of the accounts that signed up. ──
+  const { data: eventRows } = await admin
+    .from("product_events")
+    .select("name, vid, user_id, created_at")
+    .gte("date", day(since30));
+  const events =
+    (eventRows as Pick<ProductEventRow, "name" | "vid" | "user_id" | "created_at">[] | null) ?? [];
+  const actorsByStep = new Map<string, Set<string>>();
+  for (const e of events) {
+    const actor = e.user_id ?? e.vid;
+    if (!actor) continue;
+    if (!actorsByStep.has(e.name)) actorsByStep.set(e.name, new Set());
+    actorsByStep.get(e.name)!.add(actor);
+  }
+  const funnel = PRODUCT_EVENTS.filter((n) => n !== "app_return").map((name) => ({
+    name,
+    label: PRODUCT_EVENT_LABELS[name],
+    count: actorsByStep.get(name)?.size ?? 0,
+  }));
+
+  const signupAt = new Map<string, number>();
+  for (const e of events) {
+    if (e.name === "signup_done" && e.user_id) {
+      const t = new Date(e.created_at).getTime();
+      signupAt.set(e.user_id, Math.min(signupAt.get(e.user_id) ?? Infinity, t));
+    }
+  }
+  const returns = new Map<string, number[]>();
+  for (const e of events) {
+    if (e.name === "app_return" && e.user_id && signupAt.has(e.user_id)) {
+      const days = (new Date(e.created_at).getTime() - signupAt.get(e.user_id)!) / DAY_MS;
+      returns.set(e.user_id, [...(returns.get(e.user_id) ?? []), days]);
+    }
+  }
+  const rate = (minDays: number) => {
+    const eligible = [...signupAt.entries()].filter(
+      ([, t]) => Date.now() - t >= minDays * DAY_MS
+    );
+    if (eligible.length === 0) return null;
+    const kept = eligible.filter(([id]) => (returns.get(id) ?? []).some((d) => d >= minDays));
+    return Math.round((kept.length / eligible.length) * 100);
+  };
+  const retention = { signups: signupAt.size, d1: rate(1), d7: rate(7) };
+
   const visitors30 = [...visitsByDay.values()].reduce((t, n) => t + n, 0);
   // Monthly recurring revenue estimate from active plans (cents).
   const mrrCents = subsByPlan.pro * 900 + subsByPlan.scale * 1900;
@@ -194,5 +240,7 @@ export async function GET() {
     series,
     adPerformance,
     pays,
+    funnel,
+    retention,
   });
 }

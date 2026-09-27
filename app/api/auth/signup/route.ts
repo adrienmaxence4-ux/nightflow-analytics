@@ -39,11 +39,12 @@ export async function POST(req: Request) {
 
   if (isHcaptchaConfigured && !captchaToken) {
     return NextResponse.json(
-      { error: "Complétez la vérification anti-robot.", field: "captcha" },
+      { error: "Complète la vérification anti-robot.", field: "captcha" },
       { status: 400 }
     );
   }
-  if (!rateLimit(`signup:${email}`, 3, 3_600_000) || !rateLimit("signup:global", 30, 60_000)) {
+  // Global first: a flood of random emails must not mint one 1-hour key each.
+  if (!rateLimit("signup:global", 30, 60_000) || !rateLimit(`signup:${email}`, 3, 3_600_000)) {
     return NextResponse.json(RATE_LIMITED, { status: 429 });
   }
 

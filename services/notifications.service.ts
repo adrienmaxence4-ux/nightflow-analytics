@@ -54,7 +54,9 @@ export async function fetchNotifications(): Promise<{
     .select("id, type, severity, icon, title, body, read, created_at")
     .order("created_at", { ascending: false });
 
-  if (error || !data) return { source: "mock", items: NOTIFICATIONS };
+  // A read error on a real account is an empty page, not MoonStore's alerts
+  // shown as if they were the merchant's.
+  if (error || !data) return { source: "db", items: [] };
   return { source: "db", items: (data as DbRow[]).map(mapRow) };
 }
 

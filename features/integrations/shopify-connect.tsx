@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { useIsAdmin } from "@/hooks/use-admin";
 import { StatusPill } from "@/features/integrations/status-pill";
+import { track } from "@/lib/track";
 import {
   ConnectionNotes,
   ConnectorLogo,
@@ -134,6 +135,7 @@ export function ShopifyConnect() {
       toast(`Boutique ${data.shopName ?? shop} connectée`);
       setToken("");
       setTokenShop("");
+      track("integration_connected", { provider: "shopify" });
       announceIntegrationChange("shopify");
     } catch {
       setTokenErrors({ token: "Connexion impossible. Vérifiez votre réseau et réessayez." });

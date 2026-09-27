@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { buttonVariants } from "@/components/ui/button";
 import { readConsent, subscribeConsent, writeConsent } from "@/lib/consent";
 
 /**
@@ -40,30 +41,30 @@ export function ConsentBanner() {
           <p id="consent-title" className="text-[17px] font-bold">
             Mesure d&apos;audience
           </p>
-          <p className="mt-1 text-[16px] leading-relaxed text-ink2">
-            Nous aimerions mesurer comment ce site est utilisé, pour l&apos;améliorer. Ça
-            n&apos;a rien d&apos;obligatoire et le site fonctionne pareil si vous refusez.
-            Les cookies nécessaires à votre connexion, eux, restent actifs.{" "}
+          <p className="mt-1 text-[15px] leading-relaxed text-ink2 sm:text-[16px]">
+            Pour voir comment ce site est utilisé et l&apos;améliorer. Rien d&apos;obligatoire :
+            il fonctionne pareil si tu refuses. Les cookies de connexion, eux, restent actifs.{" "}
             <Link href="/confidentialite" className="underline underline-offset-2 hover:text-ink">
               En savoir plus
             </Link>
           </p>
         </div>
 
-        {/* Deux boutons de même gabarit. Refuser d'abord dans l'ordre du DOM :
-            c'est le premier atteint au clavier. */}
-        <div className="flex flex-none flex-col gap-2.5 sm:flex-row">
+        {/* Deux boutons de même gabarit, côte à côte même sur téléphone : le
+            bandeau ne doit pas manger la moitié de l'écran. Refuser d'abord
+            dans l'ordre du DOM : c'est le premier atteint au clavier. */}
+        <div className="grid flex-none grid-cols-2 gap-2.5 sm:flex">
           <button
             type="button"
             onClick={() => writeConsent("refused")}
-            className="min-h-tap rounded-[12px] border border-cool px-6 text-[16px] font-bold text-ink transition hover:border-accent active:brightness-95"
+            className={buttonVariants({ variant: "outline", size: "md" })}
           >
             Refuser
           </button>
           <button
             type="button"
             onClick={() => writeConsent("accepted")}
-            className="min-h-tap rounded-[12px] bg-accent px-6 text-[16px] font-bold text-accent-ink transition hover:brightness-95 active:brightness-90"
+            className={buttonVariants({ size: "md" })}
           >
             Accepter
           </button>

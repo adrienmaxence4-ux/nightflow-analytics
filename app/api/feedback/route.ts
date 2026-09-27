@@ -34,10 +34,11 @@ export async function POST(req: Request) {
   // strict — on ne fait pas confiance à un identifiant fourni par le client.
   const vidBrut = typeof body?.vid === "string" ? body.vid : "";
   const vid = VID_RE.test(vidBrut) ? vidBrut : "anonyme";
-  if (!rateLimit(`feedback:${vid}`, vid === "anonyme" ? 2 : 3, 3_600_000)) {
+  // Global d'abord : des vid au hasard ne doivent pas créer un compteur d'1 h chacun.
+  if (!rateLimit("feedback:global", 60, 60_000)) {
     return NextResponse.json(RATE_LIMITED, { status: 429 });
   }
-  if (!rateLimit("feedback:global", 60, 60_000)) {
+  if (!rateLimit(`feedback:${vid}`, vid === "anonyme" ? 2 : 3, 3_600_000)) {
     return NextResponse.json(RATE_LIMITED, { status: 429 });
   }
 

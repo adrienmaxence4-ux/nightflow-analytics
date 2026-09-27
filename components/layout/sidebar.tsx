@@ -64,14 +64,14 @@ export function Sidebar() {
           </h2>
           <p className="mt-2 text-[16px] leading-snug text-ink2">
             {plan.id === "pro"
-              ? "IA illimitée, détection d'anomalies, alertes temps réel et multi-comptes."
-              : "Connectez vos vraies données, toutes les intégrations et l'IA."}
+              ? "Questions au Copilote illimitées."
+              : "Connecte ta boutique : 30 jours gratuits, sans carte."}
           </p>
           <Link
             href="/billing"
             className="mt-4 flex min-h-tap items-center justify-center rounded-[10px] bg-accent text-[17px] font-bold text-accent-ink transition duration-base ease-out hover:brightness-95"
           >
-            Voir les offres
+            {plan.id === "pro" ? "Voir les offres" : "Activer mes 30 jours"}
           </Link>
         </div>
       )}

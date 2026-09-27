@@ -187,6 +187,20 @@ export type SiteVisitRow = {
   created_at: string;
 }
 
+export type ProductEventRow = {
+  id: number;
+  created_at: string;
+  date: string;
+  /** Short snake_case name: "cta_click", "signup_done", "first_brief_view"… */
+  name: string;
+  /** user_id when signed in, else vid — the dedupe and count key. */
+  actor: string;
+  /** Random local visitor id (localStorage) — never an IP, never a cookie. */
+  vid: string | null;
+  user_id: string | null;
+  props: Record<string, string | number | boolean>;
+}
+
 export type SiteSettingsRow = {
   id: string;
   maintenance: boolean;
@@ -336,6 +350,7 @@ export interface Database {
       notifications: Table<NotificationRow, "user_id" | "title">;
       integrations: Table<IntegrationRow, "store_id" | "provider">;
       site_visits: Table<SiteVisitRow, "vid">;
+      product_events: Table<ProductEventRow, "name" | "actor">;
       site_settings: Table<SiteSettingsRow, "id">;
       ad_visits: Table<AdVisitRow, "code" | "vid">;
       vip_grants: Table<VipGrantRow, "email">;

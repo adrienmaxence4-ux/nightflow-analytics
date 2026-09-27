@@ -33,10 +33,10 @@ export const metadata: Metadata = {
   metadataBase: new URL(
     process.env.NEXT_PUBLIC_SITE_URL ?? "https://nightflow-analytics.vercel.app"
   ),
-  title: "Nightflow Analytics — Votre copilote IA e-commerce",
+  title: "Nightflow Analytics — Sache ce qui mérite ton attention",
   description:
-    "Nightflow Analytics transforme vos données e-commerce en décisions claires. Comprenez ce qui se passe, pourquoi, et quoi faire — en moins de 30 secondes.",
-  keywords: ["e-commerce", "analytics", "AI", "Shopify", "dashboard", "copilot"],
+    "Nightflow surveille ta boutique Shopify, WooCommerce ou Wix, détecte les changements importants, explique la cause probable et te dit quoi faire. Un brief de 30 secondes chaque matin.",
+  keywords: ["e-commerce", "analytics", "Shopify", "alertes", "daily brief", "conversion"],
   applicationName: "Nightflow Analytics",
   verification: { google: "aPwj4M_OUWXwGwfzYYWkHTBtdW7yeW90qwrHUewjwzg" },
   appleWebApp: {
@@ -49,9 +49,9 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     siteName: "Nightflow Analytics",
-    title: "Nightflow Analytics — Votre copilote IA e-commerce",
+    title: "Nightflow Analytics — Sache ce qui mérite ton attention",
     description:
-      "Comprenez ce qui se passe dans votre boutique, pourquoi, et quoi faire — en moins de 30 secondes.",
+      "Nightflow surveille ton e-commerce, détecte les changements importants et t'explique quoi faire ensuite.",
     locale: "fr_FR",
     // Pas d'`images` ici : app/opengraph-image.tsx fournit la carte 1200×630
     // par convention. Une entrée explicite prendrait le pas sur elle et on
@@ -60,9 +60,9 @@ export const metadata: Metadata = {
   // Sans ce type, X rend une vignette minuscule au lieu de la carte large.
   twitter: {
     card: "summary_large_image",
-    title: "Nightflow Analytics — Votre copilote IA e-commerce",
+    title: "Nightflow Analytics — Sache ce qui mérite ton attention",
     description:
-      "Comprenez ce qui se passe dans votre boutique, pourquoi, et quoi faire — en moins de 30 secondes.",
+      "Nightflow surveille ton e-commerce, détecte les changements importants et t'explique quoi faire ensuite.",
   },
 };
 

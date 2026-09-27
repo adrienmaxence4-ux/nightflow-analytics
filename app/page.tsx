@@ -1,25 +1,28 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
 import { headers } from "next/headers";
 import {
-  AppWindow,
   ArrowRight,
   BellRing,
   Check,
+  ChevronDown,
   Download,
   FileText,
+  MessageCircleQuestion,
   Moon,
   Radar,
-  Smartphone,
-  Sparkles,
-  Store,
 } from "lucide-react";
-import { PLAN_LIST } from "@/lib/plans";
+import { buttonVariants } from "@/components/ui/button";
+import { LANDING_PLANS } from "@/lib/plans";
 import { DESKTOP, desktopDownloadReady } from "@/lib/desktop";
 import { LandingThemeToggle } from "@/components/landing/theme-toggle-landing";
 import { CopilotDemo } from "@/components/landing/copilot-demo";
 import { PricingTable } from "@/components/landing/pricing-table";
 import { FeedbackForm } from "@/components/landing/feedback-form";
+import { LANDING_BRIEF } from "@/components/landing/brief-sample";
+import { LandingTracker } from "@/components/landing/landing-tracker";
+import { BriefPanel } from "@/features/dashboard/brief-panel";
 
 /** Applique la préférence clair/sombre de la landing avant le premier rendu. */
 const LANDING_THEME_SCRIPT = `try{if(localStorage.getItem('nightflow:landing-theme')==='clair'){document.getElementById('landing-root').setAttribute('data-theme','clair')}}catch(e){}`;
@@ -36,40 +39,17 @@ export const metadata: Metadata = {
   alternates: { canonical: "/" },
 };
 
-const CONNECTORS = ["Shopify", "Wix", "WooCommerce", "Stripe", "Klaviyo", "Google Analytics"];
+/** Le seul CTA de la page, répété mot pour mot. */
+const CTA = "Essayer Nightflow";
 
-const STEPS = [
-  {
-    n: "1",
-    t: "Créez votre compte",
-    d: "Gratuit, sans carte bancaire. Vous explorez d'abord avec une boutique de démonstration complète.",
-  },
-  {
-    n: "2",
-    t: "Connectez votre boutique",
-    d: "Un clic sur « Se connecter avec Shopify, Wix, WooCommerce ou Stripe » — vos produits, commandes et revenus arrivent en quelques secondes.",
-  },
-  {
-    n: "3",
-    t: "Laissez le copilote veiller",
-    d: "Analyses, alertes et rapports arrivent tout seuls — sur le site, sur votre ordinateur et sur votre téléphone.",
-  },
-];
+/**
+ * Photo du fondateur, servie depuis public/. Tant qu'elle vaut null, le bloc
+ * fondateur affiche les initiales : jamais d'image cassée ni de photo de stock.
+ */
+const FOUNDER_PHOTO: string | null = "/fondateur.jpg";
 
-const PILLARS = [
-  {
-    t: "Que se passe-t-il ?",
-    d: "« Le CA a chuté de 26 % cette semaine. » Vos KPIs traduits en phrases claires, pas en graphiques à déchiffrer.",
-  },
-  {
-    t: "Pourquoi ?",
-    d: "« Le trafic tient, mais la conversion mobile s'effondre depuis mardi. » L'IA croise vos données pour trouver la cause.",
-  },
-  {
-    t: "Que dois-je faire ?",
-    d: "« Réallouez €300 de Meta vers Google Ads (ROAS 4,3 vs 2,7). » Des actions concrètes, chiffrées, priorisées.",
-  },
-];
+/** Sources qu'un client peut brancher aujourd'hui, dans l'ordre où elles remplissent le brief. */
+const CONNECTORS = ["Shopify", "WooCommerce", "Wix", "Stripe", "Klaviyo", "Google Analytics"];
 
 /** Les six chiffres bruts d'un dashboard classique — exacts, et muets. */
 const RAW_METRICS: [string, string][] = [
@@ -81,25 +61,58 @@ const RAW_METRICS: [string, string][] = [
   ["Conversion", "2,1 %"],
 ];
 
-const FEATURES: [typeof BellRing, string, string][] = [
-  [BellRing, "Alertes en temps réel", "Rupture de stock, chute de CA, pub qui perd de l'argent — prévenu avant que ça coûte cher, même sur votre téléphone."],
-  [Radar, "Détection d'anomalies", "Un moteur surveille vos métriques 24h/24 et repère les décrochages anormaux automatiquement."],
-  [FileText, "Rapports PDF, Excel & Word", "Un rapport pro généré en 1 clic à partir de vos vraies données — prêt à envoyer à un associé ou un banquier."],
-  [Store, "Multi-plateformes", "Shopify, Wix, WooCommerce, Stripe, Klaviyo, GA4 — toutes vos données dans un seul cerveau."],
-  [Sparkles, "Copilot IA", "Posez n'importe quelle question sur votre boutique et obtenez une réponse chiffrée, basée sur VOS données."],
-  [Smartphone, "App desktop & mobile", "Installez Nightflow comme une vraie application, avec notifications sur PC et téléphone."],
+/** Ce que Nightflow fait de tes chiffres, dans l'ordre où il le fait. */
+const HOW = [
+  {
+    n: "1",
+    t: "Il surveille",
+    d: "Chaque matin, il relit tes ventes, ton trafic, tes pubs et ton stock. Toi, tu ne relis rien.",
+  },
+  {
+    n: "2",
+    t: "Il détecte",
+    d: "Un tunnel mobile qui décroche, une pub qui perd, un stock qui va manquer : il repère ce qui a changé de façon inhabituelle.",
+  },
+  {
+    n: "3",
+    t: "Il explique",
+    d: "La cause probable, avec tes données. Quand une donnée manque pour trancher, il le dit au lieu d'inventer.",
+  },
+  {
+    n: "4",
+    t: "Il priorise",
+    d: "Trois lignes, classées par ce qui coûte le plus. Tu décides. Le détail reste à un clic.",
+  },
+];
+
+const BENEFITS: [typeof Radar, string, string][] = [
+  [Radar, "Les changements inhabituels te trouvent, pas l'inverse", "Un moteur déterministe compare chaque métrique à sa semaine précédente — CA, conversion, trafic, panier, stock, ROAS par campagne — et cite les chiffres exacts qui l'ont fait réagir."],
+  [MessageCircleQuestion, "Demande « pourquoi » et obtiens une réponse chiffrée", "« Pourquoi mes ventes baissent ? » « Où est-ce que je perds de l'argent cette semaine ? » La réponse s'appuie sur tes données importées. Quand il en manque une, il le dit."],
+  [FileText, "Un résumé clair sans lire tes graphiques", "Un rapport PDF, Excel ou Word en un clic, à partir de tes vraies données — pour un associé, un comptable ou toi le dimanche soir."],
 ];
 
 const FAQ: [string, string][] = [
-  ["Est-ce compliqué à installer ?", "Non : créez un compte, cliquez « Se connecter avec Shopify/Stripe/… » et autorisez l'accès. Aucune ligne de code, aucune clé à créer pour les connexions OAuth. Vos données arrivent en quelques secondes."],
-  ["Mes données sont-elles en sécurité ?", "Oui. Chaque compte est isolé au niveau de la base (RLS), les jetons d'accès sont chiffrés (AES-256), et nous n'importons jamais les données personnelles de vos clients — uniquement des métriques. Rien n'est revendu."],
-  ["L'IA invente-t-elle des chiffres ?", "Non. Le Copilot raisonne uniquement sur vos données réelles importées, et le moteur d'alertes est déterministe : chaque alerte cite les chiffres exacts qui l'ont déclenchée."],
-  ["Puis-je annuler à tout moment ?", "Oui, en 2 clics depuis la page Facturation (portail Stripe sécurisé). Vous gardez l'accès jusqu'à la fin de la période payée."],
+  [
+    "Combien de temps pour le brancher ?",
+    "Cinq à dix minutes. Tu crées un compte, tu confirmes ton email, tu actives tes 30 jours gratuits, puis tu colles une clé en lecture seule créée depuis Shopify, WooCommerce, Wix ou Stripe — le guide est sur la page de connexion. Klaviyo s'autorise depuis ton compte, sans clé à coller. Le premier brief arrive dès que tes commandes sont importées.",
+  ],
+  [
+    "Pourquoi pas Shopify Analytics ou Google Analytics ?",
+    "Ils te donnent tous les chiffres et te laissent chercher lequel compte. Nightflow ne remplace pas leurs graphiques : il les lit à ta place chaque matin, repère ce qui a changé, l'explique et te dit par quoi commencer. Le détail reste disponible quand tu veux creuser.",
+  ],
+  [
+    "Mes données sont-elles en sécurité ?",
+    "Chaque compte est isolé au niveau de la base (Row-Level Security) et les clés d'accès sont chiffrées (AES-256). Une clé en lecture seule suffit pour le brief et les alertes ; si un jour tu veux que Nightflow applique une action à ta place, il te demandera d'abord un accès en écriture, et chaque action se défait en un clic. Il n'importe jamais les données personnelles de tes clients, seulement des métriques. Rien n'est revendu.",
+  ],
+  [
+    "Et si je veux arrêter ?",
+    "L'essai s'arrête seul au bout de 30 jours si tu ne fais rien : aucune carte n'est demandée. Un abonnement se résilie en deux clics depuis la page Abonnement, et tu gardes l'accès jusqu'à la fin de la période payée.",
+  ],
 ];
 
 /**
  * Données structurées. Organization et WebSite disent à Google le nom du site.
- * FAQPage et SoftwareApplication sont dérivés des constantes ci-dessus et de
+ * FAQPage et SoftwareApplication dérivent des constantes ci-dessus et de
  * lib/plans : le balisage ne peut donc pas se désynchroniser de la page.
  */
 const STRUCTURED_DATA = {
@@ -127,12 +140,12 @@ const STRUCTURED_DATA = {
       "@id": `${SITE_URL}/#software`,
       name: "Nightflow Analytics",
       applicationCategory: "BusinessApplication",
-      operatingSystem: "Web, Windows, macOS",
+      operatingSystem: "Web, Windows",
       inLanguage: "fr-FR",
       publisher: { "@id": `${SITE_URL}/#organization` },
       description:
-        "Copilote IA pour e-commerce : connecte Shopify, Wix, WooCommerce, Stripe, Klaviyo et GA4, puis explique ce qui se passe, pourquoi, et quoi faire.",
-      offers: PLAN_LIST.map((p) => ({
+        "Surveille une boutique e-commerce (Shopify, WooCommerce, Wix, Stripe, Klaviyo, GA4), détecte les changements importants, explique la cause probable et dit quoi faire — dans un brief quotidien de 30 secondes.",
+      offers: LANDING_PLANS.map((p) => ({
         "@type": "Offer",
         name: p.name,
         price: (p.monthlyCents / 100).toFixed(2),
@@ -153,14 +166,25 @@ const STRUCTURED_DATA = {
   ],
 };
 
+const H2 = "text-center font-display text-[32px] font-extrabold tracking-[-0.02em] sm:text-[40px]";
+const SUB = "mx-auto mt-3 max-w-[52ch] text-center text-[18px] leading-relaxed text-ink3 sm:text-[19px]";
+/** The same primitives as the app: one button, three sizes, no bespoke heights. */
+const PRIMARY = buttonVariants({ size: "lg" });
+const SECONDARY = buttonVariants({ variant: "outline", size: "lg" });
+/** Inline text links still get a 48 px hit zone. */
+const TEXT_LINK = "inline-flex min-h-tap items-center font-semibold text-accent-text hover:underline";
+const SUMMARY =
+  "flex min-h-tap cursor-pointer list-none items-center justify-between gap-3 p-5 px-6 font-bold marker:hidden [&::-webkit-details-marker]:hidden";
+
 /**
  * Landing publique — la porte d'entrée des visiteurs non connectés.
  * Toujours en mode sombre par défaut : le conteneur racine force
  * `data-theme="sombre"`, qui redéclare les variables de thème pour toute la
  * page, quel que soit le thème global de l'utilisateur.
  *
- * Server Component. Seuls trois îlots sont clients : l'interrupteur de thème,
- * la démo du copilote et la bascule de tarifs.
+ * Server Component. Trois îlots clients : l'interrupteur de thème, la démo
+ * jouable et la bascule de tarifs. Le brief du hero est rendu côté serveur
+ * avec le même composant que l'app.
  */
 export default function LandingPage() {
   const nonce = headers().get("x-nonce") ?? undefined;
@@ -193,72 +217,62 @@ export default function LandingPage() {
         Aller au contenu
       </a>
 
-      <div className="mx-auto w-full max-w-[1160px] px-6">
-        {/* ── Nav ── */}
-        <header className="flex flex-wrap items-center gap-6 py-6">
-          <Link href="/" className="flex items-center gap-3">
-            <span className="grid h-11 w-11 flex-none place-items-center rounded-[12px] bg-accent">
-              <Moon className="h-[22px] w-[22px] text-accent-ink" strokeWidth={2.2} aria-hidden />
+      <LandingTracker />
+
+      <div className="mx-auto w-full max-w-[1160px] px-4 sm:px-6">
+        {/* ── Nav ── une ligne à toute largeur. Sur téléphone : logo, connexion,
+            CTA — les ancres sont à un pouce de défilement, elles ne valent pas
+            un écran entier. ── */}
+        <header className="flex items-center gap-3 py-4 sm:gap-5 sm:py-6">
+          <Link href="/" className="flex min-w-0 items-center gap-2.5" aria-label="Nightflow Analytics, accueil">
+            <span className="grid h-10 w-10 flex-none place-items-center rounded-[12px] bg-accent sm:h-11 sm:w-11">
+              <Moon className="h-[21px] w-[21px] text-accent-ink" strokeWidth={2.2} aria-hidden />
             </span>
-            <span className="font-display text-[19px] font-extrabold tracking-[0.02em]">
+            <span className="hidden font-display text-[19px] font-extrabold tracking-[0.02em] sm:inline">
               NIGHTFLOW <span className="font-semibold text-ink3">ANALYTICS</span>
             </span>
           </Link>
-          <nav className="ml-auto flex flex-wrap items-center gap-6 text-[17px] font-semibold">
-            <a href="#demo" className="text-ink hover:text-accent-text">Démo</a>
-            <a href="#fonctionnalites" className="text-ink hover:text-accent-text">Ce que ça fait</a>
-            <a href="#tarifs" className="text-ink hover:text-accent-text">Tarifs</a>
-            <a href="#questions" className="text-ink hover:text-accent-text">Questions</a>
-            <LandingThemeToggle />
+          <nav className="ml-auto flex items-center gap-2 text-[16px] font-semibold sm:gap-4" aria-label="Navigation">
+            <a href="#fonctionnement" className="hidden px-1 text-ink hover:text-accent-text lg:inline">Comment ça marche</a>
+            <a href="#demo" className="hidden px-1 text-ink hover:text-accent-text lg:inline">Démo</a>
+            <a href="#tarifs" className="hidden px-1 text-ink hover:text-accent-text lg:inline">Tarifs</a>
+            <span className="hidden md:inline">
+              <LandingThemeToggle />
+            </span>
             <Link
               href="/login"
-              className="inline-flex min-h-tap items-center rounded-[12px] border border-cool px-5 text-[17px] font-semibold text-ink transition hover:border-accent"
+              className={`${buttonVariants({ variant: "outline", size: "md" })} border-transparent px-3 sm:border-line sm:px-5`}
             >
               Se connecter
             </Link>
-            <Link
-              href="/signup"
-              className="inline-flex min-h-tap items-center rounded-[12px] bg-accent px-6 text-[17px] font-bold text-accent-ink transition hover:brightness-95"
-            >
-              Commencer gratuitement
+            <Link href="/signup" className={`${buttonVariants({ size: "md" })} px-4 sm:px-6`}>
+              {CTA}
             </Link>
           </nav>
         </header>
 
         <main id="contenu">
-          {/* ── Hero ── la démo tient lieu de visuel produit : elle se joue,
-              elle ne se regarde pas. ── */}
-          <section className="grid items-center gap-14 py-16 [grid-template-columns:repeat(auto-fit,minmax(360px,1fr))]">
+          {/* ── Hero ── le brief tient lieu de visuel : c'est l'écran que le
+              client verra chaque matin, avec la boutique fictive. ── */}
+          <section id="hero" className="grid items-center gap-10 py-6 [grid-template-columns:repeat(auto-fit,minmax(min(100%,360px),1fr))] sm:py-10 lg:gap-14">
             <div>
-              <span className="fade-up inline-flex items-center gap-2 rounded-pill border border-cool px-4 py-2 text-[15px] font-bold tracking-[0.04em] text-accent-text">
-                <Sparkles className="h-4 w-4" aria-hidden /> VOTRE DIRECTEUR E-COMMERCE IA
-              </span>
-              <h1 className="fade-up-1 mt-6 font-display text-[clamp(38px,8vw,60px)] font-extrabold leading-[1.05] tracking-[-0.02em]">
-                Arrêtez de fixer des chiffres.{" "}
-                <span className="text-accent">Sachez quoi faire.</span>
+              <h1 className="fade-up font-display text-[clamp(36px,8vw,60px)] font-extrabold leading-[1.05] tracking-[-0.02em]">
+                Sache ce qui mérite <span className="text-accent-text">ton attention.</span>
               </h1>
-              <p className="fade-up-2 mt-6 max-w-[36ch] text-[21px] leading-relaxed text-ink2">
-                Nightflow connecte votre boutique et vous dit en français clair{" "}
-                <b className="text-ink">ce qui se passe</b>,{" "}
-                <b className="text-ink">pourquoi</b>, et{" "}
-                <b className="text-ink">quoi faire</b> — en moins de 30 secondes par jour.
+              <p className="fade-up-1 mt-6 max-w-[38ch] text-[19px] leading-relaxed text-ink2 sm:text-[21px]">
+                Nightflow surveille ton e-commerce, détecte les changements importants
+                et t&apos;explique quoi faire ensuite.
               </p>
-              <div className="fade-up-3 mt-8 flex flex-wrap gap-3">
-                <Link
-                  href="/signup"
-                  className="inline-flex min-h-[56px] items-center gap-2.5 rounded-[12px] bg-accent px-7 text-[19px] font-bold text-accent-ink transition hover:brightness-95"
-                >
-                  Essayer gratuitement <ArrowRight className="h-5 w-5" aria-hidden />
+              <div className="fade-up-2 mt-8 flex flex-wrap gap-3">
+                <Link href="/signup" className={PRIMARY}>
+                  {CTA} <ArrowRight className="h-5 w-5" aria-hidden />
                 </Link>
-                <a
-                  href="#demo"
-                  className="inline-flex min-h-[56px] items-center rounded-[12px] border border-cool px-6 text-[19px] font-semibold text-ink transition hover:border-accent"
-                >
-                  Poser une question au copilote
+                <a href="#fonctionnement" className={SECONDARY}>
+                  Voir comment ça fonctionne
                 </a>
               </div>
-              <ul className="fade-up-3 mt-8 flex flex-wrap gap-x-6 gap-y-3 text-[16px] text-ink3">
-                {["Gratuit, sans carte bancaire", "Prêt en 2 minutes", "Données chiffrées, jamais revendues"].map(
+              <ul className="fade-up-3 mt-7 flex flex-wrap gap-x-6 gap-y-2.5 text-[16px] text-ink3">
+                {["30 jours gratuits, sans carte", "Shopify, WooCommerce, Wix, Stripe", "Lecture : 30 secondes par jour"].map(
                   (t) => (
                     <li key={t} className="flex items-center gap-2">
                       <Check className="h-[18px] w-[18px] flex-none text-accent" strokeWidth={3} aria-hidden />
@@ -269,88 +283,91 @@ export default function LandingPage() {
               </ul>
             </div>
 
-            <div id="demo" className="fade-up-2 scroll-mt-8">
-              <CopilotDemo />
+            <div className="fade-up-2">
+              <BriefPanel
+                items={LANDING_BRIEF}
+                animate
+                tag={
+                  <span className="rounded-pill border border-line px-3 py-1 text-[13px] font-bold tracking-[0.04em] text-ink3">
+                    BOUTIQUE FICTIVE
+                  </span>
+                }
+                footer={
+                  <a href="#demo" className={TEXT_LINK}>
+                    Explorer cette boutique →
+                  </a>
+                }
+              />
             </div>
           </section>
 
           {/* ── Connecteurs ── */}
           <section className="border-y border-line py-7 text-center">
-            <p className="text-[15px] font-bold tracking-[0.14em] text-ink3">SE CONNECTE EN 1 CLIC À</p>
-            <div className="mt-4 flex flex-wrap items-center justify-center gap-x-8 gap-y-3 text-[19px] font-bold text-ink2">
+            <p className="text-[14px] font-bold tracking-[0.14em] text-ink3">SE CONNECTE À</p>
+            <div className="mt-4 flex flex-wrap items-center justify-center gap-x-8 gap-y-3 text-[18px] font-bold text-ink2 sm:text-[19px]">
               {CONNECTORS.map((t) => (
                 <span key={t}>{t}</span>
               ))}
             </div>
           </section>
 
-          {/* ── Le contraste ── la même journée, vue par un dashboard puis par
+          {/* ── Le problème ── la même journée, vue par un dashboard puis par
               Nightflow. C'est l'écart qui vend, pas la liste de features. ── */}
-          <section className="py-[72px]">
-            <h2 className="text-center font-display text-[40px] font-extrabold tracking-[-0.02em]">
-              Le même mardi, deux fois
-            </h2>
-            <p className="mx-auto mt-3 max-w-[52ch] text-center text-[19px] text-ink3">
-              Vos données ne manquent pas. C&apos;est leur interprétation qui manque.
-            </p>
+          <section className="py-16 sm:py-[72px]">
+            <h2 className={H2}>Ton e-commerce te donne des centaines de chiffres.</h2>
+            <p className={SUB}>Nightflow te montre ceux qui méritent ton attention. Le même mardi, deux fois :</p>
 
-            <div className="mt-12 grid items-stretch gap-5 [grid-template-columns:repeat(auto-fit,minmax(320px,1fr))]">
+            <div className="mt-12 grid items-stretch gap-5 [grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr))]">
               {/* Avant — volontairement terne. Les chiffres sont exacts et muets. */}
-              <div className="flex flex-col rounded-lg border border-line bg-panel2 p-8">
+              <div className="flex flex-col rounded-lg border border-line bg-panel2 p-6 sm:p-8">
                 <span className="text-[14px] font-bold tracking-[0.1em] text-ink3">
-                  VOTRE DASHBOARD AUJOURD&apos;HUI
+                  TON DASHBOARD AUJOURD&apos;HUI
                 </span>
                 <div className="mt-6 grid flex-1 gap-x-6 gap-y-5 [grid-template-columns:repeat(auto-fit,minmax(110px,1fr))]">
                   {RAW_METRICS.map(([label, value]) => (
                     <div key={label}>
                       <div className="text-[14px] text-ink3">{label}</div>
-                      <div
-                        className="mt-0.5 font-display text-[22px] font-extrabold text-ink3"
-                        data-numeric
-                      >
+                      <div className="mt-0.5 font-display text-[22px] font-extrabold text-ink3" data-numeric>
                         {value}
                       </div>
                     </div>
                   ))}
                 </div>
                 <p className="mt-7 border-t border-line pt-5 text-[17px] leading-relaxed text-ink3">
-                  Six chiffres exacts. Aucune décision. À vous de deviner lequel compte
+                  Six chiffres exacts. Aucune décision. À toi de deviner lequel compte
                   aujourd&apos;hui, et ce qu&apos;il faut en faire.
                 </p>
               </div>
 
               {/* Après — une phrase, une action, un montant. */}
-              <div className="flex flex-col rounded-lg border border-accent bg-panel p-8">
+              <div className="flex flex-col rounded-lg border border-accent bg-panel p-6 sm:p-8">
                 <span className="text-[14px] font-bold tracking-[0.1em] text-accent-text">
                   LE MÊME MARDI, AVEC NIGHTFLOW
                 </span>
-                <p className="mt-6 font-display text-[26px] font-extrabold leading-[1.25] tracking-[-0.015em]">
-                  Le trafic tient. C&apos;est la conversion mobile qui décroche depuis mardi.
+                <p className="mt-6 font-display text-[24px] font-extrabold leading-[1.25] tracking-[-0.015em] sm:text-[26px]">
+                  Le trafic tient. C&apos;est la conversion qui a décroché cette semaine : 2,8 % → 1,9 %.
                 </p>
                 <p className="mt-4 flex-1 text-[18px] leading-relaxed text-ink2">
-                  Desktop inchangé à 4,3 %. Mobile tombé de 2,8 % à 1,1 %, avec −62 % de paniers
-                  menés au bout. La bascule est datée et localisée dans le tunnel de paiement.
+                  Sessions +2 %, panier moyen stable, aucune rupture. Le problème est dans le
+                  tunnel, pas dans le trafic. Nightflow ne voit pas à quelle étape — il te le
+                  dit, au lieu de l&apos;inventer.
                 </p>
                 <p className="mt-7 flex gap-2.5 border-t border-line pt-5 text-[17px] font-semibold leading-relaxed text-ink">
                   <ArrowRight className="mt-1 h-5 w-5 flex-none text-accent-text" aria-hidden />
-                  Testez le paiement mobile en priorité — ≈ €1 240 par semaine en jeu.
+                  Passe une commande test de bout en bout — ≈ €1 040 par semaine en jeu.
                 </p>
               </div>
             </div>
           </section>
 
-          {/* ── 3 étapes ── */}
-          <section className="border-t border-line py-[72px]">
-            <h2 className="text-center font-display text-[40px] font-extrabold tracking-[-0.02em]">
-              Lancé en 2 minutes, sans rien installer
-            </h2>
-            <p className="mx-auto mt-3 max-w-[48ch] text-center text-[19px] text-ink3">
-              Pas de code, pas de configuration, pas de tableur à remplir.
-            </p>
-            <div className="mt-12 grid gap-5 [grid-template-columns:repeat(auto-fit,minmax(280px,1fr))]">
-              {STEPS.map((s) => (
-                <div key={s.n} className="rounded-lg border border-line bg-panel p-8">
-                  <span className="grid h-[52px] w-[52px] place-items-center rounded-pill bg-accent font-display text-[24px] font-extrabold text-accent-ink">
+          {/* ── Comment ça fonctionne ── */}
+          <section id="fonctionnement" className="scroll-mt-6 border-t border-line py-16 sm:py-[72px]">
+            <h2 className={H2}>Il surveille. Il détecte. Il explique. Il priorise.</h2>
+            <p className={SUB}>Puis tu décides. Voilà tout le produit.</p>
+            <div className="mt-12 grid gap-5 [grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr))]">
+              {HOW.map((s) => (
+                <div key={s.n} className="rounded-lg border border-line bg-panel p-6 sm:p-8">
+                  <span className="grid h-[48px] w-[48px] place-items-center rounded-pill bg-accent font-display text-[22px] font-extrabold text-accent-ink">
                     {s.n}
                   </span>
                   <h3 className="mt-5 text-[22px] font-bold">{s.t}</h3>
@@ -360,137 +377,188 @@ export default function LandingPage() {
             </div>
           </section>
 
-          {/* ── 3 piliers + 6 fonctionnalités ── */}
-          <section id="fonctionnalites" className="border-t border-line py-[72px]">
-            <h2 className="text-center font-display text-[40px] font-extrabold tracking-[-0.02em]">
-              Un copilote, pas un tableau de plus
-            </h2>
-            <p className="mx-auto mt-3 max-w-[56ch] text-center text-[19px] leading-relaxed text-ink3">
-              Les dashboards classiques vous montrent des courbes. Nightflow les lit à votre place et
-              répond aux trois seules questions qui comptent :
+          {/* ── Démo ── le visiteur pose les questions qu'il se pose vraiment,
+              sur une boutique fictive annoncée comme telle. ── */}
+          <section id="demo" className="scroll-mt-6 border-t border-line py-16 sm:py-[72px]">
+            <h2 className={H2}>Explore une boutique fictive</h2>
+            <p className={SUB}>
+              MoonStore n&apos;existe pas, ses chiffres sont inventés pour la démo. Le format, lui,
+              est celui que tu recevras chaque matin : un verdict, les chiffres derrière, une action.
             </p>
-            <div className="mt-12 grid gap-5 [grid-template-columns:repeat(auto-fit,minmax(280px,1fr))]">
-              {PILLARS.map((p) => (
-                <div key={p.t} className="rounded-lg border border-line bg-panel p-8">
-                  <h3 className="font-display text-[24px] font-extrabold text-accent">{p.t}</h3>
-                  <p className="mt-3 text-[17px] leading-relaxed text-ink2">{p.d}</p>
-                </div>
-              ))}
+            <div className="mx-auto mt-10 max-w-[860px]">
+              <CopilotDemo />
             </div>
+          </section>
 
-            <div className="mt-6 grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(300px,1fr))]">
-              {FEATURES.map(([Icon, t, d]) => (
+          {/* ── Bénéfices ── trois, pas six, et formulés par ce qu'ils changent. ── */}
+          <section className="border-t border-line py-16 sm:py-[72px]">
+            <h2 className={H2}>Trois choses que ton dashboard ne fait pas</h2>
+            <div className="mt-12 grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr))]">
+              {BENEFITS.map(([Icon, t, d]) => (
                 <div key={t} className="rounded-lg border border-line bg-panel2 p-6">
                   <Icon className="h-6 w-6 text-accent-text" strokeWidth={2} aria-hidden />
-                  <h3 className="mt-3.5 text-[19px] font-bold">{t}</h3>
+                  <h3 className="mt-3.5 text-[19px] font-bold leading-snug">{t}</h3>
                   <p className="mt-2 text-[16px] leading-relaxed text-ink3">{d}</p>
                 </div>
               ))}
             </div>
+            {bureauDisponible && (
+              <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-lg border border-line bg-panel2 p-6">
+                <BellRing className="h-6 w-6 flex-none text-accent-text" strokeWidth={2} aria-hidden />
+                <div className="min-w-0 flex-1">
+                  <h3 className="text-[19px] font-bold leading-snug">Prévenu sans ouvrir Nightflow</h3>
+                  <p className="mt-1 text-[16px] leading-relaxed text-ink3">
+                    L&apos;agent Windows vérifie tes alertes toutes les 30 minutes, navigateur fermé, et
+                    n&apos;envoie une notification que si quelque chose a changé. {DESKTOP.minOs} · ≈ {DESKTOP.windowsSizeMb} Mo.
+                  </p>
+                </div>
+                <Link href="/telecharger" className={`${TEXT_LINK} gap-1.5`}>
+                  <Download className="h-4 w-4" aria-hidden /> Télécharger
+                </Link>
+              </div>
+            )}
           </section>
 
-          {/* ── App Windows ── placée juste après les fonctionnalités, là où le
-            lecteur vient de voir « App desktop & mobile » : la page /telecharger
-            était jusqu'ici orpheline, aucun lien n'y menait depuis l'accueil.
-            Le bouton mène à cette page plutôt qu'au fichier : l'installateur
-            n'est pas signé, Windows affiche un avertissement, et /telecharger
-            l'explique avec les étapes. Envoyer droit sur le .exe ferait passer
-            l'app pour un virus. ── */}
-        {bureauDisponible && (
-          <section id="bureau" className="border-t border-line py-[72px]">
-            <div className="mx-auto flex max-w-[860px] flex-col items-center gap-7 rounded-[16px] border border-line bg-panel px-8 py-10 text-center lg:flex-row lg:text-left">
-              <span className="grid h-[68px] w-[68px] flex-none place-items-center rounded-[16px] bg-accent">
-                <AppWindow className="h-8 w-8 text-accent-ink" strokeWidth={2} aria-hidden />
-              </span>
-              <div className="flex-1">
-                <h2 className="font-display text-[26px] font-extrabold tracking-[-0.015em]">
-                  Il veille même quand votre navigateur est fermé
-                </h2>
-                <p className="mt-2.5 text-[17px] leading-relaxed text-ink2">
-                  L&apos;agent Windows interroge le moteur de détection toutes les
-                  30 minutes et vous envoie une notification native dès qu&apos;une
-                  alerte tombe — rupture de stock, chute de CA, pub déficitaire.
+          {/* ── Pour qui + ce qu'il ne fait pas ── deux colonnes de confiance. ── */}
+          <section className="border-t border-line py-16 sm:py-[72px]">
+            <div className="grid gap-5 [grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr))]">
+              <div className="rounded-lg border border-accent bg-panel p-6 sm:p-8">
+                <h2 className="font-display text-[26px] font-extrabold tracking-[-0.015em]">C&apos;est pour toi si…</h2>
+                <p className="mt-4 text-[18px] leading-relaxed text-ink2">
+                  Tu tiens une petite ou moyenne boutique sur Shopify, WooCommerce ou Wix.
+                  Tu regardes ton chiffre du jour tous les soirs, sans le temps d&apos;ouvrir
+                  Analytics pour comprendre ce qui a bougé. Tu veux savoir vite ce qui se
+                  passe, et par quoi commencer.
+                </p>
+                <p className="mt-3 text-[16px] leading-relaxed text-ink3">
+                  Une agence ou une boutique à plusieurs milliers de commandes par jour peut
+                  l&apos;utiliser aussi, mais ce n&apos;est pas pour elle qu&apos;il est construit.
                 </p>
               </div>
-              <Link
-                href="/telecharger"
-                className="inline-flex min-h-[56px] flex-none items-center gap-2.5 rounded-[12px] bg-accent px-7 text-[18px] font-bold text-accent-ink transition hover:brightness-95"
-              >
-                <Download className="h-5 w-5" aria-hidden /> Télécharger pour Windows
-              </Link>
+              <div className="rounded-lg border border-line bg-panel p-6 sm:p-8">
+                <h2 className="font-display text-[26px] font-extrabold tracking-[-0.015em]">Ce que Nightflow ne fait pas</h2>
+                <ul className="mt-4 flex flex-col gap-3 text-[17px] leading-relaxed text-ink2">
+                  {[
+                    "Il n'invente pas de chiffres. Le moteur d'alertes est déterministe et cite les données qui l'ont déclenché ; quand il manque une donnée pour conclure, il le dit.",
+                    "Il n'importe pas les données personnelles de tes clients : des métriques, jamais des noms ni des adresses.",
+                    "Il ne modifie rien dans ta boutique sans que tu cliques « Appliquer » et sans un accès en écriture que tu lui donnes exprès. Il recommande, tu décides, et chaque action se défait en un clic.",
+                    "Il ne te notifie pas pour le plaisir. Pas de changement, pas de notification.",
+                  ].map((t) => (
+                    <li key={t} className="flex gap-3">
+                      <Check className="mt-1.5 h-[18px] w-[18px] flex-none text-accent" strokeWidth={3} aria-hidden />
+                      {t}
+                    </li>
+                  ))}
+                </ul>
+              </div>
             </div>
-            <p className="mt-4 text-center text-[15px] text-ink3">
-              {DESKTOP.minOs} · ≈ {DESKTOP.windowsSizeMb} Mo · inclus avec votre compte
-            </p>
           </section>
-        )}
 
-        {/* ── Tarifs ── */}
-          <section id="tarifs" className="border-t border-line py-[72px]">
-            <h2 className="text-center font-display text-[40px] font-extrabold tracking-[-0.02em]">
-              Tarifs simples, sans surprise
-            </h2>
-            <p className="mx-auto mt-3 max-w-[52ch] text-center text-[19px] text-ink3">
-              Commencez gratuitement. Passez au niveau supérieur quand votre boutique le mérite.
+          {/* ── Fondateur ── un visage et une adresse qui répond : la preuve
+              qu'on peut donner avant d'avoir des avis. ── */}
+          <section id="fondateur" className="border-t border-line py-16 sm:py-[72px]">
+            <div className="mx-auto flex max-w-[760px] flex-col items-center gap-6 text-center sm:flex-row sm:items-start sm:gap-8 sm:text-left">
+              {FOUNDER_PHOTO ? (
+                <Image
+                  src={FOUNDER_PHOTO}
+                  alt="Adrien, fondateur de Nightflow"
+                  width={112}
+                  height={112}
+                  className="h-28 w-28 flex-none rounded-pill border border-line object-cover"
+                />
+              ) : (
+                <span
+                  className="grid h-28 w-28 flex-none place-items-center rounded-pill border border-line bg-panel2 font-display text-display text-accent-text"
+                  aria-hidden
+                >
+                  AM
+                </span>
+              )}
+              <div>
+                <h2 className="font-display text-[26px] font-extrabold tracking-[-0.015em]">
+                  Derrière Nightflow, il y a une personne
+                </h2>
+                <p className="mt-4 text-body text-ink2">
+                  Moi, Adrien. Je construis Nightflow seul. Pas de service client
+                  sous-traité : quand tu écris, c&apos;est moi qui lis et qui réponds.
+                </p>
+                <p className="mt-3 text-small text-ink3">
+                  Je l&apos;ai fait parce qu&apos;un dashboard donne des chiffres, pas des
+                  décisions. Un chiffre te paraît faux ? Dis-le-moi, je vérifie.
+                </p>
+                <a href="mailto:adrienmaxence4@gmail.com" className={`${TEXT_LINK} mt-2`}>
+                  Écris-moi →
+                </a>
+              </div>
+            </div>
+          </section>
+
+          {/* ── Tarifs ── */}
+          <section id="tarifs" className="scroll-mt-6 border-t border-line py-16 sm:py-[72px]">
+            <h2 className={H2}>Gratuit pour regarder, 9 € par mois pour brancher ta boutique</h2>
+            <p className={SUB}>
+              Une commande manquée sur un tunnel mobile cassé coûte plus qu&apos;un mois de Nightflow.
             </p>
             <PricingTable />
           </section>
 
           {/* ── FAQ ── */}
-          <section id="questions" className="mx-auto max-w-[760px] border-t border-line py-[72px]">
-            <h2 className="text-center font-display text-[36px] font-extrabold tracking-[-0.02em]">
-              Questions fréquentes
-            </h2>
+          <section id="questions" className="mx-auto max-w-[760px] border-t border-line py-16 sm:py-[72px]">
+            <h2 className={H2}>Quatre questions avant d&apos;essayer</h2>
             <div className="mt-9 flex flex-col gap-3">
               {FAQ.map(([q, a]) => (
-                <details key={q} className="rounded-[14px] border border-line bg-panel p-5 px-6">
-                  <summary className="cursor-pointer list-none text-[19px] font-bold marker:hidden">
+                <details key={q} className="group rounded-lg border border-line bg-panel">
+                  <summary className={`${SUMMARY} text-[18px] sm:text-[19px]`}>
                     {q}
+                    <ChevronDown className="h-5 w-5 flex-none text-ink3 transition duration-base group-open:rotate-180" aria-hidden />
                   </summary>
-                  <p className="mt-3 text-[17px] leading-[1.7] text-ink2">{a}</p>
+                  <p className="px-6 pb-5 text-[17px] leading-[1.7] text-ink2">{a}</p>
                 </details>
               ))}
             </div>
           </section>
 
-          {/* ── Avis ── remplace le widget de retours d'un tiers : la donnée
-              arrive dans /admin, et les bons avis alimenteront la preuve
-              sociale qui manque encore à cette page. ── */}
-          <section id="avis" className="border-t border-line py-[72px]">
-            <h2 className="text-center font-display text-[36px] font-extrabold tracking-[-0.02em]">
-              Vous en pensez quoi ?
+          {/* ── CTA final ── même libellé que le hero. ── */}
+          <section id="cta-final" className="mb-10 rounded-[16px] border border-line bg-warn-bg px-6 py-12 text-center sm:px-8 sm:py-14">
+            <h2 className="font-display text-[30px] font-extrabold tracking-[-0.02em] sm:text-[38px]">
+              Demain matin, tu sauras quoi regarder.
             </h2>
-            <p className="mx-auto mb-10 mt-3 max-w-[52ch] text-center text-[19px] leading-relaxed text-ink3">
-              Nightflow est jeune et je le construis seul. Dix secondes de votre part
-              orientent ce que je fais ensuite.
+            <p className="mt-3 text-[18px] text-ink2 sm:text-[19px]">
+              30 jours gratuits, sans carte. Le premier brief arrive avec tes premières commandes importées.
             </p>
-            <FeedbackForm />
-          </section>
-
-          {/* ── CTA final ── */}
-          <section className="mb-[72px] rounded-[16px] border border-warn/30 bg-warn-bg px-8 py-14 text-center">
-            <h2 className="font-display text-[38px] font-extrabold tracking-[-0.02em]">
-              Votre boutique a des choses à vous dire.
-            </h2>
-            <p className="mt-3 text-[19px] text-ink2">
-              Connectez-la en 1 clic et laissez le Copilot faire le premier rapport.
-            </p>
-            <Link
-              href="/signup"
-              className="mt-7 inline-flex min-h-[56px] items-center gap-2.5 rounded-[12px] bg-accent px-8 text-[19px] font-bold text-accent-ink transition hover:brightness-95"
-            >
-              Commencer gratuitement <ArrowRight className="h-5 w-5" aria-hidden />
+            <Link href="/signup" className={`${PRIMARY} mt-7 px-8`}>
+              {CTA} <ArrowRight className="h-5 w-5" aria-hidden />
             </Link>
           </section>
+
+          {/* ── Avis ── replié : la donnée arrive dans /admin, mais un formulaire
+              de 800 px entre le CTA et le pied de page n'aidait personne. ── */}
+          <details id="avis" className="group mb-10 rounded-lg border border-line bg-panel">
+            <summary className={`${SUMMARY} text-[17px]`}>
+              Tu as dix secondes ? Dis-moi ce que tu en penses.
+              <ChevronDown className="h-5 w-5 flex-none text-ink3 transition duration-base group-open:rotate-180" aria-hidden />
+            </summary>
+            <div className="px-6 pb-5">
+              <p className="text-[16px] text-ink3">
+                Nightflow est jeune et je le construis seul. Ton avis oriente ce que je fais ensuite.
+              </p>
+              <div className="mt-5">
+                <FeedbackForm />
+              </div>
+            </div>
+          </details>
         </main>
 
         {/* ── Pied de page ── */}
-        <footer className="flex flex-wrap items-center gap-x-7 gap-y-3 border-t border-line py-8 pb-12 text-[16px] text-ink3">
-          <span>© {new Date().getFullYear()} Nightflow Analytics</span>
-          <Link href="/confidentialite" className="hover:text-accent-text">Confidentialité</Link>
-          <Link href="/conditions" className="hover:text-accent-text">Conditions</Link>
-          <Link href="/mentions-legales" className="hover:text-accent-text">Mentions légales</Link>
-          <a href="mailto:adrienmaxence4@gmail.com" className="ml-auto hover:text-accent-text">
+        <footer className="flex flex-wrap items-center gap-x-6 gap-y-1 border-t border-line py-6 pb-10 text-[16px] text-ink3">
+          <span className="inline-flex min-h-tap items-center">© {new Date().getFullYear()} Nightflow Analytics</span>
+          <Link href="/confidentialite" className="inline-flex min-h-tap items-center hover:text-accent-text">Confidentialité</Link>
+          <Link href="/conditions" className="inline-flex min-h-tap items-center hover:text-accent-text">Conditions</Link>
+          <Link href="/mentions-legales" className="inline-flex min-h-tap items-center hover:text-accent-text">Mentions légales</Link>
+          {bureauDisponible && (
+            <Link href="/telecharger" className="inline-flex min-h-tap items-center hover:text-accent-text">App Windows</Link>
+          )}
+          <a href="mailto:adrienmaxence4@gmail.com" className="ml-auto inline-flex min-h-tap items-center hover:text-accent-text">
             Contact
           </a>
         </footer>

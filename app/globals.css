@@ -22,7 +22,7 @@
     --line: #d3cab8; /* bordures 1px */
     --ink: #14171b; /* texte principal   — 14.9:1 sur --panel */
     --ink2: #4a4e46; /* texte secondaire  — 8.1:1  */
-    --ink3: #6e6a5f; /* labels, méta      — 4.9:1  */
+    --ink3: #605c52; /* labels, méta      — 5.8:1 sur --panel, 5.1:1 sur --bg et --cool-bg */
 
     --accent: #d08b4f;
     --accent-ink: #14171b; /* texte sur ambre */
@@ -249,16 +249,16 @@
     }
   }
   .fade-up {
-    animation: fadeUp 0.7s ease-out both;
+    animation: fadeUp var(--dur-slow) var(--ease-out) both;
   }
   .fade-up-1 {
-    animation: fadeUp 0.7s ease-out 0.12s both;
+    animation: fadeUp var(--dur-slow) var(--ease-out) 40ms both;
   }
   .fade-up-2 {
-    animation: fadeUp 0.7s ease-out 0.24s both;
+    animation: fadeUp var(--dur-slow) var(--ease-out) 80ms both;
   }
   .fade-up-3 {
-    animation: fadeUp 0.7s ease-out 0.38s both;
+    animation: fadeUp var(--dur-slow) var(--ease-out) 120ms both;
   }
 
   /* Apparition échelonnée de la réponse du copilote (démo du hero).

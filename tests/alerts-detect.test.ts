@@ -95,6 +95,34 @@ describe("detectAlerts — revenue", () => {
   });
 });
 
+describe("detectAlerts — conversion", () => {
+  it("prices a conversion drop at today's traffic and basket", () => {
+    // 7 days at 487 visitors, 1.9 % → recent; 7 days at 2.8 % → previous.
+    // Lost: (2.8 − 1.9) % × 3 409 visitors × €34 basket ≈ €1 043.
+    const s = signals({
+      metrics: [
+        ...days(7, { visitors: 487, conversion: 1.9, orders: 9, revenue_cents: 30_600 }),
+        ...days(7, { visitors: 480, conversion: 2.8, orders: 13, revenue_cents: 44_200 }),
+      ],
+    });
+    const a = detectAlerts(s).find((x) => x.id === "conv-drop");
+    expect(a?.severity).toBe("warning");
+    // fr-FR groups thousands with a narrow no-break space (U+202F).
+    expect(a?.impact).toMatch(/^≈ €1\u202f0\d\d de CA sur 7j en jeu/);
+  });
+
+  it("keeps the generic wording when the loss is under a euro", () => {
+    const s = signals({
+      metrics: [
+        ...days(7, { visitors: 2, conversion: 1, orders: 1, revenue_cents: 100 }),
+        ...days(7, { visitors: 2, conversion: 2, orders: 1, revenue_cents: 100 }),
+      ],
+    });
+    const a = detectAlerts(s).find((x) => x.id === "conv-drop");
+    expect(a?.impact).toContain("+0,5 pt");
+  });
+});
+
 describe("detectAlerts — stock & sales", () => {
   it("flags an out-of-stock best-seller as critical", () => {
     const s = signals({
